@@ -1,0 +1,23 @@
+port: 2424
+admin_port: 2525
+log:
+  level: "info"
+
+rate_limiter:
+    enabled: true
+    num_requests: 100
+
+backend:
+  type: "azure" # Can also be "memory" or "cassandra"
+  cassandra:
+    hosts: "127.0.0.1"
+    keyspace: "prebid"
+  azure:
+      account: "azure-account-here"
+      key: "azure-key-here"
+
+metrics:
+  host: "default-metrics-host"
+  database: "default-metrics-database"
+  username: "metrics-username"
+  password: "metrics-password"
