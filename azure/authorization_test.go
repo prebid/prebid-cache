@@ -17,3 +17,13 @@ func TestValidSignature(t *testing.T) {
 		t.Errorf("Bad signature. Expected: %s, Got: %s", expected, signature)
 	}
 }
+
+func BenchmarkSignature(b *testing.B) {
+	auth := newAuthorization("aGprc2NoNzc2MjdlZHVpSHVER1NIQ0pld3lhNzMyNjRlN2ReIyQmI25jc2Fr")
+	sometime := time.Unix(123, 345).UTC()
+	formatedTime := sometime.Format("Mon, 02 Jan 2006 15:04:05 GMT")
+
+	for i := 0; i < b.N; i++ {
+		auth.sign("POST", "docs", "/dbs/prebidcache/colls/cache/docs", formatedTime)
+	}
+}
