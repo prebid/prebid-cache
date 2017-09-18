@@ -44,9 +44,11 @@ func NewBackend(account string, key string) *AzureTableBackend {
 		}).DialContext,
 	}
 
+	auth, _ := newAuthorization(key) // TODO: Error handling
+
 	c := &AzureTableBackend{
 		Account: account,
-		auth:    newAuthorization(key),
+		auth:    auth,
 		Client: &http.Client{
 			//TODO add to configMap
 			Transport: tr,
@@ -68,7 +70,8 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *http.Request, resourc
 	date := formattedRequestTime()
 	req.Header.Add("x-ms-date", date)
 	req.Header.Add("x-ms-version", "2017-01-19")
-	req.Header.Add("Authorization", c.auth.sign(req.Method, resourceType, resourceId, date))
+	signature, _ := c.auth.sign(req.Method, resourceType, resourceId, date) // TODO: Error-handling
+	req.Header.Add("Authorization", signature)
 
 	ctx = httptrace.WithClientTrace(ctx, newHttpTracer())
 
