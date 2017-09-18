@@ -30,7 +30,7 @@ type AzureTableBackend struct {
 	auth *authorization
 }
 
-func NewBackend(account string, key string) *AzureTableBackend {
+func NewBackend(account string, key string) (*AzureTableBackend, error) {
 
 	log.Debugf("New Azure Backend: Account %s Key %s", account, key)
 	tr := &http.Transport{
@@ -44,7 +44,10 @@ func NewBackend(account string, key string) *AzureTableBackend {
 		}).DialContext,
 	}
 
-	auth, _ := newAuthorization(key) // TODO: Error handling
+	auth, err := newAuthorization(key)
+	if err != nil {
+		return nil, err
+	}
 
 	c := &AzureTableBackend{
 		Account: account,
@@ -58,7 +61,7 @@ func NewBackend(account string, key string) *AzureTableBackend {
 
 	log.Info("New Azure Client", account)
 
-	return c
+	return c, nil
 }
 
 func formattedRequestTime() string {
@@ -70,7 +73,10 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *http.Request, resourc
 	date := formattedRequestTime()
 	req.Header.Add("x-ms-date", date)
 	req.Header.Add("x-ms-version", "2017-01-19")
-	signature, _ := c.auth.sign(req.Method, resourceType, resourceId, date) // TODO: Error-handling
+	signature, err := c.auth.sign(req.Method, resourceType, resourceId, date)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Add("Authorization", signature)
 
 	ctx = httptrace.WithClientTrace(ctx, newHttpTracer())

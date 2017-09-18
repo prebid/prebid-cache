@@ -435,8 +435,13 @@ func main() {
 
 	port := viper.GetInt("port")
 
+	backend, err := NewBackend(viper.GetString("backend.type"))
+	if err != nil {
+		log.Fatalf("Failed initializing backend: %v", err)
+	}
+
 	var appHandlers = AppHandlers{
-		Backend: NewBackend(viper.GetString("backend.type")),
+		Backend: backend,
 		Metrics: createMetrics(),
 
 		putAnyRequestPool: sync.Pool{
