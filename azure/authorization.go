@@ -44,15 +44,8 @@ func (auth *authorization) sign(verb, resourceType, resourceLink, date string) (
 }
 
 func (auth *authorization) free(data *signatureData) {
-	auth.clear(data)
+	data.reset()
 	auth.signaturePool.Put(data)
-}
-
-func (auth *authorization) clear(data *signatureData) {
-	data.hashInstance.Reset()
-	data.sigBytes = data.sigBytes[0:queryConstSize]
-	data.shaSum = data.shaSum[0:0]
-	data.strToSign = data.strToSign[0:0]
 }
 
 // authorization struct just consolidates the object pools
@@ -92,4 +85,11 @@ func (data *signatureData) sign(verb, resourceType, resourceLink, date string) (
 
 	base64.StdEncoding.Encode(data.sigBytes[queryConstSize:], data.shaSum)
 	return url.QueryEscape(string(data.sigBytes[0 : queryConstSize+encodedLen])), nil
+}
+
+func (data *signatureData) reset() {
+	data.hashInstance.Reset()
+	data.sigBytes = data.sigBytes[0:queryConstSize]
+	data.shaSum = data.shaSum[0:0]
+	data.strToSign = data.strToSign[0:0]
 }
