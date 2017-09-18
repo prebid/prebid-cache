@@ -50,8 +50,6 @@ func (auth *authorization) free(data *signatureData) {
 
 // authorization struct just consolidates the object pools
 type authorization struct {
-	key []byte
-
 	signaturePool sync.Pool // Stores *signatureData instances
 }
 
