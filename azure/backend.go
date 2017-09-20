@@ -2,16 +2,11 @@ package azure
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"context"
@@ -59,7 +54,7 @@ func NewBackend(account string, key string) *AzureTableBackend {
 		},
 		URI: fmt.Sprintf("https://%s.documents.azure.com", account),
 
-		auth:     newAuthorization(key),
+		auth: newAuthorization(key),
 		partitionKeyPool: sync.Pool{
 			New: func() interface{} {
 				buffer := [8]byte{}
