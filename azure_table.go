@@ -23,8 +23,9 @@ import (
 )
 
 type AzureValue struct {
-	ID    string `json:"id"`
-	Value string `json:"value"`
+	ID           string `json:"id"`
+	Value        string `json:"value"`
+	PartitionKey string `json:"partition"`
 }
 
 type AzureTableBackend struct {
@@ -119,7 +120,12 @@ func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error)
 
 	// Full key for the stupid gets
 	resourceLink := fmt.Sprintf("/dbs/prebidcache/colls/cache/docs/%s", key)
-	resp, err := c.Do(ctx, "GET", resourceLink, "docs", resourceLink[1:], nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s", c.URI, resourceLink), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Add("x-ms-documentdb-partitionkey", partitionKey(key))
+	resp, err := c.Send(ctx, req, "docs", resourceLink[1:])
 	if err != nil {
 		log.Debugf("Failed to make request")
 		return "", err
@@ -157,8 +163,9 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string) e
 	}
 
 	av := AzureValue{
-		ID:    key,
-		Value: value,
+		ID:           key,
+		Value:        value,
+		PartitionKey: partitionKey(key),
 	}
 
 	b, err := json.Marshal(&av)
@@ -211,4 +218,8 @@ func newHttpTracer() *httptrace.ClientTrace {
 			}
 		},
 	}
+}
+
+func partitionKey(key string) string {
+	return key[0:4]
 }
