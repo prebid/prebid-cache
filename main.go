@@ -79,21 +79,6 @@ type PutResponse struct {
 	Responses []PutResponseObject `json:"responses"`
 }
 
-func (resp *PutResponse) populateUUIDs() {
-	if len(resp.Responses) == 0 {
-		return
-	}
-
-	template := uuid.NewV4()
-	resp.Responses[0].UUID = template.String()
-	if len(resp.Responses) > 1 {
-		fixedPart := resp.Responses[0].UUID[0:4]
-		for i := 1; i < len(resp.Responses); i++ {
-			resp.Responses[i].UUID = fixedPart + uuid.NewV4().String()[4:]
-		}
-	}
-}
-
 type MetricsEntry struct {
 	Request  metrics.Meter
 	Duration metrics.Timer
@@ -185,9 +170,8 @@ func (deps *AppHandlers) PutCacheHandler(w http.ResponseWriter, r *http.Request,
 		}
 
 		resps := deps.putResponsePool.Get().(PutResponse)
-		defer deps.putResponsePool.Put(resps)
 		resps.Responses = make([]PutResponseObject, len(put.Puts))
-		resps.populateUUIDs()
+		defer deps.putResponsePool.Put(resps)
 
 		for i, p := range put.Puts {
 			if len(p.Value) > MaxValueLength {
@@ -220,6 +204,7 @@ func (deps *AppHandlers) PutCacheHandler(w http.ResponseWriter, r *http.Request,
 			}
 
 			log.Debugf("Storing value: %s", toCache)
+			resps.Responses[i].UUID = uuid.NewV4().String()
 			err = deps.TimeBackendPut(resps.Responses[i].UUID, toCache)
 			if err != nil {
 				log.Error("POST /cache Error while writing to the backend:", err)
@@ -306,7 +291,6 @@ func (deps *AppHandlers) PutHandler(w http.ResponseWriter, r *http.Request, ps h
 		resps := deps.putResponsePool.Get().(PutResponse)
 		defer deps.putResponsePool.Put(resps)
 		resps.Responses = make([]PutResponseObject, len(put.Puts))
-		resps.populateUUIDs()
 
 		for i, p := range put.Puts {
 			if len(p.Value) > MaxValueLength {
@@ -320,6 +304,7 @@ func (deps *AppHandlers) PutHandler(w http.ResponseWriter, r *http.Request, ps h
 			}
 
 			log.Debugf("Value: %s", p.Value)
+			resps.Responses[i].UUID = uuid.NewV4().String()
 			err = deps.TimeBackendPut(resps.Responses[i].UUID, p.Value)
 			if err != nil {
 				log.Error("POST /put Error while writing to the backend:", err)
@@ -366,7 +351,7 @@ func (deps *AppHandlers) GetHandler(w http.ResponseWriter, r *http.Request, ps h
 }
 
 func (deps *AppHandlers) TimeBackendGet(uuid string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	deps.Metrics.getsBackend.Request.Mark(1)
 	ts := time.Now()
@@ -382,7 +367,7 @@ func (deps *AppHandlers) TimeBackendGet(uuid string) (string, error) {
 
 func (deps *AppHandlers) TimeBackendPut(key string, value string) error {
 	var err error
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	deps.Metrics.putsBackend.Request.Mark(1)
 	deps.Metrics.putsBackend.Duration.Time(func() {
