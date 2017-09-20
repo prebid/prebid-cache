@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/julienschmidt/httprouter"
-	"regexp"
 	"sync"
 )
 
@@ -224,26 +223,5 @@ func TestGetInvalidUUID(t *testing.T) {
 	if getResults.Code != http.StatusNotFound {
 		t.Fatalf("Expected GET to return 404 on unrecognized ID. Got: %d", getResults.Code)
 		return
-	}
-}
-
-func TestUUIDGeneration(t *testing.T) {
-	// Stolen from https://stackoverflow.com/questions/25051675/how-to-validate-uuid-v4-in-go
-	regex := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
-
-	resp := PutResponse{
-		Responses: make([]PutResponseObject, 20),
-	}
-	resp.populateUUIDs()
-
-	fixedChars := resp.Responses[0].UUID[0:4]
-	for i := 0; i < len(resp.Responses); i++ {
-		thisId := resp.Responses[i].UUID
-		if fixedChars != thisId[0:4] {
-			t.Errorf("UUIDs %s and %s do not share the same first 16 bytes.", resp.Responses[0].UUID, thisId)
-		}
-		if !regex.MatchString(thisId) {
-			t.Errorf("%s is not a valid UUID", thisId)
-		}
 	}
 }
