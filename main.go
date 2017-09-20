@@ -351,7 +351,7 @@ func (deps *AppHandlers) GetHandler(w http.ResponseWriter, r *http.Request, ps h
 }
 
 func (deps *AppHandlers) TimeBackendGet(uuid string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 500 * time.Millisecond)
 	defer cancel()
 	deps.Metrics.getsBackend.Request.Mark(1)
 	ts := time.Now()
@@ -367,7 +367,7 @@ func (deps *AppHandlers) TimeBackendGet(uuid string) (string, error) {
 
 func (deps *AppHandlers) TimeBackendPut(key string, value string) error {
 	var err error
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 500 * time.Millisecond)
 	defer cancel()
 	deps.Metrics.putsBackend.Request.Mark(1)
 	deps.Metrics.putsBackend.Duration.Time(func() {
