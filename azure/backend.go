@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -15,11 +14,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"golang.org/x/net/context/ctxhttp"
 	"net/http/httptrace"
+	"sync"
 )
 
 type AzureValue struct {
-	ID    string `json:"id"`
-	Value string `json:"value"`
+	ID           string `json:"id"`
+	Value        string `json:"value"`
+	PartitionKey string `json:"partition"`
 }
 
 type AzureTableBackend struct {
@@ -27,7 +28,8 @@ type AzureTableBackend struct {
 	Account string
 	URI     string
 
-	auth *authorization
+	auth             *authorization
+	partitionKeyPool sync.Pool // Stores [8]byte instances where the first chars are [" and the last are "]
 }
 
 func NewBackend(account string, key string) (*AzureTableBackend, error) {
@@ -51,15 +53,26 @@ func NewBackend(account string, key string) (*AzureTableBackend, error) {
 
 	c := &AzureTableBackend{
 		Account: account,
-		auth:    auth,
 		Client: &http.Client{
 			//TODO add to configMap
 			Transport: tr,
 		},
 		URI: fmt.Sprintf("https://%s.documents.azure.com", account),
+
+		auth: auth,
+		partitionKeyPool: sync.Pool{
+			New: func() interface{} {
+				buffer := [8]byte{}
+				buffer[0] = '['
+				buffer[1] = '"'
+				buffer[6] = '"'
+				buffer[7] = ']'
+				return buffer
+			},
+		},
 	}
 
-	log.Info("New Azure Client", account)
+	log.Infof("New Azure Client: %s", account)
 
 	return c, nil
 }
@@ -89,14 +102,6 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *http.Request, resourc
 	return resp, err
 }
 
-func (c *AzureTableBackend) Do(ctx context.Context, method string, resourceLink string, resourceType string, resourceId string, body io.Reader) (*http.Response, error) {
-	req, err := http.NewRequest(method, fmt.Sprintf("%s%s", c.URI, resourceLink), body)
-	if err != nil {
-		return nil, err
-	}
-	return c.Send(ctx, req, resourceType, resourceId)
-}
-
 func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error) {
 
 	if key == "" {
@@ -105,7 +110,12 @@ func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error)
 
 	// Full key for the stupid gets
 	resourceLink := fmt.Sprintf("/dbs/prebidcache/colls/cache/docs/%s", key)
-	resp, err := c.Do(ctx, "GET", resourceLink, "docs", resourceLink[1:], nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s", c.URI, resourceLink), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(c.makePartitionKey(key)))
+	resp, err := c.Send(ctx, req, "docs", resourceLink[1:])
 	if err != nil {
 		log.Debugf("Failed to make request")
 		return "", err
@@ -126,6 +136,7 @@ func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error)
 	}
 
 	if av.Value == "" {
+		log.Debugf("Response had empty value: %v", av)
 		return "", fmt.Errorf("Key not found")
 	}
 
@@ -141,10 +152,12 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string) e
 	if value == "" {
 		return fmt.Errorf("Invalid Value")
 	}
-
+	partitionKey := c.makePartitionKey(key)
+	log.Debugf("POST partition key %s", partitionKey)
 	av := AzureValue{
-		ID:    key,
-		Value: value,
+		ID:           key,
+		Value:        value,
+		PartitionKey: partitionKey,
 	}
 
 	b, err := json.Marshal(&av)
@@ -153,7 +166,13 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string) e
 	}
 
 	resourceLink := "/dbs/prebidcache/colls/cache/docs"
-	resp, err := c.Do(ctx, "POST", resourceLink, "docs", "dbs/prebidcache/colls/cache", bytes.NewBuffer(b))
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s%s", c.URI, resourceLink), bytes.NewBuffer(b))
+	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(partitionKey))
+	if err != nil {
+		return err
+	}
+	resp, err := c.Send(ctx, req, "docs", "dbs/prebidcache/colls/cache")
 	if err != nil {
 		return err
 	}
@@ -197,4 +216,15 @@ func newHttpTracer() *httptrace.ClientTrace {
 			}
 		},
 	}
+}
+
+func (c *AzureTableBackend) makePartitionKey(objectKey string) string {
+	return objectKey[0:4]
+}
+
+func (c *AzureTableBackend) wrapForHeader(partitionKey string) string {
+	buffer := c.partitionKeyPool.Get().([8]byte)
+	defer c.partitionKeyPool.Put(buffer)
+	copy(buffer[2:6], partitionKey)
+	return string(buffer[:])
 }
