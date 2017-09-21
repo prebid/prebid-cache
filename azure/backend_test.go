@@ -6,12 +6,15 @@ import (
 )
 
 func TestPartitionKey(t *testing.T) {
-	azureTable := NewBackend("abc", "def")
+	backend, err := NewBackend("abc", "aGprc2NoNzc2MjdlZHVpSHVER1NIQ0pld3lhNzMyNjRlN2ReIyQmI25jc2Fr")
+	if err != nil {
+		t.Fatalf("Failed to create backend: %v", err)
+	}
 
 	id := uuid.NewV4().String()
 	expected := id[0:4]
 
-	got := azureTable.makePartitionKey(id)
+	got := backend.makePartitionKey(id)
 
 	if got != expected {
 		t.Errorf("Bad partition key. Expected: %s, Got: %s", expected, got)
@@ -19,12 +22,15 @@ func TestPartitionKey(t *testing.T) {
 }
 
 func TestPartitionKeyHeader(t *testing.T) {
-	azureTable := NewBackend("abc", "def")
+	backend, err := NewBackend("abc", "aGprc2NoNzc2MjdlZHVpSHVER1NIQ0pld3lhNzMyNjRlN2ReIyQmI25jc2Fr")
+	if err != nil {
+		t.Fatalf("Failed to create backend: %v", err)
+	}
 
 	id := uuid.NewV4().String()
 	expected := "[\"" + id[0:4] + "\"]"
 
-	got := azureTable.wrapForHeader(azureTable.makePartitionKey(id))
+	got := backend.wrapForHeader(backend.makePartitionKey(id))
 
 	if got != expected {
 		t.Errorf("Bad partition key. Expected: %s, Got: %s", expected, got)

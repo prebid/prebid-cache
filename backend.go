@@ -14,7 +14,7 @@ type Backend interface {
 	Get(ctx context.Context, key string) (string, error)
 }
 
-func NewBackend(backendType string) Backend {
+func NewBackend(backendType string) (Backend, error) {
 	switch backendType {
 	case "cassandra":
 		c := CassandraConfig{
@@ -26,9 +26,9 @@ func NewBackend(backendType string) Backend {
 			log.Error(err)
 			os.Exit(1)
 		}
-		return backend
+		return backend, nil
 	case "memory":
-		return NewMemoryBackend()
+		return NewMemoryBackend(), nil
 	case "azure":
 		return azure.NewBackend(
 			viper.GetString("backend.azure.account"),

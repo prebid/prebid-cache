@@ -55,8 +55,9 @@ func doMockPut(t *testing.T, router *httprouter.Router, content string) (string,
 // is returned by the GET request for whatever UUID the server chose.
 func expectStored(t *testing.T, putBody string, expectedGet string, expectedMimeType string) {
 	router := httprouter.New()
+	backend, _ := NewBackend("memory")
 	app := AppHandlers{
-		Backend: NewBackend("memory"),
+		Backend: backend,
 		Metrics: createMetrics(),
 
 		putAnyRequestPool: sync.Pool{
@@ -105,8 +106,9 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 // expectFailedPut makes a POST request with the given request body, and fails unless the server
 // responds with a 400
 func expectFailedPut(t *testing.T, requestBody string) {
+	backend, _ := NewBackend("memory")
 	app := AppHandlers{
-		Backend: NewBackend("memory"),
+		Backend: backend,
 		Metrics: createMetrics(),
 
 		putAnyRequestPool: sync.Pool{
@@ -212,8 +214,10 @@ func TestXMLOther(t *testing.T) {
 }
 
 func TestGetInvalidUUID(t *testing.T) {
+	backend, _ := NewBackend("memory")
+
 	app := AppHandlers{
-		Backend: NewBackend("memory"),
+		Backend: backend,
 		Metrics: createMetrics(),
 	}
 	router := httprouter.New()

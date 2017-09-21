@@ -32,7 +32,7 @@ type AzureTableBackend struct {
 	partitionKeyPool sync.Pool // Stores [8]byte instances where the first chars are [" and the last are "]
 }
 
-func NewBackend(account string, key string) *AzureTableBackend {
+func NewBackend(account string, key string) (*AzureTableBackend, error) {
 
 	log.Debugf("New Azure Backend: Account %s Key %s", account, key)
 	tr := &http.Transport{
@@ -46,6 +46,11 @@ func NewBackend(account string, key string) *AzureTableBackend {
 		}).DialContext,
 	}
 
+	auth, err := newAuthorization(key)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &AzureTableBackend{
 		Account: account,
 		Client: &http.Client{
@@ -54,7 +59,7 @@ func NewBackend(account string, key string) *AzureTableBackend {
 		},
 		URI: fmt.Sprintf("https://%s.documents.azure.com", account),
 
-		auth: newAuthorization(key),
+		auth: auth,
 		partitionKeyPool: sync.Pool{
 			New: func() interface{} {
 				buffer := [8]byte{}
@@ -69,7 +74,7 @@ func NewBackend(account string, key string) *AzureTableBackend {
 
 	log.Infof("New Azure Client: %s", account)
 
-	return c
+	return c, nil
 }
 
 func formattedRequestTime() string {
@@ -81,7 +86,11 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *http.Request, resourc
 	date := formattedRequestTime()
 	req.Header.Add("x-ms-date", date)
 	req.Header.Add("x-ms-version", "2017-01-19")
-	req.Header.Add("Authorization", c.auth.sign(req.Method, resourceType, resourceId, date))
+	signature, err := c.auth.sign(req.Method, resourceType, resourceId, date)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Authorization", signature)
 
 	ctx = httptrace.WithClientTrace(ctx, newHttpTracer())
 
