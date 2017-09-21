@@ -23,9 +23,11 @@ func newAuthorization(key string) (*authorization, error) {
 	return &authorization{
 		signaturePool: sync.Pool{
 			New: func() interface{} {
+				var sigBytes [128]byte
+				copy(sigBytes[0:queryConstSize], queryConst)
 				return &signatureData{
 					hashInstance: hmac.New(sha256.New, decodedKey),
-					sigBytes:     append([]byte(nil), queryConst...),
+					sigBytes:     sigBytes,
 				}
 			},
 		},
@@ -55,39 +57,38 @@ type authorization struct {
 
 type signatureData struct {
 	hashInstance hash.Hash
-	shaSum       []byte
-	sigBytes     []byte
-	strToSign    []byte
+	shaSum       [64]byte
+	sigBytes     [128]byte
+	strToSign    [128]byte
 }
 
 func (data *signatureData) sign(verb, resourceType, resourceLink, date string) (string, error) {
-	data.strToSign = append(data.strToSign, strings.ToLower(verb)...)
-	data.strToSign = append(data.strToSign, '\n')
-	data.strToSign = append(data.strToSign, resourceType...)
-	data.strToSign = append(data.strToSign, '\n')
-	data.strToSign = append(data.strToSign, resourceLink...)
-	data.strToSign = append(data.strToSign, '\n')
-	data.strToSign = append(data.strToSign, strings.ToLower(date)...)
-	data.strToSign = append(data.strToSign, '\n', '\n')
+	strToSign := data.strToSign[0:0]
+	strToSign = append(strToSign, strings.ToLower(verb)...)
+	strToSign = append(strToSign, '\n')
+	strToSign = append(strToSign, resourceType...)
+	strToSign = append(strToSign, '\n')
+	strToSign = append(strToSign, resourceLink...)
+	strToSign = append(strToSign, '\n')
+	strToSign = append(strToSign, strings.ToLower(date)...)
+	strToSign = append(strToSign, '\n', '\n')
 
-	if _, err := data.hashInstance.Write(data.strToSign); err != nil {
+	if _, err := data.hashInstance.Write(strToSign); err != nil {
 		return "", errors.New("Failed to write strToSign into the hash. " + err.Error())
 	}
 
-	data.shaSum = data.hashInstance.Sum(data.shaSum)
+	shaSum := data.hashInstance.Sum(data.shaSum[0:0])
 
-	encodedLen := base64.StdEncoding.EncodedLen(len(data.shaSum))
-	for len(data.sigBytes) < (queryConstSize + encodedLen) {
-		data.sigBytes = append(data.sigBytes, '0')
+	encodedLen := base64.StdEncoding.EncodedLen(len(shaSum))
+	sigBytes := data.sigBytes[0:queryConstSize]
+	for len(sigBytes) < (queryConstSize + encodedLen) {
+		sigBytes = append(sigBytes, '0')
 	}
 
-	base64.StdEncoding.Encode(data.sigBytes[queryConstSize:], data.shaSum)
-	return url.QueryEscape(string(data.sigBytes[0 : queryConstSize+encodedLen])), nil
+	base64.StdEncoding.Encode(sigBytes[queryConstSize:], shaSum)
+	return url.QueryEscape(string(sigBytes[0 : queryConstSize+encodedLen])), nil
 }
 
 func (data *signatureData) reset() {
 	data.hashInstance.Reset()
-	data.sigBytes = data.sigBytes[0:queryConstSize]
-	data.shaSum = data.shaSum[0:0]
-	data.strToSign = data.strToSign[0:0]
 }

@@ -17,7 +17,13 @@ func TestValidSignature(t *testing.T) {
 	sometime := time.Unix(123, 345).UTC()
 	formatedTime := sometime.Format("Mon, 02 Jan 2006 15:04:05 GMT")
 
+	// TODO: Remove before merge
+	//var stats runtime.MemStats
+	//runtime.ReadMemStats(&stats)
+	//mallocs := stats.Mallocs
 	signature, err := auth.sign("POST", "docs", "/dbs/prebidcache/colls/cache/docs", formatedTime)
+	//runtime.ReadMemStats(&stats)
+	//log.Printf("Malloc count: %d", stats.Mallocs - mallocs)
 	if err != nil {
 		t.Errorf("Failed to generate a signature. %v", err)
 		return
@@ -51,9 +57,11 @@ func TestClearedState(t *testing.T) {
 	key := "aGprc2NoNzc2MjdlZHVpSHVER1NIQ0pld3lhNzMyNjRlN2ReIyQmI25jc2Fr"
 	decodedKey, _ := base64.StdEncoding.DecodeString(key)
 	auth, _ := newAuthorization(key)
+	var sigBytes [128]byte
+	copy(sigBytes[0:queryConstSize], queryConst)
 	seededData := &signatureData{
 		hashInstance: hmac.New(sha256.New, decodedKey),
-		sigBytes:     append([]byte(nil), queryConst...),
+		sigBytes:     sigBytes,
 	}
 	auth.signaturePool.Put(seededData)
 
@@ -64,25 +72,17 @@ func TestClearedState(t *testing.T) {
 	if cap(seededData.sigBytes) < 70 {
 		t.Errorf("sigBytes should have room for at least 70 elements. Got %d", cap(seededData.sigBytes))
 	}
-	if cap(seededData.sigBytes) < 30 {
+	if cap(seededData.shaSum) < 30 {
 		t.Errorf("shaSum should have room for at least 30 elements. Got %d", cap(seededData.shaSum))
 	}
-	if cap(seededData.sigBytes) == 90 {
+	if cap(seededData.strToSign) < 90 {
 		t.Errorf("strToSign should have room for at least 90 elements. Got %d", cap(seededData.strToSign))
 	}
 }
 
 func assertEmpty(t *testing.T, data *signatureData) {
-	if string(data.sigBytes) != queryConst {
-		t.Errorf("SeededData.sigBytes should match the queryConst value. Got %v", data.sigBytes)
-	}
-
-	if len(data.strToSign) != 0 {
-		t.Errorf("SeededData.strToSign should be empty. Got %v", data.strToSign)
-	}
-
-	if len(data.shaSum) != 0 {
-		t.Errorf("SeededData.shaSum should be empty. Got %v", data.shaSum)
+	if string(data.sigBytes[0:queryConstSize]) != queryConst {
+		t.Errorf("SeededData.sigBytes should match the queryConst value. Got %v", string(data.sigBytes[0:queryConstSize]))
 	}
 }
 
