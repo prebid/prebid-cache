@@ -476,11 +476,17 @@ func main() {
 	router.POST("/cache", appHandlers.PutCacheHandler)
 	router.GET("/cache", appHandlers.GetCacheHandler)
 
+	stopSignals := make(chan os.Signal)
+	signal.Notify(stopSignals, syscall.SIGTERM)
+	signal.Notify(stopSignals, syscall.SIGINT)
+
 	adminURI := fmt.Sprintf(":%s", viper.GetString("admin_port"))
 	fmt.Println("Admin running on: ", adminURI)
 	adminServer := &http.Server{Addr: adminURI, Handler: nil}
 	go (func() {
-		log.Errorf("Admin server failure: %v", adminServer.ListenAndServe())
+		err := adminServer.ListenAndServe()
+		log.Errorf("Admin server failure: %v", err)
+		stopSignals <- syscall.SIGTERM
 	})()
 
 	coresCfg := cors.New(cors.Options{AllowCredentials: true})
@@ -496,13 +502,13 @@ func main() {
 		WriteTimeout: 15 * time.Second,
 	}
 
-	log.Info("Starting server on port: ", server.Addr)
 	go (func() {
-		log.Errorf("Main server failure: %v", server.ListenAndServe())
+		log.Info("Starting server on port: ", server.Addr)
+		err := server.ListenAndServe()
+		log.Errorf("Main server failure: %v", err)
+		stopSignals <- syscall.SIGTERM
 	})()
-	stopSignals := make(chan os.Signal)
-	signal.Notify(stopSignals, syscall.SIGTERM)
-	signal.Notify(stopSignals, syscall.SIGINT)
+
 	<- stopSignals
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
