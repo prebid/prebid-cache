@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"github.com/didip/tollbooth/limiter"
-	"sync"
 	"os/signal"
+	"sync"
 	"syscall"
 )
 
@@ -508,9 +508,9 @@ func main() {
 		stopSignals <- syscall.SIGTERM
 	})()
 
-	<- stopSignals
+	<-stopSignals
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
 		log.Errorf("Failed to shut down server: %v", err)
