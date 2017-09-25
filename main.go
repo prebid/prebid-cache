@@ -390,6 +390,12 @@ func (deps *AppHandlers) sendError(w http.ResponseWriter, err string, status int
 	w.Write([]byte(err))
 }
 
+func status(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	// We might want more logic here eventually... but for now, we're ok to serve more traffic as
+	// long as the server responds.
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func parseUUID(r *http.Request) string {
 	return r.URL.Query().Get("uuid")
 }
@@ -470,6 +476,7 @@ func main() {
 	router := httprouter.New()
 	router.POST("/put", appHandlers.PutHandler)
 	router.GET("/get", appHandlers.GetHandler)
+	router.GET("/status", status) // Determines whether the server is ready for more traffic.
 
 	router.POST("/cache", appHandlers.PutCacheHandler)
 	router.GET("/cache", appHandlers.GetCacheHandler)

@@ -225,3 +225,16 @@ func TestGetInvalidUUID(t *testing.T) {
 		return
 	}
 }
+
+func TestReadinessCheck(t *testing.T) {
+	requestRecorder := httptest.NewRecorder()
+
+	router := httprouter.New()
+	router.GET("/status", status)
+	req, _ := http.NewRequest("GET", "/status", new(bytes.Buffer))
+	router.ServeHTTP(requestRecorder, req)
+
+	if requestRecorder.Code != http.StatusNoContent {
+		t.Errorf("/status endpoint should always return a 204. Got %d", requestRecorder.Code)
+	}
+}
