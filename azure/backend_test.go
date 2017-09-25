@@ -1,4 +1,4 @@
-package main
+package azure
 
 import (
 	"github.com/satori/go.uuid"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestPartitionKey(t *testing.T) {
-	azureTable := NewAzureBackend("abc", "def")
+	azureTable := NewBackend("abc", "def")
 
 	id := uuid.NewV4().String()
 	expected := id[0:4]
@@ -19,7 +19,7 @@ func TestPartitionKey(t *testing.T) {
 }
 
 func TestPartitionKeyHeader(t *testing.T) {
-	azureTable := NewAzureBackend("abc", "def")
+	azureTable := NewBackend("abc", "def")
 
 	id := uuid.NewV4().String()
 	expected := "[\"" + id[0:4] + "\"]"

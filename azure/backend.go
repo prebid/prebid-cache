@@ -1,17 +1,12 @@
-package main
+package azure
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"context"
@@ -31,13 +26,13 @@ type AzureValue struct {
 type AzureTableBackend struct {
 	Client  *http.Client
 	Account string
-	Key     string
 	URI     string
 
+	auth             *authorization
 	partitionKeyPool sync.Pool // Stores [8]byte instances where the first chars are [" and the last are "]
 }
 
-func NewAzureBackend(account string, key string) *AzureTableBackend {
+func NewBackend(account string, key string) *AzureTableBackend {
 
 	log.Debugf("New Azure Backend: Account %s Key %s", account, key)
 	tr := &http.Transport{
@@ -53,13 +48,13 @@ func NewAzureBackend(account string, key string) *AzureTableBackend {
 
 	c := &AzureTableBackend{
 		Account: account,
-		Key:     key,
 		Client: &http.Client{
 			//TODO add to configMap
 			Transport: tr,
 		},
 		URI: fmt.Sprintf("https://%s.documents.azure.com", account),
 
+		auth: newAuthorization(key),
 		partitionKeyPool: sync.Pool{
 			New: func() interface{} {
 				buffer := [8]byte{}
@@ -77,25 +72,6 @@ func NewAzureBackend(account string, key string) *AzureTableBackend {
 	return c
 }
 
-func (c *AzureTableBackend) signReq(verb, resourceType, resourceLink, date string) string {
-
-	strToSign := fmt.Sprintf("%s\n%s\n%s\n%s\n\n",
-		strings.ToLower(verb),
-		resourceType,
-		resourceLink,
-		strings.ToLower(date),
-	)
-
-	decodedKey, _ := base64.StdEncoding.DecodeString(c.Key)
-	sha256 := hmac.New(sha256.New, []byte(decodedKey))
-	sha256.Write([]byte(strToSign))
-
-	signature := base64.StdEncoding.EncodeToString(sha256.Sum(nil))
-	u := url.QueryEscape(fmt.Sprintf("type=master&ver=1.0&sig=%s", signature))
-
-	return u
-}
-
 func formattedRequestTime() string {
 	t := time.Now().UTC()
 	return t.Format("Mon, 02 Jan 2006 15:04:05 GMT")
@@ -105,7 +81,7 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *http.Request, resourc
 	date := formattedRequestTime()
 	req.Header.Add("x-ms-date", date)
 	req.Header.Add("x-ms-version", "2017-01-19")
-	req.Header.Add("Authorization", c.signReq(req.Method, resourceType, resourceId, date))
+	req.Header.Add("Authorization", c.auth.sign(req.Method, resourceType, resourceId, date))
 
 	ctx = httptrace.WithClientTrace(ctx, newHttpTracer())
 

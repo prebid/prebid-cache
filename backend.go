@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/Prebid-org/prebid-cache/azure"
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 	"os"
@@ -29,7 +30,7 @@ func NewBackend(backendType string) Backend {
 	case "memory":
 		return NewMemoryBackend()
 	case "azure":
-		return NewAzureBackend(
+		return azure.NewBackend(
 			viper.GetString("backend.azure.account"),
 			viper.GetString("backend.azure.key"))
 	default:
