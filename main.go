@@ -21,7 +21,9 @@ import (
 	"strings"
 
 	"github.com/didip/tollbooth/limiter"
+	"os/signal"
 	"sync"
+	"syscall"
 )
 
 // When we insert a value into the cache, we'll prefix it with one of these.
@@ -481,12 +483,17 @@ func main() {
 	router.POST("/cache", appHandlers.PutCacheHandler)
 	router.GET("/cache", appHandlers.GetCacheHandler)
 
-	go func() {
-		// Todo -- make configurable
-		adminURI := fmt.Sprintf(":%s", viper.GetString("admin_port"))
-		fmt.Println("Admin running on: ", adminURI)
-		log.Fatal(http.ListenAndServe(adminURI, nil))
-	}()
+	stopSignals := make(chan os.Signal)
+	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
+
+	adminURI := fmt.Sprintf(":%s", viper.GetString("admin_port"))
+	fmt.Println("Admin running on: ", adminURI)
+	adminServer := &http.Server{Addr: adminURI, Handler: nil}
+	go (func() {
+		err := adminServer.ListenAndServe()
+		log.Errorf("Admin server failure: %v", err)
+		stopSignals <- syscall.SIGTERM
+	})()
 
 	coresCfg := cors.New(cors.Options{AllowCredentials: true})
 	corsRouter := coresCfg.Handler(router)
@@ -501,6 +508,21 @@ func main() {
 		WriteTimeout: 15 * time.Second,
 	}
 
-	log.Info("Starting server on port: ", server.Addr)
-	log.Fatal(server.ListenAndServe())
+	go (func() {
+		log.Info("Starting server on port: ", server.Addr)
+		err := server.ListenAndServe()
+		log.Errorf("Main server failure: %v", err)
+		stopSignals <- syscall.SIGTERM
+	})()
+
+	<-stopSignals
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		log.Errorf("Failed to shut down server: %v", err)
+	}
+	if err := adminServer.Shutdown(ctx); err != nil {
+		log.Errorf("Failed to shut down admin server: %v", err)
+	}
 }
