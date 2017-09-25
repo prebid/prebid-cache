@@ -477,8 +477,7 @@ func main() {
 	router.GET("/cache", appHandlers.GetCacheHandler)
 
 	stopSignals := make(chan os.Signal)
-	signal.Notify(stopSignals, syscall.SIGTERM)
-	signal.Notify(stopSignals, syscall.SIGINT)
+	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
 
 	adminURI := fmt.Sprintf(":%s", viper.GetString("admin_port"))
 	fmt.Println("Admin running on: ", adminURI)
