@@ -11,10 +11,8 @@ import (
 	"time"
 
 	"context"
-	"crypto/tls"
 	log "github.com/Sirupsen/logrus"
 	"github.com/valyala/fasthttp"
-	"net/http/httptrace"
 	"sync"
 )
 
@@ -40,13 +38,13 @@ func NewAzureBackend(account string, key string) *AzureTableBackend {
 	c := &AzureTableBackend{
 		Account: account,
 		Key:     key,
-		Client:  &fasthttp.Client{
+		Client: &fasthttp.Client{
 			MaxIdleConnDuration: 30 * time.Second,
 			DialDualStack:       true,
 			WriteTimeout:        15 * time.Second,
 			ReadTimeout:         15 * time.Second,
 		},
-		URI:     fmt.Sprintf("https://%s.documents.azure.com", account),
+		URI: fmt.Sprintf("https://%s.documents.azure.com", account),
 
 		partitionKeyPool: sync.Pool{
 			New: func() interface{} {
@@ -95,8 +93,6 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, res
 	req.Header.Add("x-ms-version", "2017-01-19")
 	req.Header.Add("Authorization", c.signReq(string(req.Header.Method()), resourceType, resourceId, date))
 
-	ctx = httptrace.WithClientTrace(ctx, newHttpTracer())
-
 	deadline, ok := ctx.Deadline()
 	var err error = nil
 	if ok {
@@ -104,6 +100,7 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, res
 	} else {
 		err = c.Client.Do(req, resp)
 	}
+
 	return err
 }
 
@@ -183,48 +180,8 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string) e
 	if err != nil {
 		return err
 	}
-	if err := c.Send(ctx, req, resp, "docs", "dbs/prebidcache/colls/cache"); err != nil {
-		return err
-	}
-
-	// Read the whole body so that the Transport knows it's safe to reuse the connection.
-	// See the docs on http.Response.Body
-	// ioutil.ReadAll(resp.Body)
-	return nil
-}
-
-func newHttpTracer() *httptrace.ClientTrace {
-	return &httptrace.ClientTrace{
-		PutIdleConn: func(err error) {
-			if err != nil {
-				log.Infof("Failed adding idle connection to the pool: %v", err.Error())
-			}
-		},
-
-		ConnectDone: func(network, addr string, err error) {
-			if err != nil {
-				log.Warnf("Failed to connect. Network: %s, Addr: %s, err: %v", network, addr, err)
-			}
-		},
-
-		DNSDone: func(info httptrace.DNSDoneInfo) {
-			if info.Err != nil {
-				log.Warnf("Failed DNS lookup: %v", info.Err)
-			}
-		},
-
-		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
-			if err != nil {
-				log.Warnf("Failed TLS Handshake: %v", err)
-			}
-		},
-
-		WroteRequest: func(info httptrace.WroteRequestInfo) {
-			if info.Err != nil {
-				log.Warnf("Failed to write request: %v", info.Err)
-			}
-		},
-	}
+	err = c.Send(ctx, req, resp, "docs", "dbs/prebidcache/colls/cache")
+	return err
 }
 
 func (c *AzureTableBackend) makePartitionKey(objectKey string) string {
