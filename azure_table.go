@@ -37,17 +37,15 @@ func NewAzureBackend(account string, key string) *AzureTableBackend {
 
 	log.Debugf("New Azure Backend: Account %s Key %s", account, key)
 
-	fClient := fasthttp.Client{
-		MaxIdleConnDuration: 30 * time.Second,
-		DialDualStack:       true,
-		WriteTimeout:        15 * time.Second,
-		ReadTimeout:         15 * time.Second,
-	}
-
 	c := &AzureTableBackend{
 		Account: account,
 		Key:     key,
-		Client:  &fClient,
+		Client:  &fasthttp.Client{
+			MaxIdleConnDuration: 30 * time.Second,
+			DialDualStack:       true,
+			WriteTimeout:        15 * time.Second,
+			ReadTimeout:         15 * time.Second,
+		},
 		URI:     fmt.Sprintf("https://%s.documents.azure.com", account),
 
 		partitionKeyPool: sync.Pool{
