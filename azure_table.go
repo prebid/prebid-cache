@@ -91,11 +91,11 @@ func formattedRequestTime() string {
 	return t.Format("Mon, 02 Jan 2006 15:04:05 GMT")
 }
 
-func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, resp *fasthttp.Response, resourceType string, resourceId string, method string) error {
+func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, resp *fasthttp.Response, resourceType string, resourceId string) error {
 	date := formattedRequestTime()
 	req.Header.Add("x-ms-date", date)
 	req.Header.Add("x-ms-version", "2017-01-19")
-	req.Header.Add("Authorization", c.signReq(method, resourceType, resourceId, date))
+	req.Header.Add("Authorization", c.signReq(string(req.Header.Method()), resourceType, resourceId, date))
 
 	ctx = httptrace.WithClientTrace(ctx, newHttpTracer())
 
@@ -120,23 +120,18 @@ func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error)
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 	var resp = fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(resp) // TODO: Read response body?
+	defer fasthttp.ReleaseResponse(resp)
+
 	req.Header.SetMethod("GET")
 	req.SetRequestURI(fmt.Sprintf("%s%s", c.URI, resourceLink))
 	req.SetBodyString("")
 
 	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(c.makePartitionKey(key)))
-	err := c.Send(ctx, req, resp, "docs", resourceLink[1:], "GET")
+	err := c.Send(ctx, req, resp, "docs", resourceLink[1:])
 	if err != nil {
 		log.Debugf("Failed to make request")
 		return "", err
 	}
-
-	//body, err := ioutil.ReadAll(resp.Body)
-	//if err != nil {
-	//	log.Debugf("Failed to read the request body")
-	//	return "", err
-	//}
 
 	av := AzureValue{}
 	err = json.Unmarshal(resp.Body(), &av)
@@ -180,7 +175,7 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string) e
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 	var resp = fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(resp) // TODO: Read response body?
+	defer fasthttp.ReleaseResponse(resp)
 
 	req.Header.SetMethod("POST")
 	req.SetRequestURI(fmt.Sprintf("%s%s", c.URI, resourceLink))
@@ -190,7 +185,7 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string) e
 	if err != nil {
 		return err
 	}
-	if err := c.Send(ctx, req, resp, "docs", "dbs/prebidcache/colls/cache", "POST"); err != nil {
+	if err := c.Send(ctx, req, resp, "docs", "dbs/prebidcache/colls/cache"); err != nil {
 		return err
 	}
 
