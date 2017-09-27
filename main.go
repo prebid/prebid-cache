@@ -143,10 +143,8 @@ type AppHandlers struct {
 	putResponsePool   sync.Pool // Stores PutResponse instances with MaxNumValues slots
 }
 
-// PutCacheHandler serves "POST /cache" requests.
-func (deps *AppHandlers) PutCacheHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
-	//metricsCallback := deps.Metrics.StartPostCache()
+// PutHandler serves "POST /cache" requests.
+func (deps *AppHandlers) PutHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	deps.Metrics.putsCurrentURL.Request.Mark(1)
 	deps.Metrics.putsCurrentURL.Duration.Time(func() {
 
@@ -234,8 +232,8 @@ func (deps *AppHandlers) PutCacheHandler(w http.ResponseWriter, r *http.Request,
 	})
 }
 
-// GetCacheHandler serves "GET /cache?uuid={id}" endpoints.
-func (deps *AppHandlers) GetCacheHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+// GetHandler serves "GET /cache?uuid={id}" endpoints.
+func (deps *AppHandlers) GetHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	deps.Metrics.getsCurrentURL.Request.Mark(1)
 	deps.Metrics.getsCurrentURL.Duration.Time(func() {
 
@@ -259,95 +257,6 @@ func (deps *AppHandlers) GetCacheHandler(w http.ResponseWriter, r *http.Request,
 		} else {
 			deps.Metrics.getsCurrentURL.Errors.Mark(1)
 			deps.sendError(w, "Cache data was corrupted. Cannot determine type.", http.StatusInternalServerError)
-		}
-	})
-}
-
-// PutHandler is deprecated. It can be removed as soon as prebid-server is updated to stop using it.
-func (deps *AppHandlers) PutHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	deps.Metrics.putsLegacy.Request.Mark(1)
-	deps.Metrics.putsLegacy.Duration.Time(func() {
-		/* Handles POST */
-		w.Header().Set("Content-Type", "application/json")
-
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			deps.sendError(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		put := deps.putRequestPool.Get().(PutRequest)
-		defer deps.putRequestPool.Put(put)
-
-		err = json.Unmarshal(body, &put)
-		if err != nil {
-			deps.sendError(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if len(put.Puts) > MaxNumValues {
-			deps.sendError(w, fmt.Sprintf("More keys than allowed: %d", MaxNumValues), http.StatusBadRequest)
-			return
-		}
-
-		resps := deps.putResponsePool.Get().(PutResponse)
-		defer deps.putResponsePool.Put(resps)
-		resps.Responses = make([]PutResponseObject, len(put.Puts))
-
-		for i, p := range put.Puts {
-			if len(p.Value) > MaxValueLength {
-				deps.sendError(w, fmt.Sprintf("Value is larger than allowed size: %d", MaxValueLength), http.StatusBadRequest)
-				return
-			}
-
-			if len(p.Value) == 0 {
-				deps.sendError(w, "Missing value.", http.StatusBadRequest)
-				return
-			}
-
-			log.Debugf("Value: %s", p.Value)
-			resps.Responses[i].UUID = uuid.NewV4().String()
-			err = deps.TimeBackendPut(resps.Responses[i].UUID, p.Value)
-			if err != nil {
-				log.Error("POST /put Error while writing to the backend:", err)
-				switch err {
-				case context.DeadlineExceeded:
-					deps.sendError(w, "Timeout writing value to the backend", httpDependencyTimeout)
-				default:
-					deps.sendError(w, err.Error(), http.StatusInternalServerError)
-				}
-				deps.Metrics.putsLegacy.Errors.Mark(1)
-				return
-			}
-		}
-
-		bytes, err := json.Marshal(&resps)
-		if err != nil {
-			deps.sendError(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		w.Write(bytes)
-	})
-}
-
-// GetHandler is deprecated. It can be removed as soon as prebid-server is updated to stop using it.
-func (deps *AppHandlers) GetHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
-	// Automate all of this with customer middleware
-	deps.Metrics.getsLegacy.Request.Mark(1)
-	deps.Metrics.getsLegacy.Duration.Time(func() {
-
-		/* Handles POST */
-		w.Header().Set("Content-Type", "application/json")
-
-		id := parseUUID(r)
-		var value, err = deps.TimeBackendGet(id)
-
-		if err != nil {
-			w.Write([]byte("{ \"error\": \"not found\" }"))
-		} else {
-			fmt.Fprintf(w, "%s", value)
 		}
 	})
 }
@@ -476,12 +385,10 @@ func main() {
 	)
 
 	router := httprouter.New()
-	router.POST("/put", appHandlers.PutHandler)
-	router.GET("/get", appHandlers.GetHandler)
 	router.GET("/status", status) // Determines whether the server is ready for more traffic.
 
-	router.POST("/cache", appHandlers.PutCacheHandler)
-	router.GET("/cache", appHandlers.GetCacheHandler)
+	router.POST("/cache", appHandlers.PutHandler)
+	router.GET("/cache", appHandlers.GetHandler)
 
 	stopSignals := make(chan os.Signal)
 	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
