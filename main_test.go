@@ -211,7 +211,7 @@ func TestXMLOther(t *testing.T) {
 	expectFailedPut(t, "{\"puts\":[{\"type\":\"xml\",\"value\":5}]}")
 }
 
-func TestGetInvalidUUID(t *testing.T) {
+func TestGetInvalidUUIDs(t *testing.T) {
 	app := AppHandlers{
 		Backend: NewBackend("memory"),
 		Metrics: createMetrics(),
@@ -224,19 +224,10 @@ func TestGetInvalidUUID(t *testing.T) {
 		t.Fatalf("Expected GET to return 404 on unrecognized ID. Got: %d", getResults.Code)
 		return
 	}
-}
 
-func TestGetMalformedUUID(t *testing.T) {
-	app := AppHandlers{
-		Backend: NewBackend("memory"),
-		Metrics: createMetrics(),
-	}
-	router := httprouter.New()
-	router.GET("/cache", app.GetHandler)
-
-	getResults := doMockGet(t, router, "abc")
-	if getResults.Code != http.StatusBadRequest {
-		t.Fatalf("Expected GET to return 400 on unrecognized ID. Got: %d", getResults.Code)
+	getResults = doMockGet(t, router, "abc")
+	if getResults.Code != http.StatusNotFound {
+		t.Fatalf("Expected GET to return 404 on unrecognized ID. Got: %d", getResults.Code)
 		return
 	}
 }

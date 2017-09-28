@@ -23,7 +23,6 @@ import (
 	"errors"
 	"github.com/didip/tollbooth/limiter"
 	"os/signal"
-	"regexp"
 	"sync"
 	"syscall"
 )
@@ -48,8 +47,6 @@ const (
 // Kurt Adam says he's working on a solution for this... but until it's ready, we'll use this
 // non-standard 5xx response to dodge nginx if Azure times out.
 const httpDependencyTimeout = 597
-
-var uuidValidator = regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
 
 var (
 	MaxValueLength = 1024 * 10
@@ -243,7 +240,11 @@ func (deps *AppHandlers) GetHandler(w http.ResponseWriter, r *http.Request, ps h
 
 		id, err := parseUUID(r)
 		if err != nil {
-			deps.sendError(w, err.Error(), http.StatusBadRequest)
+			if id == "" {
+				deps.sendError(w, err.Error(), http.StatusBadRequest)
+			} else {
+				deps.sendError(w, err.Error(), http.StatusNotFound)
+			}
 			return
 		}
 		value, err := deps.TimeBackendGet(id)
@@ -316,7 +317,7 @@ func parseUUID(r *http.Request) (string, error) {
 	var err error = nil
 	if id == "" {
 		err = errors.New("Missing required parameter uuid")
-	} else if !uuidValidator.MatchString(id) {
+	} else if len(id) < 4 {
 		err = fmt.Errorf("%s is not a valid UUID.", id)
 	}
 	return id, err
