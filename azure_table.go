@@ -1,24 +1,18 @@
 package main
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"context"
-	"crypto/tls"
 	log "github.com/Sirupsen/logrus"
-	"golang.org/x/net/context/ctxhttp"
-	"net/http/httptrace"
+	"github.com/valyala/fasthttp"
 	"sync"
 )
 
@@ -29,7 +23,7 @@ type AzureValue struct {
 }
 
 type AzureTableBackend struct {
-	Client  *http.Client
+	Client  *fasthttp.Client
 	Account string
 	Key     string
 	URI     string
@@ -40,23 +34,15 @@ type AzureTableBackend struct {
 func NewAzureBackend(account string, key string) *AzureTableBackend {
 
 	log.Debugf("New Azure Backend: Account %s Key %s", account, key)
-	tr := &http.Transport{
-		MaxIdleConns:        200,
-		MaxIdleConnsPerHost: 200,
-		IdleConnTimeout:     60 * time.Second,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
-	}
 
 	c := &AzureTableBackend{
 		Account: account,
 		Key:     key,
-		Client: &http.Client{
-			//TODO add to configMap
-			Transport: tr,
+		Client: &fasthttp.Client{
+			MaxIdleConnDuration: 30 * time.Second,
+			DialDualStack:       true,
+			WriteTimeout:        15 * time.Second,
+			ReadTimeout:         15 * time.Second,
 		},
 		URI: fmt.Sprintf("https://%s.documents.azure.com", account),
 
@@ -101,20 +87,21 @@ func formattedRequestTime() string {
 	return t.Format("Mon, 02 Jan 2006 15:04:05 GMT")
 }
 
-func (c *AzureTableBackend) Send(ctx context.Context, req *http.Request, resourceType string, resourceId string) (*http.Response, error) {
+func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, resp *fasthttp.Response, resourceType string, resourceId string) error {
 	date := formattedRequestTime()
 	req.Header.Add("x-ms-date", date)
 	req.Header.Add("x-ms-version", "2017-01-19")
-	req.Header.Add("Authorization", c.signReq(req.Method, resourceType, resourceId, date))
+	req.Header.Add("Authorization", c.signReq(string(req.Header.Method()), resourceType, resourceId, date))
 
-	ctx = httptrace.WithClientTrace(ctx, newHttpTracer())
-
-	resp, err := ctxhttp.Do(ctx, c.Client, req)
-	if err != nil {
-		return nil, err
+	deadline, ok := ctx.Deadline()
+	var err error = nil
+	if ok {
+		err = c.Client.DoDeadline(req, resp, deadline)
+	} else {
+		err = c.Client.Do(req, resp)
 	}
 
-	return resp, err
+	return err
 }
 
 func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error) {
@@ -125,26 +112,24 @@ func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error)
 
 	// Full key for the stupid gets
 	resourceLink := fmt.Sprintf("/dbs/prebidcache/colls/cache/docs/%s", key)
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s", c.URI, resourceLink), nil)
-	if err != nil {
-		return "", err
-	}
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+	var resp = fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.Header.SetMethod("GET")
+	req.SetRequestURI(fmt.Sprintf("%s%s", c.URI, resourceLink))
+	req.SetBodyString("")
+
 	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(c.makePartitionKey(key)))
-	resp, err := c.Send(ctx, req, "docs", resourceLink[1:])
+	err := c.Send(ctx, req, resp, "docs", resourceLink[1:])
 	if err != nil {
 		log.Debugf("Failed to make request")
 		return "", err
 	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Debugf("Failed to read the request body")
-		return "", err
-	}
 
 	av := AzureValue{}
-	err = json.Unmarshal(body, &av)
+	err = json.Unmarshal(resp.Body(), &av)
 	if err != nil {
 		log.Debugf("Failed to decode request body into JSON")
 		return "", err
@@ -182,55 +167,21 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string) e
 
 	resourceLink := "/dbs/prebidcache/colls/cache/docs"
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s%s", c.URI, resourceLink), bytes.NewBuffer(b))
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+	var resp = fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.Header.SetMethod("POST")
+	req.SetRequestURI(fmt.Sprintf("%s%s", c.URI, resourceLink))
+	req.SetBody(b)
+
 	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(partitionKey))
 	if err != nil {
 		return err
 	}
-	resp, err := c.Send(ctx, req, "docs", "dbs/prebidcache/colls/cache")
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	// Read the whole body so that the Transport knows it's safe to reuse the connection.
-	// See the docs on http.Response.Body
-	ioutil.ReadAll(resp.Body)
-	return nil
-}
-
-func newHttpTracer() *httptrace.ClientTrace {
-	return &httptrace.ClientTrace{
-		PutIdleConn: func(err error) {
-			if err != nil {
-				log.Infof("Failed adding idle connection to the pool: %v", err.Error())
-			}
-		},
-
-		ConnectDone: func(network, addr string, err error) {
-			if err != nil {
-				log.Warnf("Failed to connect. Network: %s, Addr: %s, err: %v", network, addr, err)
-			}
-		},
-
-		DNSDone: func(info httptrace.DNSDoneInfo) {
-			if info.Err != nil {
-				log.Warnf("Failed DNS lookup: %v", info.Err)
-			}
-		},
-
-		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
-			if err != nil {
-				log.Warnf("Failed TLS Handshake: %v", err)
-			}
-		},
-
-		WroteRequest: func(info httptrace.WroteRequestInfo) {
-			if info.Err != nil {
-				log.Warnf("Failed to write request: %v", info.Err)
-			}
-		},
-	}
+	err = c.Send(ctx, req, resp, "docs", "dbs/prebidcache/colls/cache")
+	return err
 }
 
 func (c *AzureTableBackend) makePartitionKey(objectKey string) string {
