@@ -185,7 +185,11 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string) e
 }
 
 func (c *AzureTableBackend) makePartitionKey(objectKey string) string {
-	return objectKey[0:4]
+	end := len(objectKey)
+	if end > 4 {
+		end = 4
+	}
+	return objectKey[0:end]
 }
 
 func (c *AzureTableBackend) wrapForHeader(partitionKey string) string {

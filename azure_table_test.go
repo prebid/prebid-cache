@@ -18,6 +18,28 @@ func TestPartitionKey(t *testing.T) {
 	}
 }
 
+func TestShortPartitionKey(t *testing.T) {
+	azureTable := NewAzureBackend("abc", "def")
+
+	id := "abc"
+	got := azureTable.makePartitionKey(id)
+
+	if got != id {
+		t.Errorf("Bad partition key. Expected: %s, Got: %s", id, got)
+	}
+}
+
+func TestEmptyPartitionKey(t *testing.T) {
+	azureTable := NewAzureBackend("abc", "def")
+
+	id := ""
+	got := azureTable.makePartitionKey(id)
+
+	if got != id {
+		t.Errorf("Bad partition key. Expected: %s, Got: %s", id, got)
+	}
+}
+
 func TestPartitionKeyHeader(t *testing.T) {
 	azureTable := NewAzureBackend("abc", "def")
 

@@ -20,6 +20,7 @@ import (
 	influxdb "github.com/vrischmann/go-metrics-influxdb"
 	"strings"
 
+	"errors"
 	"github.com/didip/tollbooth/limiter"
 	"os/signal"
 	"sync"
@@ -237,9 +238,13 @@ func (deps *AppHandlers) GetHandler(w http.ResponseWriter, r *http.Request, ps h
 	deps.Metrics.getsCurrentURL.Request.Mark(1)
 	deps.Metrics.getsCurrentURL.Duration.Time(func() {
 
-		id := parseUUID(r)
-		if id == "" {
-			deps.sendError(w, "Missing required parameter uuid", http.StatusBadRequest)
+		id, err := parseUUID(r)
+		if err != nil {
+			if id == "" {
+				deps.sendError(w, err.Error(), http.StatusBadRequest)
+			} else {
+				deps.sendError(w, err.Error(), http.StatusNotFound)
+			}
 			return
 		}
 		value, err := deps.TimeBackendGet(id)
@@ -307,8 +312,17 @@ func status(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func parseUUID(r *http.Request) string {
-	return r.URL.Query().Get("uuid")
+func parseUUID(r *http.Request) (string, error) {
+	id := r.URL.Query().Get("uuid")
+	var err error = nil
+	if id == "" {
+		err = errors.New("Missing required parameter uuid")
+	} else if len(id) != 36 {
+		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
+		// ones before even checking the backend.
+		err = fmt.Errorf("No content stored for uuid=%s", id)
+	}
+	return id, err
 }
 
 func initRateLimter(next http.Handler) http.Handler {
