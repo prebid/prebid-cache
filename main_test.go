@@ -79,8 +79,8 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 			},
 		},
 	}
-	router.POST("/cache", app.PutCacheHandler)
-	router.GET("/cache", app.GetCacheHandler)
+	router.POST("/cache", app.PutHandler)
+	router.GET("/cache", app.GetHandler)
 
 	uuid, putTrace := doMockPut(t, router, putBody)
 	if putTrace.Code != http.StatusOK {
@@ -130,7 +130,7 @@ func expectFailedPut(t *testing.T, requestBody string) {
 		},
 	}
 	router := httprouter.New()
-	router.POST("/cache", app.PutCacheHandler)
+	router.POST("/cache", app.PutHandler)
 
 	_, putTrace := doMockPut(t, router, requestBody)
 	if putTrace.Code != http.StatusBadRequest {
@@ -217,7 +217,7 @@ func TestGetInvalidUUID(t *testing.T) {
 		Metrics: createMetrics(),
 	}
 	router := httprouter.New()
-	router.GET("/cache", app.GetCacheHandler)
+	router.GET("/cache", app.GetHandler)
 
 	getResults := doMockGet(t, router, "abc")
 	if getResults.Code != http.StatusNotFound {
