@@ -318,7 +318,7 @@ func parseUUID(r *http.Request) (string, error) {
 	if id == "" {
 		err = errors.New("Missing required parameter uuid")
 	} else if len(id) < 4 {
-		err = fmt.Errorf("%s is not a valid UUID.", id)
+		err = fmt.Errorf("No content stored for uuid=%s", id)
 	}
 	return id, err
 }
