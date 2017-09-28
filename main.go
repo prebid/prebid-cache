@@ -20,8 +20,10 @@ import (
 	influxdb "github.com/vrischmann/go-metrics-influxdb"
 	"strings"
 
+	"errors"
 	"github.com/didip/tollbooth/limiter"
 	"os/signal"
+	"regexp"
 	"sync"
 	"syscall"
 )
@@ -46,6 +48,8 @@ const (
 // Kurt Adam says he's working on a solution for this... but until it's ready, we'll use this
 // non-standard 5xx response to dodge nginx if Azure times out.
 const httpDependencyTimeout = 597
+
+var uuidValidator = regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
 
 var (
 	MaxValueLength = 1024 * 10
@@ -237,9 +241,9 @@ func (deps *AppHandlers) GetHandler(w http.ResponseWriter, r *http.Request, ps h
 	deps.Metrics.getsCurrentURL.Request.Mark(1)
 	deps.Metrics.getsCurrentURL.Duration.Time(func() {
 
-		id := parseUUID(r)
-		if id == "" {
-			deps.sendError(w, "Missing required parameter uuid", http.StatusBadRequest)
+		id, err := parseUUID(r)
+		if err != nil {
+			deps.sendError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		value, err := deps.TimeBackendGet(id)
@@ -307,8 +311,15 @@ func status(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func parseUUID(r *http.Request) string {
-	return r.URL.Query().Get("uuid")
+func parseUUID(r *http.Request) (string, error) {
+	id := r.URL.Query().Get("uuid")
+	var err error = nil
+	if id == "" {
+		err = errors.New("Missing required parameter uuid")
+	} else if !uuidValidator.MatchString(id) {
+		err = fmt.Errorf("%s is not a valid UUID.", id)
+	}
+	return id, err
 }
 
 func initRateLimter(next http.Handler) http.Handler {
