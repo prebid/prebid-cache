@@ -1,6 +1,10 @@
-hash: cb10b74a2cdddde6df2f0663a6c808596a109d5491a110eb76cf0658d7cf872d
-updated: 2017-09-26T11:38:36.388130055-04:00
+hash: d23c5cc17aad24f6658c00b62c7c682fdd9581e56d6bee2b764fd8b013ab67a8
+updated: 2017-09-29T19:01:36.916218249Z
 imports:
+- name: github.com/bradfitz/gomemcache
+  version: 1952afaa557dc08e8e0d89eafab110fb501c1a2b
+  subpackages:
+  - memcache
 - name: github.com/cloudflare/golz4
   version: ef862a3cdc58a6f1fee4e3af3d44fbe279194cde
 - name: github.com/cyberdelia/go-metrics-graphite
@@ -35,7 +39,7 @@ imports:
   - json/scanner
   - json/token
 - name: github.com/influxdata/influxdb
-  version: 9d9001036d3585cf21925c13a57881bc6c8dcc7e
+  version: a7c3d3c0f7b74f71919047adbc4933460967a576
   subpackages:
   - client
   - models

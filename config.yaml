@@ -8,7 +8,9 @@ rate_limiter:
     num_requests: 100
 
 backend:
-  type: "azure" # Can also be "memory" or "cassandra"
+  type: "azure" # Can also be "memory", "memcache" or "cassandra"
+  memcache:
+    hosts: "127.0.0.1:11211"
   cassandra:
     hosts: "127.0.0.1"
     keyspace: "prebid"
