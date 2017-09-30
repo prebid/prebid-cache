@@ -79,7 +79,7 @@ This section does not describe permanent API contracts; it just describes limita
 
 ### Prerequisites
 
-[Golang](https://golang.org/doc/install) 1.8 or greater and [Glide](https://github.com/Masterminds/glide#install) must be installed on your system.
+[Golang](https://golang.org/doc/install) 1.9 or greater and [Glide](https://github.com/Masterminds/glide#install) must be installed on your system.
 
 ### Automated tests
 
