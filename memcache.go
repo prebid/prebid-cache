@@ -18,16 +18,10 @@ type Memcache struct {
 
 // NewMemcacheBackend create a new memcache backend
 func NewMemcacheBackend(config *MemcacheConfig) (*Memcache, error) {
-	var err error
-
 	c := &Memcache{}
 	c.config = config
 	mc := memcache.New(c.config.hosts)
 	c.client = mc
-
-	if err != nil {
-		return nil, err
-	}
 
 	return c, nil
 }
