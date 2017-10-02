@@ -12,15 +12,13 @@ type MemcacheConfig struct {
 
 // Memcache Object use to implement backend interface
 type Memcache struct {
-	config *MemcacheConfig
 	client *memcache.Client
 }
 
 // NewMemcacheBackend create a new memcache backend
 func NewMemcacheBackend(config *MemcacheConfig) (*Memcache, error) {
 	c := &Memcache{}
-	c.config = config
-	mc := memcache.New(c.config.hosts)
+	mc := memcache.New(config.hosts)
 	c.client = mc
 
 	return c, nil
