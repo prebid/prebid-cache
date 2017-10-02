@@ -28,6 +28,16 @@ func NewBackend(backendType string) Backend {
 		return backend
 	case "memory":
 		return NewMemoryBackend()
+	case "memcache":
+		c := MemcacheConfig{
+			hosts: viper.GetString("backend.memcache.hosts"),
+		}
+		var backend, err = NewMemcacheBackend(&c)
+		if err != nil {
+			log.Error(err)
+			os.Exit(1)
+		}
+		return backend
 	case "azure":
 		return NewAzureBackend(
 			viper.GetString("backend.azure.account"),

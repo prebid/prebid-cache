@@ -21,3 +21,6 @@ import:
 - package: github.com/didip/tollbooth
 - package: github.com/valyala/fasthttp
   version: ^20160617.0.0
+- package: github.com/bradfitz/gomemcache
+  subpackages:
+  - memcache
