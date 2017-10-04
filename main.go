@@ -151,7 +151,10 @@ func (deps *AppHandlers) PutHandler(w http.ResponseWriter, r *http.Request, ps h
 
 		log.Debugf("Storing value: %s", toCache)
 		resps.Responses[i].UUID = uuid.NewV4().String()
-		err = deps.TimeBackendPut(resps.Responses[i].UUID, toCache)
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		err = deps.Backend.Put(ctx, resps.Responses[i].UUID, toCache)
+
 		if err != nil {
 			log.Error("POST /cache Error while writing to the backend:", err)
 			switch err {
@@ -186,7 +189,10 @@ func (deps *AppHandlers) GetHandler(w http.ResponseWriter, r *http.Request, ps h
 		}
 		return
 	}
-	value, err := deps.TimeBackendGet(id)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	value, err := deps.Backend.Get(ctx, id)
+
 	if err != nil {
 		http.Error(w, "No content stored for uuid="+id, http.StatusNotFound)
 		return
@@ -201,21 +207,6 @@ func (deps *AppHandlers) GetHandler(w http.ResponseWriter, r *http.Request, ps h
 	} else {
 		http.Error(w, "Cache data was corrupted. Cannot determine type.", http.StatusInternalServerError)
 	}
-}
-
-func (deps *AppHandlers) TimeBackendGet(uuid string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	defer cancel()
-	value, err := deps.Backend.Get(ctx, uuid)
-	return value, err
-}
-
-func (deps *AppHandlers) TimeBackendPut(key string, value string) error {
-	var err error
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	defer cancel()
-	err = deps.Backend.Put(ctx, key, value)
-	return err
 }
 
 func status(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
