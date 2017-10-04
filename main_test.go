@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Prebid-org/prebid-cache/backends"
 	"github.com/julienschmidt/httprouter"
 	"sync"
 )
@@ -56,8 +57,7 @@ func doMockPut(t *testing.T, router *httprouter.Router, content string) (string,
 func expectStored(t *testing.T, putBody string, expectedGet string, expectedMimeType string) {
 	router := httprouter.New()
 	app := AppHandlers{
-		Backend: NewBackend("memory"),
-		Metrics: createMetrics(),
+		Backend: backends.NewBackend("memory"),
 
 		putAnyRequestPool: sync.Pool{
 			New: func() interface{} {
@@ -106,8 +106,7 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 // responds with a 400
 func expectFailedPut(t *testing.T, requestBody string) {
 	app := AppHandlers{
-		Backend: NewBackend("memory"),
-		Metrics: createMetrics(),
+		Backend: backends.NewBackend("memory"),
 
 		putAnyRequestPool: sync.Pool{
 			New: func() interface{} {
@@ -213,8 +212,7 @@ func TestXMLOther(t *testing.T) {
 
 func TestGetInvalidUUIDs(t *testing.T) {
 	app := AppHandlers{
-		Backend: NewBackend("memory"),
-		Metrics: createMetrics(),
+		Backend: backends.NewBackend("memory"),
 	}
 	router := httprouter.New()
 	router.GET("/cache", app.GetHandler)
