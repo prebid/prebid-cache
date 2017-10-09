@@ -1,9 +1,11 @@
-package metrics
+package decorators
 
 import (
 	"context"
 	"fmt"
 	"github.com/Prebid-org/prebid-cache/backends"
+	"github.com/Prebid-org/prebid-cache/metrics"
+	"github.com/Prebid-org/prebid-cache/metrics/metricstest"
 	"testing"
 )
 
@@ -18,46 +20,46 @@ func (b *failedBackend) Put(ctx context.Context, key string, value string) error
 }
 
 func TestGetSuccessMetrics(t *testing.T) {
-	metrics := CreateMetrics()
+	m := metrics.CreateMetrics()
 	rawBackend := backends.NewMemoryBackend()
 	rawBackend.Put(context.Background(), "foo", "bar")
-	backend := MonitorBackend(rawBackend, metrics)
+	backend := LogMetrics(rawBackend, m)
 	backend.Get(context.Background(), "foo")
 
-	assertSuccessMetricsExist(t, metrics.GetsBackend)
+	metricstest.AssertSuccessMetricsExist(t, m.GetsBackend)
 }
 
 func TestGetErrorMetrics(t *testing.T) {
-	metrics := CreateMetrics()
-	backend := MonitorBackend(&failedBackend{}, metrics)
+	m := metrics.CreateMetrics()
+	backend := LogMetrics(&failedBackend{}, m)
 	backend.Get(context.Background(), "foo")
 
-	assertErrorMetricsExist(t, metrics.GetsBackend)
+	metricstest.AssertErrorMetricsExist(t, m.GetsBackend)
 }
 
 func TestPutSuccessMetrics(t *testing.T) {
-	metrics := CreateMetrics()
-	backend := MonitorBackend(backends.NewMemoryBackend(), metrics)
+	m := metrics.CreateMetrics()
+	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", "bar")
 
-	assertSuccessMetricsExist(t, metrics.PutsBackend)
+	metricstest.AssertSuccessMetricsExist(t, m.PutsBackend)
 }
 
 func TestPutErrorMetrics(t *testing.T) {
-	metrics := CreateMetrics()
-	backend := MonitorBackend(&failedBackend{}, metrics)
+	m := metrics.CreateMetrics()
+	backend := LogMetrics(&failedBackend{}, m)
 	backend.Put(context.Background(), "foo", "bar")
 
-	if metrics.PutsBackend.Request.Count() != 1 {
+	if m.PutsBackend.Request.Count() != 1 {
 		t.Errorf("The request should have been counted.")
 	}
-	if metrics.PutsBackend.Duration.Count() != 0 {
+	if m.PutsBackend.Duration.Count() != 0 {
 		t.Errorf("The request duration should not have been counted.")
 	}
-	if metrics.PutsBackend.BadRequest.Count() != 0 {
+	if m.PutsBackend.BadRequest.Count() != 0 {
 		t.Errorf("No Bad requests should have been counted.")
 	}
-	if metrics.PutsBackend.Errors.Count() != 1 {
+	if m.PutsBackend.Errors.Count() != 1 {
 		t.Errorf("An Error should have been counted.")
 	}
 }

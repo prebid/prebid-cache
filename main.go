@@ -20,6 +20,8 @@ import (
 
 	"errors"
 	"github.com/Prebid-org/prebid-cache/backends"
+	backendDecorators "github.com/Prebid-org/prebid-cache/backends/decorators"
+	endpointDecorators "github.com/Prebid-org/prebid-cache/endpoints/decorators"
 	"github.com/Prebid-org/prebid-cache/metrics"
 	"github.com/didip/tollbooth/limiter"
 	"os/signal"
@@ -270,7 +272,7 @@ func main() {
 
 	appMetrics := metrics.CreateMetrics()
 	var appHandlers = AppHandlers{
-		Backend: metrics.MonitorBackend(backends.NewBackend(viper.GetString("backend.type")), appMetrics),
+		Backend: backendDecorators.LogMetrics(backends.NewBackend(viper.GetString("backend.type")), appMetrics),
 
 		putAnyRequestPool: sync.Pool{
 			New: func() interface{} {
@@ -294,8 +296,8 @@ func main() {
 	router := httprouter.New()
 	router.GET("/status", status) // Determines whether the server is ready for more traffic.
 
-	router.POST("/cache", metrics.MonitorHttp(appHandlers.PutHandler, appMetrics.Puts))
-	router.GET("/cache", metrics.MonitorHttp(appHandlers.GetHandler, appMetrics.Gets))
+	router.POST("/cache", endpointDecorators.MonitorHttp(appHandlers.PutHandler, appMetrics.Puts))
+	router.GET("/cache", endpointDecorators.MonitorHttp(appHandlers.GetHandler, appMetrics.Gets))
 	go appMetrics.Export()
 
 	stopSignals := make(chan os.Signal)

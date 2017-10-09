@@ -15,7 +15,7 @@ type MetricsEntry struct {
 	BadRequest metrics.Meter
 }
 
-func newMetricsEntry(name string, r metrics.Registry) *MetricsEntry {
+func NewMetricsEntry(name string, r metrics.Registry) *MetricsEntry {
 	me := &MetricsEntry{
 		Request:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.request_count", name), r),
 		Duration:   metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
@@ -52,10 +52,10 @@ func CreateMetrics() *Metrics {
 	r := metrics.NewPrefixedRegistry("prebidcache.")
 	m := &Metrics{
 		Registry:    r,
-		Puts:        newMetricsEntry("puts.current_url", r),
-		Gets:        newMetricsEntry("gets.current_url", r),
-		PutsBackend: newMetricsEntry("puts.backend", r),
-		GetsBackend: newMetricsEntry("gets.backend", r),
+		Puts:        NewMetricsEntry("puts.current_url", r),
+		Gets:        NewMetricsEntry("gets.current_url", r),
+		PutsBackend: NewMetricsEntry("puts.backend", r),
+		GetsBackend: NewMetricsEntry("gets.backend", r),
 	}
 
 	metrics.RegisterDebugGCStats(m.Registry)

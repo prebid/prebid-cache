@@ -1,9 +1,10 @@
-package metrics
+package decorators
 
 import (
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"time"
+	"github.com/Prebid-org/prebid-cache/metrics"
 )
 
 type writerWithStatus struct {
@@ -27,7 +28,7 @@ func (w *writerWithStatus) Header() http.Header {
 	return w.delegate.Header()
 }
 
-func MonitorHttp(handler httprouter.Handle, entry *MetricsEntry) httprouter.Handle {
+func MonitorHttp(handler httprouter.Handle, entry *metrics.MetricsEntry) httprouter.Handle {
 	return httprouter.Handle(func(resp http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		entry.Request.Mark(1)
 		wrapper := writerWithStatus{

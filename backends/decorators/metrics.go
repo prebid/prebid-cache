@@ -1,15 +1,16 @@
-package metrics
+package decorators
 
 import (
 	"context"
 	"github.com/Prebid-org/prebid-cache/backends"
+	"github.com/Prebid-org/prebid-cache/metrics"
 	"time"
 )
 
 type backendWithMetrics struct {
 	delegate backends.Backend
-	puts     *MetricsEntry
-	gets     *MetricsEntry
+	puts     *metrics.MetricsEntry
+	gets     *metrics.MetricsEntry
 }
 
 func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error) {
@@ -36,10 +37,10 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string) 
 	return err
 }
 
-func MonitorBackend(backend backends.Backend, metrics *Metrics) backends.Backend {
+func LogMetrics(backend backends.Backend, m *metrics.Metrics) backends.Backend {
 	return &backendWithMetrics{
 		delegate: backend,
-		puts:     metrics.PutsBackend,
-		gets:     metrics.GetsBackend,
+		puts:     m.PutsBackend,
+		gets:     m.GetsBackend,
 	}
 }
