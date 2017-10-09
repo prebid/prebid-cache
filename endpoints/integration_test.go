@@ -1,4 +1,4 @@
-package main
+package endpoints
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/Prebid-org/prebid-cache/backends"
 	"github.com/julienschmidt/httprouter"
-	"sync"
 )
 
 func doMockGet(t *testing.T, router *httprouter.Router, id string) *httptest.ResponseRecorder {
@@ -56,31 +55,10 @@ func doMockPut(t *testing.T, router *httprouter.Router, content string) (string,
 // is returned by the GET request for whatever UUID the server chose.
 func expectStored(t *testing.T, putBody string, expectedGet string, expectedMimeType string) {
 	router := httprouter.New()
-	app := AppHandlers{
-		Backend: backends.NewBackend("memory"),
+	backend := backends.NewMemoryBackend()
 
-		putAnyRequestPool: sync.Pool{
-			New: func() interface{} {
-				return PutAnyRequest{}
-			},
-		},
-
-		putRequestPool: sync.Pool{
-			New: func() interface{} {
-				return PutRequest{}
-			},
-		},
-
-		putResponsePool: sync.Pool{
-			New: func() interface{} {
-				return PutResponse{
-					Responses: make([]PutResponseObject, MaxNumValues),
-				}
-			},
-		},
-	}
-	router.POST("/cache", app.PutHandler)
-	router.GET("/cache", app.GetHandler)
+	router.POST("/cache", NewPutHandler(backend))
+	router.GET("/cache", NewGetHandler(backend))
 
 	uuid, putTrace := doMockPut(t, router, putBody)
 	if putTrace.Code != http.StatusOK {
@@ -105,31 +83,9 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 // expectFailedPut makes a POST request with the given request body, and fails unless the server
 // responds with a 400
 func expectFailedPut(t *testing.T, requestBody string) {
-	app := AppHandlers{
-		Backend: backends.NewBackend("memory"),
-
-		putAnyRequestPool: sync.Pool{
-			New: func() interface{} {
-				return PutAnyRequest{}
-			},
-		},
-
-		putRequestPool: sync.Pool{
-			New: func() interface{} {
-				return PutRequest{}
-			},
-		},
-
-		putResponsePool: sync.Pool{
-			New: func() interface{} {
-				return PutResponse{
-					Responses: make([]PutResponseObject, MaxNumValues),
-				}
-			},
-		},
-	}
+	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	router.POST("/cache", app.PutHandler)
+	router.POST("/cache", NewPutHandler(backend))
 
 	_, putTrace := doMockPut(t, router, requestBody)
 	if putTrace.Code != http.StatusBadRequest {
@@ -211,11 +167,9 @@ func TestXMLOther(t *testing.T) {
 }
 
 func TestGetInvalidUUIDs(t *testing.T) {
-	app := AppHandlers{
-		Backend: backends.NewBackend("memory"),
-	}
+	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	router.GET("/cache", app.GetHandler)
+	router.GET("/cache", NewGetHandler(backend))
 
 	getResults := doMockGet(t, router, "fdd9405b-ef2b-46da-a55a-2f526d338e16")
 	if getResults.Code != http.StatusNotFound {
@@ -234,7 +188,7 @@ func TestReadinessCheck(t *testing.T) {
 	requestRecorder := httptest.NewRecorder()
 
 	router := httprouter.New()
-	router.GET("/status", status)
+	router.GET("/status", Status)
 	req, _ := http.NewRequest("GET", "/status", new(bytes.Buffer))
 	router.ServeHTTP(requestRecorder, req)
 
