@@ -19,7 +19,7 @@ func NewPutHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 	// TODO(future PR): Break this giant function apart
 	putAnyRequestPool := sync.Pool{
 		New: func() interface{} {
-			return PutAnyRequest{}
+			return PutRequest{}
 		},
 	}
 
@@ -37,7 +37,7 @@ func NewPutHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 		}
 		defer r.Body.Close()
 
-		put := putAnyRequestPool.Get().(PutAnyRequest)
+		put := putAnyRequestPool.Get().(PutRequest)
 		defer putAnyRequestPool.Put(put)
 
 		err = json.Unmarshal(body, &put)
@@ -115,21 +115,13 @@ func NewPutHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 	}
 }
 
-type PutAnyObject struct {
-	Type  string          `json:"type"`
-	Value json.RawMessage `json:"value"`
-}
-
-type PutAnyRequest struct {
-	Puts []PutAnyObject `json:"puts"`
+type PutRequest struct {
+	Puts []PutObject `json:"puts"`
 }
 
 type PutObject struct {
-	Value string `json:"value"`
-}
-
-type PutRequest struct {
-	Puts []PutObject `json:"puts"`
+	Type  string          `json:"type"`
+	Value json.RawMessage `json:"value"`
 }
 
 type PutResponseObject struct {
