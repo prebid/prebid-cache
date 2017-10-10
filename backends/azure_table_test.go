@@ -1,4 +1,4 @@
-package main
+package backends
 
 import (
 	"github.com/satori/go.uuid"
