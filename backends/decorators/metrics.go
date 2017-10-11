@@ -4,12 +4,13 @@ import (
 	"context"
 	"github.com/Prebid-org/prebid-cache/backends"
 	"github.com/Prebid-org/prebid-cache/metrics"
+	"strings"
 	"time"
 )
 
 type backendWithMetrics struct {
 	delegate backends.Backend
-	puts     *metrics.MetricsEntry
+	puts     *metrics.MetricsEntryByFormat
 	gets     *metrics.MetricsEntry
 }
 
@@ -26,7 +27,13 @@ func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error
 }
 
 func (b *backendWithMetrics) Put(ctx context.Context, key string, value string) error {
-	b.puts.Request.Mark(1)
+	if strings.HasPrefix(value, backends.XML_PREFIX) {
+		b.puts.XmlRequest.Mark(1)
+	} else if strings.HasPrefix(value, backends.JSON_PREFIX) {
+		b.puts.JsonRequest.Mark(1)
+	} else {
+		b.puts.InvalidRequest.Mark(1)
+	}
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value)
 	if err == nil {
