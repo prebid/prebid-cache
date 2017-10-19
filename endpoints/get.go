@@ -31,12 +31,12 @@ func NewGetHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 			return
 		}
 
-		if strings.HasPrefix(value, XML_PREFIX) {
+		if strings.HasPrefix(value, backends.XML_PREFIX) {
 			w.Header().Set("Content-Type", "application/xml")
-			w.Write([]byte(value)[len(XML_PREFIX):])
-		} else if strings.HasPrefix(value, JSON_PREFIX) {
+			w.Write([]byte(value)[len(backends.XML_PREFIX):])
+		} else if strings.HasPrefix(value, backends.JSON_PREFIX) {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(value)[len(JSON_PREFIX):])
+			w.Write([]byte(value)[len(backends.JSON_PREFIX):])
 		} else {
 			http.Error(w, "Cache data was corrupted. Cannot determine type.", http.StatusInternalServerError)
 		}

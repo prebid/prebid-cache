@@ -1,11 +1,6 @@
 package endpoints
 
 const (
-	XML_PREFIX  = "xml"
-	JSON_PREFIX = "json"
-)
-
-const (
 	MaxValueLength = 1024 * 10
 	MaxNumValues   = 10
 )

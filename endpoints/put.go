@@ -67,7 +67,7 @@ func NewPutHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 			}
 
 			var toCache string
-			if p.Type == XML_PREFIX {
+			if p.Type == backends.XML_PREFIX {
 				if p.Value[0] != byte('"') || p.Value[len(p.Value)-1] != byte('"') {
 					http.Error(w, fmt.Sprintf("XML messages must have a String value. Found %v", p.Value), http.StatusBadRequest)
 					return
@@ -78,7 +78,7 @@ func NewPutHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 				var interpreted string
 				json.Unmarshal(p.Value, &interpreted)
 				toCache = p.Type + interpreted
-			} else if p.Type == JSON_PREFIX {
+			} else if p.Type == backends.JSON_PREFIX {
 				toCache = p.Type + string(p.Value)
 			} else {
 				http.Error(w, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type), http.StatusBadRequest)

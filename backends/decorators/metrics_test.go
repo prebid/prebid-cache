@@ -22,7 +22,7 @@ func (b *failedBackend) Put(ctx context.Context, key string, value string) error
 func TestGetSuccessMetrics(t *testing.T) {
 	m := metrics.CreateMetrics()
 	rawBackend := backends.NewMemoryBackend()
-	rawBackend.Put(context.Background(), "foo", "bar")
+	rawBackend.Put(context.Background(), "foo", "xml<vast></vast>")
 	backend := LogMetrics(rawBackend, m)
 	backend.Get(context.Background(), "foo")
 
@@ -40,26 +40,69 @@ func TestGetErrorMetrics(t *testing.T) {
 func TestPutSuccessMetrics(t *testing.T) {
 	m := metrics.CreateMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
-	backend.Put(context.Background(), "foo", "bar")
+	backend.Put(context.Background(), "foo", "xml<vast></vast>")
 
-	metricstest.AssertSuccessMetricsExist(t, m.PutsBackend)
+	assertSuccessMetricsExist(t, m.PutsBackend)
+	if m.PutsBackend.XmlRequest.Count() != 1 {
+		t.Errorf("An xml request should have been logged.")
+	}
 }
 
 func TestPutErrorMetrics(t *testing.T) {
 	m := metrics.CreateMetrics()
 	backend := LogMetrics(&failedBackend{}, m)
-	backend.Put(context.Background(), "foo", "bar")
+	backend.Put(context.Background(), "foo", "xml<vast></vast>")
 
-	if m.PutsBackend.Request.Count() != 1 {
+	assertErrorMetricsExist(t, m.PutsBackend)
+	if m.PutsBackend.XmlRequest.Count() != 1 {
 		t.Errorf("The request should have been counted.")
 	}
-	if m.PutsBackend.Duration.Count() != 0 {
-		t.Errorf("The request duration should not have been counted.")
+}
+
+func TestJsonPayloadMetrics(t *testing.T) {
+	m := metrics.CreateMetrics()
+	backend := LogMetrics(backends.NewMemoryBackend(), m)
+	backend.Put(context.Background(), "foo", "json{\"key\":\"value\"")
+	backend.Get(context.Background(), "foo")
+
+	if m.PutsBackend.JsonRequest.Count() != 1 {
+		t.Errorf("A json Put should have been logged.")
 	}
-	if m.PutsBackend.BadRequest.Count() != 0 {
+}
+
+func TestInvalidPayloadMetrics(t *testing.T) {
+	m := metrics.CreateMetrics()
+	backend := LogMetrics(backends.NewMemoryBackend(), m)
+	backend.Put(context.Background(), "foo", "bar")
+	backend.Get(context.Background(), "foo")
+
+	if m.PutsBackend.InvalidRequest.Count() != 1 {
+		t.Errorf("A Put request of invalid format should have been logged.")
+	}
+}
+
+func assertSuccessMetricsExist(t *testing.T, entry *metrics.MetricsEntryByFormat) {
+	t.Helper()
+	if entry.Duration.Count() != 1 {
+		t.Errorf("The request duration should have been counted.")
+	}
+	if entry.BadRequest.Count() != 0 {
 		t.Errorf("No Bad requests should have been counted.")
 	}
-	if m.PutsBackend.Errors.Count() != 1 {
+	if entry.Errors.Count() != 0 {
+		t.Errorf("No Errors should have been counted.")
+	}
+}
+
+func assertErrorMetricsExist(t *testing.T, entry *metrics.MetricsEntryByFormat) {
+	t.Helper()
+	if entry.Duration.Count() != 0 {
+		t.Errorf("The request duration should not have been counted.")
+	}
+	if entry.BadRequest.Count() != 0 {
+		t.Errorf("No Bad requests should have been counted.")
+	}
+	if entry.Errors.Count() != 1 {
 		t.Errorf("An Error should have been counted.")
 	}
 }

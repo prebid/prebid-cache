@@ -9,28 +9,46 @@ import (
 )
 
 type MetricsEntry struct {
-	Request    metrics.Meter
 	Duration   metrics.Timer
 	Errors     metrics.Meter
 	BadRequest metrics.Meter
+	Request    metrics.Meter
+}
+
+type MetricsEntryByFormat struct {
+	Duration       metrics.Timer
+	Errors         metrics.Meter
+	BadRequest     metrics.Meter
+	JsonRequest    metrics.Meter
+	XmlRequest     metrics.Meter
+	InvalidRequest metrics.Meter
 }
 
 func NewMetricsEntry(name string, r metrics.Registry) *MetricsEntry {
-	me := &MetricsEntry{
-		Request:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.request_count", name), r),
+	return &MetricsEntry{
 		Duration:   metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
 		Errors:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
 		BadRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
+		Request:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.request_count", name), r),
 	}
+}
 
-	return me
+func NewMetricsEntryByType(name string, r metrics.Registry) *MetricsEntryByFormat {
+	return &MetricsEntryByFormat{
+		Duration:       metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
+		Errors:         metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
+		BadRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
+		JsonRequest:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.json_request_count", name), r),
+		XmlRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.xml_request_count", name), r),
+		InvalidRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.unknown_request_count", name), r),
+	}
 }
 
 type Metrics struct {
 	Registry    metrics.Registry
 	Puts        *MetricsEntry
 	Gets        *MetricsEntry
-	PutsBackend *MetricsEntry
+	PutsBackend *MetricsEntryByFormat
 	GetsBackend *MetricsEntry
 }
 
@@ -54,7 +72,7 @@ func CreateMetrics() *Metrics {
 		Registry:    r,
 		Puts:        NewMetricsEntry("puts.current_url", r),
 		Gets:        NewMetricsEntry("gets.current_url", r),
-		PutsBackend: NewMetricsEntry("puts.backend", r),
+		PutsBackend: NewMetricsEntryByType("puts.backend", r),
 		GetsBackend: NewMetricsEntry("gets.backend", r),
 	}
 
