@@ -10,7 +10,8 @@ rate_limiter:
 backend:
   type: "azure" # Can also be "memory", "memcache" or "cassandra"
   memcache:
-    hosts: "10.0.0.1:11211,10.0.0.2:11211" # CSV of ip:port combo for memcache cluster
+    hosts: "10.0.0.1:11211" # single instance
+    #hosts: ["10.0.0.1:11211", "10.0.0.2:11211"] # mutiple instances (use YAML array)
   cassandra:
     hosts: "127.0.0.1"
     keyspace: "prebid"
