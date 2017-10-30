@@ -30,7 +30,7 @@ func NewBackend(backendType string) Backend {
 		return NewMemoryBackend()
 	case "memcache":
 		c := MemcacheConfig{
-			hosts: viper.GetString("backend.memcache.hosts"),
+			hosts: viper.GetStringSlice("backend.memcache.hosts"),
 		}
 		var backend, err = NewMemcacheBackend(&c)
 		if err != nil {

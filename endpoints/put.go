@@ -1,17 +1,17 @@
 package endpoints
 
 import (
-	"encoding/json"
-	"net/http"
-	"fmt"
-	"time"
-	"github.com/julienschmidt/httprouter"
-	"io/ioutil"
-	"sync"
-	"github.com/Prebid-org/prebid-cache/backends"
 	"context"
-	"github.com/satori/go.uuid"
+	"encoding/json"
+	"fmt"
+	"github.com/Prebid-org/prebid-cache/backends"
 	"github.com/Sirupsen/logrus"
+	"github.com/julienschmidt/httprouter"
+	"github.com/satori/go.uuid"
+	"io/ioutil"
+	"net/http"
+	"sync"
+	"time"
 )
 
 // PutHandler serves "POST /cache" requests.
