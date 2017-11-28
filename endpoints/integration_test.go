@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Prebid-org/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/backends"
 	"github.com/julienschmidt/httprouter"
 )
 

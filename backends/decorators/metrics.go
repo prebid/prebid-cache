@@ -2,8 +2,8 @@ package decorators
 
 import (
 	"context"
-	"github.com/Prebid-org/prebid-cache/backends"
-	"github.com/Prebid-org/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/metrics"
 	"strings"
 	"time"
 )

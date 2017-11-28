@@ -3,9 +3,9 @@ package decorators
 import (
 	"context"
 	"fmt"
-	"github.com/Prebid-org/prebid-cache/backends"
-	"github.com/Prebid-org/prebid-cache/metrics"
-	"github.com/Prebid-org/prebid-cache/metrics/metricstest"
+	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"testing"
 )
 

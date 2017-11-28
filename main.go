@@ -14,12 +14,12 @@ import (
 	"github.com/rs/cors"
 	"github.com/spf13/viper"
 
-	"github.com/Prebid-org/prebid-cache/backends"
-	backendDecorators "github.com/Prebid-org/prebid-cache/backends/decorators"
-	"github.com/Prebid-org/prebid-cache/endpoints"
-	endpointDecorators "github.com/Prebid-org/prebid-cache/endpoints/decorators"
-	"github.com/Prebid-org/prebid-cache/metrics"
 	"github.com/didip/tollbooth/limiter"
+	"github.com/prebid/prebid-cache/backends"
+	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/prebid/prebid-cache/endpoints"
+	endpointDecorators "github.com/prebid/prebid-cache/endpoints/decorators"
+	"github.com/prebid/prebid-cache/metrics"
 	"os/signal"
 	"syscall"
 )

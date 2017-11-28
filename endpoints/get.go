@@ -7,7 +7,7 @@ import (
 	"strings"
 	"fmt"
 	"context"
-	"github.com/Prebid-org/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/backends"
 	"errors"
 )
 

@@ -4,7 +4,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"time"
-	"github.com/Prebid-org/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/metrics"
 )
 
 type writerWithStatus struct {
