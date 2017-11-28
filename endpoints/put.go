@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Prebid-org/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/backends"
 	"github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 	"github.com/satori/go.uuid"

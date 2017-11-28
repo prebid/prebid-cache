@@ -2,12 +2,12 @@ package decorators
 
 import (
 	"github.com/julienschmidt/httprouter"
-	pbcmetrics "github.com/Prebid-org/prebid-cache/metrics"
+	pbcmetrics "github.com/prebid/prebid-cache/metrics"
 	"github.com/rcrowley/go-metrics"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"github.com/Prebid-org/prebid-cache/metrics/metricstest"
+	"github.com/prebid/prebid-cache/metrics/metricstest"
 )
 
 func TestSuccessMetrics(t *testing.T) {

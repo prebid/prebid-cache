@@ -1,7 +1,7 @@
 package metricstest
 
 import (
-	"github.com/Prebid-org/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/metrics"
 	"testing"
 )
 
