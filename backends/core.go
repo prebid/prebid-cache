@@ -42,6 +42,18 @@ func NewBackend(backendType string) Backend {
 		return NewAzureBackend(
 			viper.GetString("backend.azure.account"),
 			viper.GetString("backend.azure.key"))
+	case "aerospike":
+		c := &AerospikeConfig{
+			host:      viper.GetString("backend.aerospike.host"),
+			port:      viper.GetInt("backend.aerospike.port"),
+			namespace: viper.GetString("backend.aerospike.namespace"),
+		}
+		backend, err := NewAerospikeBackend(c)
+		if err != nil {
+			log.Error(err)
+			os.Exit(1)
+		}
+		return backend
 	default:
 		panic("Unknown backend")
 	}

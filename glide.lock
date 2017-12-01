@@ -1,6 +1,19 @@
-hash: d23c5cc17aad24f6658c00b62c7c682fdd9581e56d6bee2b764fd8b013ab67a8
-updated: 2017-09-29T19:01:36.916218249Z
+hash: e22ed62c9d6d5c6753adcf77a73031965c003fbce4b3f127f088f991d7a41353
+updated: 2017-12-01T10:24:44.020347438-05:00
 imports:
+- name: github.com/aerospike/aerospike-client-go
+  version: dcec4388c832b931227afe511b7f047c6b1b53ce
+  subpackages:
+  - internal/lua
+  - internal/lua/resources
+  - logger
+  - pkg/bcrypt
+  - pkg/ripemd160
+  - types
+  - types/atomic
+  - types/particle_type
+  - types/rand
+  - utils/buffer
 - name: github.com/bradfitz/gomemcache
   version: 1952afaa557dc08e8e0d89eafab110fb501c1a2b
   subpackages:
@@ -39,7 +52,7 @@ imports:
   - json/scanner
   - json/token
 - name: github.com/influxdata/influxdb
-  version: a7c3d3c0f7b74f71919047adbc4933460967a576
+  version: 6d2685d1738277a1c2672fc58df7994627769be6
   subpackages:
   - client
   - models
@@ -88,6 +101,12 @@ imports:
   - fasthttputil
 - name: github.com/vrischmann/go-metrics-influxdb
   version: 43af8332c303f62ef62663b02b3b7d8a9802002a
+- name: github.com/yuin/gopher-lua
+  version: 609c9cd2697344dec90fe0543c6493e3b8da3435
+  subpackages:
+  - ast
+  - parse
+  - pm
 - name: golang.org/x/net
   version: 66aacef3dd8a676686c7ae3716979581e8b03c47
   subpackages:
