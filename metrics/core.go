@@ -5,6 +5,8 @@ import (
 	"github.com/rcrowley/go-metrics"
 	"github.com/spf13/viper"
 	"github.com/vrischmann/go-metrics-influxdb"
+	"log"
+	"os"
 	"time"
 )
 
@@ -55,6 +57,15 @@ type Metrics struct {
 // Export begins sending metrics to the configured database.
 // This method blocks indefinitely, so it should probably be run in a goroutine.
 func (m *Metrics) Export() {
+	metricsTarget := viper.GetString("metrics.target")
+	if metricsTarget == "none" {
+		return
+	}
+	if metricsTarget == "stderr" {
+		metrics.Log(m.Registry, time.Second*10, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+		return
+	}
+	// Preserve old behavior by defaulting here.
 	influxdb.InfluxDB(
 		m.Registry,                          // metrics registry
 		time.Second*10,                      // interval
