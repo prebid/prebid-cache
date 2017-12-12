@@ -17,12 +17,12 @@ import (
 	"github.com/didip/tollbooth/limiter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/prebid/prebid-cache/compression"
 	"github.com/prebid/prebid-cache/endpoints"
 	endpointDecorators "github.com/prebid/prebid-cache/endpoints/decorators"
 	"github.com/prebid/prebid-cache/metrics"
 	"os/signal"
 	"syscall"
-	"github.com/prebid/prebid-cache/compression"
 )
 
 func initRateLimter(next http.Handler) http.Handler {
@@ -71,7 +71,7 @@ func main() {
 	if viper.GetString("compression.type") == "snappy" {
 		backend = compression.SnappyCompress(backend)
 	}
-	backend = backendDecorators.LogMetrics(backend,appMetrics)
+	backend = backendDecorators.LogMetrics(backend, appMetrics)
 
 	router := httprouter.New()
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
