@@ -19,6 +19,9 @@ backend:
       account: "azure-account-here"
       key: "azure-key-here"
 
+compression:
+  type: "none" # Can also be "snappy"
+
 metrics:
   host: "default-metrics-host"
   database: "default-metrics-database"

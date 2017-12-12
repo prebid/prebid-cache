@@ -22,6 +22,7 @@ import (
 	"github.com/prebid/prebid-cache/metrics"
 	"os/signal"
 	"syscall"
+	"github.com/prebid/prebid-cache/compression"
 )
 
 func initRateLimter(next http.Handler) http.Handler {
@@ -65,9 +66,12 @@ func main() {
 	port := viper.GetInt("port")
 
 	appMetrics := metrics.CreateMetrics()
-	backend := backendDecorators.LogMetrics(
-		backends.NewBackend(viper.GetString("backend.type")),
-		appMetrics)
+
+	backend := backends.NewBackend(viper.GetString("backend.type"))
+	if viper.GetString("compression.type") == "snappy" {
+		backend = compression.SnappyCompress(backend)
+	}
+	backend = backendDecorators.LogMetrics(backend,appMetrics)
 
 	router := httprouter.New()
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
