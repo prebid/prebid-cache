@@ -3,6 +3,7 @@ package backends
 import (
 	"context"
 	as "github.com/aerospike/aerospike-client-go"
+	log "github.com/Sirupsen/logrus"
 )
 
 type AerospikeConfig struct {
@@ -23,6 +24,8 @@ func NewAerospikeBackend(config *AerospikeConfig) (*Aerospike, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("Connected to Aerospike at %s:%d", config.host, config.port)
+
 	a.client = client
 	return a, nil
 }
