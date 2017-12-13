@@ -3,7 +3,7 @@ package backends
 import (
 	"context"
 	as "github.com/aerospike/aerospike-client-go"
-	"github.com/golang/snappy"
+	log "github.com/Sirupsen/logrus"
 )
 
 type AerospikeConfig struct {
@@ -24,6 +24,8 @@ func NewAerospikeBackend(config *AerospikeConfig) (*Aerospike, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("Connected to Aerospike at %s:%d", config.host, config.port)
+
 	a.client = client
 	return a, nil
 }
@@ -37,11 +39,7 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	val, err := snappy.Decode(nil, rec.Bins["value"].([]byte))
-	if err != nil {
-		return "", err
-	}
-	return string(val), nil
+	return rec.Bins["value"].(string), nil
 }
 
 func (a *Aerospike) Put(ctx context.Context, key string, value string) error {
@@ -49,9 +47,8 @@ func (a *Aerospike) Put(ctx context.Context, key string, value string) error {
 	if err != nil {
 		return err
 	}
-	val := snappy.Encode(nil, []byte(value))
 	bins := as.BinMap{
-		"value": val,
+		"value": value,
 	}
 	err = a.client.Put(nil, asKey, bins)
 	if err != nil {
