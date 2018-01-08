@@ -24,3 +24,5 @@ import:
 - package: github.com/bradfitz/gomemcache
   subpackages:
   - memcache
+- package: github.com/aerospike/aerospike-client-go
+- package: github.com/golang/snappy

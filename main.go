@@ -17,6 +17,7 @@ import (
 	"github.com/didip/tollbooth/limiter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/prebid/prebid-cache/compression"
 	"github.com/prebid/prebid-cache/endpoints"
 	endpointDecorators "github.com/prebid/prebid-cache/endpoints/decorators"
 	"github.com/prebid/prebid-cache/metrics"
@@ -65,9 +66,12 @@ func main() {
 	port := viper.GetInt("port")
 
 	appMetrics := metrics.CreateMetrics()
-	backend := backendDecorators.LogMetrics(
-		backends.NewBackend(viper.GetString("backend.type")),
-		appMetrics)
+
+	backend := backends.NewBackend(viper.GetString("backend.type"))
+	if viper.GetString("compression.type") == "snappy" {
+		backend = compression.SnappyCompress(backend)
+	}
+	backend = backendDecorators.LogMetrics(backend, appMetrics)
 
 	router := httprouter.New()
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
