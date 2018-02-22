@@ -2,8 +2,10 @@ package backends
 
 import (
 	"context"
-	as "github.com/aerospike/aerospike-client-go"
+	"errors"
+
 	log "github.com/Sirupsen/logrus"
+	as "github.com/aerospike/aerospike-client-go"
 )
 
 type AerospikeConfig struct {
@@ -35,9 +37,12 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	rec, err := a.client.Get(nil, asKey)
+	rec, err := a.client.Get(nil, asKey, "value")
 	if err != nil {
 		return "", err
+	}
+	if rec == nil {
+		return "", errors.New("client.Get returned a nil record. Is aerospike configured properly?")
 	}
 	return rec.Bins["value"].(string), nil
 }
