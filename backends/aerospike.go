@@ -8,6 +8,9 @@ import (
 	as "github.com/aerospike/aerospike-client-go"
 )
 
+const setName = "uuid"
+const binValue = "value"
+
 type AerospikeConfig struct {
 	host      string
 	port      int
@@ -33,7 +36,7 @@ func NewAerospikeBackend(config *AerospikeConfig) (*Aerospike, error) {
 }
 
 func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
-	asKey, err := as.NewKey(a.config.namespace, "uuid", key)
+	asKey, err := as.NewKey(a.config.namespace, setName, key)
 	if err != nil {
 		return "", err
 	}
@@ -44,16 +47,16 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 	if rec == nil {
 		return "", errors.New("client.Get returned a nil record. Is aerospike configured properly?")
 	}
-	return rec.Bins["value"].(string), nil
+	return rec.Bins[binValue].(string), nil
 }
 
 func (a *Aerospike) Put(ctx context.Context, key string, value string) error {
-	asKey, err := as.NewKey(a.config.namespace, "uuid", key)
+	asKey, err := as.NewKey(a.config.namespace, setName, key)
 	if err != nil {
 		return err
 	}
 	bins := as.BinMap{
-		"value": value,
+		binValue: value,
 	}
 	err = a.client.Put(nil, asKey, bins)
 	if err != nil {
