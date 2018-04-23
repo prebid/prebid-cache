@@ -12,7 +12,11 @@ request_limits:
   max_num_values: 10
 
 backend:
-  type: "memory" # Can also be "memory", "memcache" or "cassandra"
+  type: "memory" # Can also be "azure", "memcache", "aerospike", or "cassandra"
+  aerospike:
+    host: "aerospike.prebid.com"
+    port: 3000
+    namespace: "whatever" 
   memcache:
     hosts: "10.0.0.1:11211" # single instance
     #hosts: ["10.0.0.1:11211", "10.0.0.2:11211"] # mutiple instances (use YAML array)
