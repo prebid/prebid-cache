@@ -2,10 +2,11 @@ package metrics
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/rcrowley/go-metrics"
 	"github.com/spf13/viper"
 	"github.com/vrischmann/go-metrics-influxdb"
-	"time"
 )
 
 type MetricsEntry struct {
@@ -22,6 +23,7 @@ type MetricsEntryByFormat struct {
 	JsonRequest    metrics.Meter
 	XmlRequest     metrics.Meter
 	InvalidRequest metrics.Meter
+	RequestLength  metrics.Histogram
 }
 
 func NewMetricsEntry(name string, r metrics.Registry) *MetricsEntry {
@@ -41,6 +43,7 @@ func NewMetricsEntryByType(name string, r metrics.Registry) *MetricsEntryByForma
 		JsonRequest:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.json_request_count", name), r),
 		XmlRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.xml_request_count", name), r),
 		InvalidRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.unknown_request_count", name), r),
+		RequestLength:  metrics.GetOrRegisterHistogram(name+".request_size_bytes", r, metrics.NewExpDecaySample(1028, 0.015)),
 	}
 }
 

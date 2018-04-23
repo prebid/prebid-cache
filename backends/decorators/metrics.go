@@ -2,10 +2,11 @@ package decorators
 
 import (
 	"context"
-	"github.com/prebid/prebid-cache/backends"
-	"github.com/prebid/prebid-cache/metrics"
 	"strings"
 	"time"
+
+	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/metrics"
 )
 
 type backendWithMetrics struct {
@@ -41,6 +42,7 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string) 
 	} else {
 		b.puts.Errors.Mark(1)
 	}
+	b.puts.RequestLength.Update(int64(len(value)))
 	return err
 }
 

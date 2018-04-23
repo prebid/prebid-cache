@@ -3,10 +3,11 @@ package decorators
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/prebid/prebid-cache/backends"
 	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
-	"testing"
 )
 
 type failedBackend struct{}
@@ -67,6 +68,17 @@ func TestJsonPayloadMetrics(t *testing.T) {
 
 	if m.PutsBackend.JsonRequest.Count() != 1 {
 		t.Errorf("A json Put should have been logged.")
+	}
+}
+
+func TestPutSizeSampling(t *testing.T) {
+	m := metrics.CreateMetrics()
+	payload := `json{"key":"value"}`
+	backend := LogMetrics(backends.NewMemoryBackend(), m)
+	backend.Put(context.Background(), "foo", payload)
+
+	if m.PutsBackend.RequestLength.Count() != 1 {
+		t.Errorf("A request size sample should have been logged.")
 	}
 }
 
