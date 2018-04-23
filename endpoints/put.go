@@ -4,18 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/prebid/prebid-cache/backends"
-	"github.com/Sirupsen/logrus"
-	"github.com/julienschmidt/httprouter"
-	"github.com/satori/go.uuid"
 	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/julienschmidt/httprouter"
+	"github.com/prebid/prebid-cache/backends"
+	"github.com/satori/go.uuid"
 )
 
 // PutHandler serves "POST /cache" requests.
-func NewPutHandler(backend backends.Backend) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(backend backends.Backend, maxSizeBytes int, maxNumValues int) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	// TODO(future PR): Break this giant function apart
 	putAnyRequestPool := sync.Pool{
 		New: func() interface{} {
@@ -46,8 +47,8 @@ func NewPutHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 			return
 		}
 
-		if len(put.Puts) > MaxNumValues {
-			http.Error(w, fmt.Sprintf("More keys than allowed: %d", MaxNumValues), http.StatusBadRequest)
+		if len(put.Puts) > maxNumValues {
+			http.Error(w, fmt.Sprintf("More keys than allowed: %d", maxNumValues), http.StatusBadRequest)
 			return
 		}
 
@@ -56,8 +57,8 @@ func NewPutHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 		defer putResponsePool.Put(resps)
 
 		for i, p := range put.Puts {
-			if len(p.Value) > MaxValueLength {
-				http.Error(w, fmt.Sprintf("Value is larger than allowed size: %d", MaxValueLength), http.StatusBadRequest)
+			if len(p.Value) > maxSizeBytes {
+				http.Error(w, fmt.Sprintf("Value is larger than allowed size: %d", maxSizeBytes), http.StatusBadRequest)
 				return
 			}
 
