@@ -8,11 +8,15 @@ import (
 	"time"
 
 	"context"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/didip/tollbooth"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/cors"
 	"github.com/spf13/viper"
+
+	"os/signal"
+	"syscall"
 
 	"github.com/didip/tollbooth/limiter"
 	"github.com/prebid/prebid-cache/backends"
@@ -21,8 +25,6 @@ import (
 	"github.com/prebid/prebid-cache/endpoints"
 	endpointDecorators "github.com/prebid/prebid-cache/endpoints/decorators"
 	"github.com/prebid/prebid-cache/metrics"
-	"os/signal"
-	"syscall"
 )
 
 func initRateLimter(next http.Handler) http.Handler {
@@ -33,6 +35,9 @@ func initRateLimter(next http.Handler) http.Handler {
 	if viper.GetBool("rate_limiter.enabled") != true {
 		return next
 	}
+
+	viper.SetDefault("request_limits.max_size_bytes", 10*1024)
+	viper.SetDefault("request_limits.max_num_values", 10)
 
 	limit := tollbooth.NewLimiter(viper.GetInt64("rate_limiter.num_requests"), time.Second, &limiter.ExpirableOptions{
 		DefaultExpirationTTL: 1 * time.Hour,
@@ -76,7 +81,7 @@ func main() {
 	router := httprouter.New()
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
 
-	router.POST("/cache", endpointDecorators.MonitorHttp(endpoints.NewPutHandler(backend), appMetrics.Puts))
+	router.POST("/cache", endpointDecorators.MonitorHttp(endpoints.NewPutHandler(backend, viper.GetInt("request_limits.max_size_bytes"), viper.GetInt("request_limits.max_num_values")), appMetrics.Puts))
 	router.GET("/cache", endpointDecorators.MonitorHttp(endpoints.NewGetHandler(backend), appMetrics.Gets))
 	go appMetrics.Export()
 

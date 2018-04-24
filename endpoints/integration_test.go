@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/prebid/prebid-cache/backends"
 	"github.com/julienschmidt/httprouter"
+	"github.com/prebid/prebid-cache/backends"
 )
 
 func doMockGet(t *testing.T, router *httprouter.Router, id string) *httptest.ResponseRecorder {
@@ -57,7 +57,7 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 	router := httprouter.New()
 	backend := backends.NewMemoryBackend()
 
-	router.POST("/cache", NewPutHandler(backend))
+	router.POST("/cache", NewPutHandler(backend, 10*1024, 10))
 	router.GET("/cache", NewGetHandler(backend))
 
 	uuid, putTrace := doMockPut(t, router, putBody)
@@ -85,7 +85,7 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 func expectFailedPut(t *testing.T, requestBody string) {
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	router.POST("/cache", NewPutHandler(backend))
+	router.POST("/cache", NewPutHandler(backend, 10*1024, 10))
 
 	_, putTrace := doMockPut(t, router, requestBody)
 	if putTrace.Code != http.StatusBadRequest {
