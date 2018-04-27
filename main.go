@@ -71,7 +71,7 @@ func main() {
 	router.POST("/cache", endpointDecorators.MonitorHttp(endpoints.NewPutHandler(backend, cfg.RequestLimits), appMetrics.Puts))
 	router.GET("/cache", endpointDecorators.MonitorHttp(endpoints.NewGetHandler(backend), appMetrics.Gets))
 
-	go appMetrics.Export()
+	go appMetrics.Export(cfg.Metrics)
 
 	stopSignals := make(chan os.Signal)
 	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
