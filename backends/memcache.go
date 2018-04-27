@@ -2,7 +2,9 @@ package backends
 
 import (
 	"context"
+
 	"github.com/bradfitz/gomemcache/memcache"
+	"github.com/prebid/prebid-cache/config"
 )
 
 // MemcacheConfig is used to configure the cluster
@@ -16,12 +18,11 @@ type Memcache struct {
 }
 
 // NewMemcacheBackend create a new memcache backend
-func NewMemcacheBackend(config *MemcacheConfig) (*Memcache, error) {
+func NewMemcacheBackend(cfg config.Memcache) *Memcache {
 	c := &Memcache{}
-	mc := memcache.New(config.hosts...)
+	mc := memcache.New(cfg.Hosts...)
 	c.client = mc
-
-	return c, nil
+	return c
 }
 
 func (mc *Memcache) Get(ctx context.Context, key string) (string, error) {

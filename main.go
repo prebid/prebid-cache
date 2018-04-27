@@ -13,7 +13,6 @@ import (
 	"github.com/didip/tollbooth"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/cors"
-	"github.com/spf13/viper"
 
 	"os/signal"
 	"syscall"
@@ -22,24 +21,19 @@ import (
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
 	"github.com/prebid/prebid-cache/compression"
+	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/endpoints"
 	endpointDecorators "github.com/prebid/prebid-cache/endpoints/decorators"
 	"github.com/prebid/prebid-cache/metrics"
 )
 
-func initRateLimter(next http.Handler) http.Handler {
-	viper.SetDefault("rate_limiter.enabled", true)
-	viper.SetDefault("rate_limiter.num_requests", 100)
-
+func initRateLimter(next http.Handler, cfg config.RateLimiting) http.Handler {
 	// Sip rate limiter when disabled
-	if viper.GetBool("rate_limiter.enabled") != true {
+	if !cfg.Enabled {
 		return next
 	}
 
-	viper.SetDefault("request_limits.max_size_bytes", 10*1024)
-	viper.SetDefault("request_limits.max_num_values", 10)
-
-	limit := tollbooth.NewLimiter(viper.GetInt64("rate_limiter.num_requests"), time.Second, &limiter.ExpirableOptions{
+	limit := tollbooth.NewLimiter(cfg.MaxRequestsPerSecond, time.Second, &limiter.ExpirableOptions{
 		DefaultExpirationTTL: 1 * time.Hour,
 	})
 	limit.SetIPLookups([]string{"X-Forwarded-For", "X-Real-IP"})
@@ -49,31 +43,24 @@ func initRateLimter(next http.Handler) http.Handler {
 	return tollbooth.LimitHandler(limit, next)
 }
 
-func main() {
-	viper.SetConfigName("config")              // name of config file (without extension)
-	viper.AddConfigPath("/etc/prebid-cache/")  // path to look for the config file in
-	viper.AddConfigPath("$HOME/.prebid-cache") // call multiple times to add many search paths
-	viper.AddConfigPath(".")                   // optionally look for config in the working directory
-	err := viper.ReadInConfig()                // Find and read the config file
+func initLogging(cfg *config.Configuration) {
+	level, err := log.ParseLevel(string(cfg.Log.Level))
 	if err != nil {
-		log.Fatal("Failed to load config", err)
+		log.Fatalf("Invalid logrus level: %v", err)
 	}
-
-	level, err := log.ParseLevel(viper.GetString("log.level"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	log.SetOutput(os.Stdout)
 	log.SetLevel(level)
-	log.Info("Setting log level to: ", log.GetLevel())
+	log.Info("Log level set to: ", log.GetLevel())
+}
 
-	port := viper.GetInt("port")
+func main() {
+	cfg := config.NewConfig()
+	initLogging(cfg)
 
 	appMetrics := metrics.CreateMetrics()
 
-	backend := backends.NewBackend(viper.GetString("backend.type"))
-	if viper.GetString("compression.type") == "snappy" {
+	backend := backends.NewBackend(cfg.Backend)
+	if cfg.Compression.Type == config.CompressionSnappy {
 		backend = compression.SnappyCompress(backend)
 	}
 	backend = backendDecorators.LogMetrics(backend, appMetrics)
@@ -81,14 +68,15 @@ func main() {
 	router := httprouter.New()
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
 
-	router.POST("/cache", endpointDecorators.MonitorHttp(endpoints.NewPutHandler(backend, viper.GetInt("request_limits.max_size_bytes"), viper.GetInt("request_limits.max_num_values")), appMetrics.Puts))
+	router.POST("/cache", endpointDecorators.MonitorHttp(endpoints.NewPutHandler(backend, cfg.RequestLimits), appMetrics.Puts))
 	router.GET("/cache", endpointDecorators.MonitorHttp(endpoints.NewGetHandler(backend), appMetrics.Gets))
+
 	go appMetrics.Export()
 
 	stopSignals := make(chan os.Signal)
 	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
 
-	adminURI := fmt.Sprintf(":%s", viper.GetString("admin_port"))
+	adminURI := fmt.Sprintf(":%s", cfg.AdminPort)
 	fmt.Println("Admin running on: ", adminURI)
 	adminServer := &http.Server{Addr: adminURI, Handler: nil}
 	go (func() {
@@ -101,10 +89,10 @@ func main() {
 	corsRouter := coresCfg.Handler(router)
 
 	handler := &LoggingMiddleware{handler: corsRouter}
-	limitHandler := initRateLimter(handler)
+	limitHandler := initRateLimter(handler, cfg.RateLimiting)
 
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", port),
+		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		Handler:      limitHandler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
