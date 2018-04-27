@@ -100,8 +100,7 @@ func main() {
 	coresCfg := cors.New(cors.Options{AllowCredentials: true})
 	corsRouter := coresCfg.Handler(router)
 
-	handler := &LoggingMiddleware{handler: corsRouter}
-	limitHandler := initRateLimter(handler)
+	limitHandler := initRateLimter(corsRouter)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
