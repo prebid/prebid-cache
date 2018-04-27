@@ -76,7 +76,7 @@ func main() {
 	stopSignals := make(chan os.Signal)
 	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
 
-	adminURI := fmt.Sprintf(":%s", cfg.AdminPort)
+	adminURI := fmt.Sprintf(":%d", cfg.AdminPort)
 	fmt.Println("Admin running on: ", adminURI)
 	adminServer := &http.Server{Addr: adminURI, Handler: nil}
 	go (func() {
