@@ -73,6 +73,9 @@ func main() {
 	appMetrics := metrics.CreateMetrics()
 
 	backend := backends.NewBackend(viper.GetString("backend.type"))
+	if maxSize := viper.GetInt("request_limits.max_size_bytes"); maxSize > 0 {
+		backend = backendDecorators.EnforceSizeLimit(backend, maxSize)
+	}
 	if viper.GetString("compression.type") == "snappy" {
 		backend = compression.SnappyCompress(backend)
 	}
@@ -81,7 +84,7 @@ func main() {
 	router := httprouter.New()
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
 
-	router.POST("/cache", endpointDecorators.MonitorHttp(endpoints.NewPutHandler(backend, viper.GetInt("request_limits.max_size_bytes"), viper.GetInt("request_limits.max_num_values")), appMetrics.Puts))
+	router.POST("/cache", endpointDecorators.MonitorHttp(endpoints.NewPutHandler(backend, viper.GetInt("request_limits.max_num_values")), appMetrics.Puts))
 	router.GET("/cache", endpointDecorators.MonitorHttp(endpoints.NewGetHandler(backend), appMetrics.Gets))
 	go appMetrics.Export()
 

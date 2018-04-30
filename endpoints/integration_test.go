@@ -57,7 +57,7 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 	router := httprouter.New()
 	backend := backends.NewMemoryBackend()
 
-	router.POST("/cache", NewPutHandler(backend, 10*1024, 10))
+	router.POST("/cache", NewPutHandler(backend, 10))
 	router.GET("/cache", NewGetHandler(backend))
 
 	uuid, putTrace := doMockPut(t, router, putBody)
@@ -85,7 +85,7 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 func expectFailedPut(t *testing.T, requestBody string) {
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	router.POST("/cache", NewPutHandler(backend, 10*1024, 10))
+	router.POST("/cache", NewPutHandler(backend, 10))
 
 	_, putTrace := doMockPut(t, router, requestBody)
 	if putTrace.Code != http.StatusBadRequest {
