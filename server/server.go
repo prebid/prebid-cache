@@ -21,17 +21,20 @@ func Listen(port int, adminPort int, handler http.Handler, metrics *metrics.Conn
 	stopSignals := make(chan os.Signal)
 	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
 
-	// Run the servers. Fan any process-stopper signals out to each server for graceful shutdowns.
 	stopAdmin := make(chan os.Signal)
 	stopMain := make(chan os.Signal)
 	done := make(chan struct{})
 
+	// Rig up each server so that it listens on a channel for signals. These use different channels for each server
+	// because a shared channel would only alert one consumer (whichever one happens to read it first).
+	//
+	// After a server has finished shutting down, it should send a signal in through the "done" channel.
+	mainServer := newMainServer(port, handler)
 	adminServer := newAdminServer(adminPort)
+	go shutdownAfterSignals(mainServer, stopMain, done)
 	go shutdownAfterSignals(adminServer, stopAdmin, done)
 
-	mainServer := newMainServer(port, handler)
-	go shutdownAfterSignals(mainServer, stopMain, done)
-
+	// Attach the servers to the sockets
 	mainListener, err := newListener(mainServer.Addr, metrics)
 	if err != nil {
 		log.Errorf("Error listening for TCP connections on %s: %v", mainServer.Addr, err)
@@ -45,6 +48,9 @@ func Listen(port int, adminPort int, handler http.Handler, metrics *metrics.Conn
 	go runServer(mainServer, "Main", mainListener)
 	go runServer(adminServer, "Admin", adminListener)
 
+	// Then block the thread. When the OS sends a shutdown signal, alert each of the servers.
+	// Once they're finished shutting down (the "done" channel gets pinged for each server),
+	// this funciton can return.
 	wait(stopSignals, done, stopMain, stopAdmin)
 	return
 }
