@@ -85,8 +85,8 @@ func CreateMetrics() *Metrics {
 		PutsBackend: NewMetricsEntryByType("puts.backend", r),
 		GetsBackend: NewMetricsEntry("gets.backend", r),
 		Connections: &ConnectionMetrics{
-			// TODO: Fill this out for real
-		}
+		// TODO: Fill this out for real
+		},
 	}
 
 	metrics.RegisterDebugGCStats(m.Registry)
