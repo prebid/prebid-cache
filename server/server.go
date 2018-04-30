@@ -13,12 +13,11 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
 )
 
 // Listen serves requests and blocks forever, until OS signals shut down the process.
-func Listen(cfg *config.Configuration, handler http.Handler, metrics *metrics.ConnectionMetrics) {
+func Listen(port int, adminPort int, handler http.Handler, metrics *metrics.ConnectionMetrics) {
 	stopSignals := make(chan os.Signal)
 	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
 
@@ -27,10 +26,10 @@ func Listen(cfg *config.Configuration, handler http.Handler, metrics *metrics.Co
 	stopMain := make(chan os.Signal)
 	done := make(chan struct{})
 
-	adminServer := newAdminServer(cfg)
+	adminServer := newAdminServer(adminPort)
 	go shutdownAfterSignals(adminServer, stopAdmin, done)
 
-	mainServer := newMainServer(cfg, handler)
+	mainServer := newMainServer(port, handler)
 	go shutdownAfterSignals(mainServer, stopMain, done)
 
 	mainListener, err := newListener(mainServer.Addr, metrics)
@@ -50,15 +49,15 @@ func Listen(cfg *config.Configuration, handler http.Handler, metrics *metrics.Co
 	return
 }
 
-func newAdminServer(cfg *config.Configuration) *http.Server {
+func newAdminServer(adminPort int) *http.Server {
 	return &http.Server{
-		Addr: ":" + strconv.Itoa(cfg.AdminPort),
+		Addr: ":" + strconv.Itoa(adminPort),
 	}
 }
 
-func newMainServer(cfg *config.Configuration, handler http.Handler) *http.Server {
+func newMainServer(port int, handler http.Handler) *http.Server {
 	return &http.Server{
-		Addr:         ":" + strconv.Itoa(cfg.Port),
+		Addr:         ":" + strconv.Itoa(port),
 		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,

@@ -4,27 +4,17 @@ import (
 	"net/http"
 	"os"
 	"testing"
-
-	"github.com/prebid/prebid-cache/config"
 )
 
 func TestNewAdminServer(t *testing.T) {
-	cfg := &config.Configuration{
-		AdminPort: 6060,
-		Port:      8000,
-	}
-	server := newAdminServer(cfg)
+	server := newAdminServer(6060)
 	if server.Addr != ":6060" {
 		t.Errorf("Admin server address should be %s. Got %s", ":6060", server.Addr)
 	}
 }
 
 func TestNewMainServer(t *testing.T) {
-	cfg := &config.Configuration{
-		AdminPort: 6060,
-		Port:      8000,
-	}
-	server := newMainServer(cfg, http.HandlerFunc(handler))
+	server := newMainServer(8000, http.HandlerFunc(handler))
 	if server.Addr != ":8000" {
 		t.Errorf("Admin server address should be %s. Got %s", ":8000", server.Addr)
 	}
