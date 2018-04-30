@@ -13,6 +13,7 @@ import (
 	"github.com/didip/tollbooth"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/cors"
+	"github.com/spf13/viper"
 
 	"os/signal"
 	"syscall"
@@ -60,15 +61,18 @@ func main() {
 	appMetrics := metrics.CreateMetrics()
 
 	backend := backends.NewBackend(cfg.Backend)
-	if cfg.Compression.Type == config.CompressionSnappy {
-		backend = compression.SnappyCompress(backend)
+	if cfg.RequestLimits.MaxSize > 0 {
+		backend = backendDecorators.EnforceSizeLimit(backend, cfg.RequestLimits.MaxSize)
 	}
 	backend = backendDecorators.LogMetrics(backend, appMetrics)
+	if viper.GetString("compression.type") == "snappy" {
+		backend = compression.SnappyCompress(backend)
+	}
 
 	router := httprouter.New()
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
 
-	router.POST("/cache", endpointDecorators.MonitorHttp(endpoints.NewPutHandler(backend, cfg.RequestLimits), appMetrics.Puts))
+	router.POST("/cache", endpointDecorators.MonitorHttp(endpoints.NewPutHandler(backend, cfg.RequestLimits.MaxNumValues), appMetrics.Puts))
 	router.GET("/cache", endpointDecorators.MonitorHttp(endpoints.NewGetHandler(backend), appMetrics.Gets))
 
 	go appMetrics.Export(cfg.Metrics)

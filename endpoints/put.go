@@ -12,12 +12,12 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
-	"github.com/prebid/prebid-cache/config"
+	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
 	"github.com/satori/go.uuid"
 )
 
 // PutHandler serves "POST /cache" requests.
-func NewPutHandler(backend backends.Backend, cfg config.RequestLimits) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	// TODO(future PR): Break this giant function apart
 	putAnyRequestPool := sync.Pool{
 		New: func() interface{} {
@@ -48,8 +48,8 @@ func NewPutHandler(backend backends.Backend, cfg config.RequestLimits) func(http
 			return
 		}
 
-		if len(put.Puts) > cfg.MaxNumValues {
-			http.Error(w, fmt.Sprintf("More keys than allowed: %d", cfg.MaxNumValues), http.StatusBadRequest)
+		if len(put.Puts) > maxNumValues {
+			http.Error(w, fmt.Sprintf("More keys than allowed: %d", maxNumValues), http.StatusBadRequest)
 			return
 		}
 
@@ -58,11 +58,6 @@ func NewPutHandler(backend backends.Backend, cfg config.RequestLimits) func(http
 		defer putResponsePool.Put(resps)
 
 		for i, p := range put.Puts {
-			if len(p.Value) > cfg.MaxSize {
-				http.Error(w, fmt.Sprintf("Value is larger than allowed size: %d", cfg.MaxSize), http.StatusBadRequest)
-				return
-			}
-
 			if len(p.Value) == 0 {
 				http.Error(w, "Missing value.", http.StatusBadRequest)
 				return
@@ -94,11 +89,18 @@ func NewPutHandler(backend backends.Backend, cfg config.RequestLimits) func(http
 			err = backend.Put(ctx, resps.Responses[i].UUID, toCache)
 
 			if err != nil {
-				logrus.Error("POST /cache Error while writing to the backend:", err)
+				if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
+					http.Error(w, fmt.Sprintf("POST /cache element %d exceeded max size: %v", i, err), http.StatusBadRequest)
+					return
+				}
+
+				logrus.Error("POST /cache Error while writing to the backend: ", err)
 				switch err {
 				case context.DeadlineExceeded:
+					logrus.Error("POST /cache timed out:", err)
 					http.Error(w, "Timeout writing value to the backend", HttpDependencyTimeout)
 				default:
+					logrus.Error("POST /cache had an unexpected error:", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 				}
 				return
