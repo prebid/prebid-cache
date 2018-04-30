@@ -53,6 +53,14 @@ func NewMetricsEntryByType(name string, r metrics.Registry) *MetricsEntryByForma
 	}
 }
 
+func NewConnectionMetrics(r metrics.Registry) *ConnectionMetrics {
+	return &ConnectionMetrics{
+		ActiveConnections:      metrics.GetOrRegisterCounter("connections.active_incoming", r),
+		ConnectionAcceptErrors: metrics.GetOrRegisterMeter("connections.accept_errors", r),
+		ConnectionCloseErrors:  metrics.GetOrRegisterMeter("connections.close_errors", r),
+	}
+}
+
 type Metrics struct {
 	Registry    metrics.Registry
 	Puts        *MetricsEntry
@@ -84,9 +92,7 @@ func CreateMetrics() *Metrics {
 		Gets:        NewMetricsEntry("gets.current_url", r),
 		PutsBackend: NewMetricsEntryByType("puts.backend", r),
 		GetsBackend: NewMetricsEntry("gets.backend", r),
-		Connections: &ConnectionMetrics{
-		// TODO: Fill this out for real
-		},
+		Connections: NewConnectionMetrics(r),
 	}
 
 	metrics.RegisterDebugGCStats(m.Registry)

@@ -23,11 +23,7 @@ func TestCloseErrorMetrics(t *testing.T) {
 }
 
 func doTest(t *testing.T, allowAccept bool, allowClose bool) {
-	connMetrics := &pbcmetrics.ConnectionMetrics{
-		ActiveConnections:      metrics.NewCounter(),
-		ConnectionAcceptErrors: metrics.NewMeter(),
-		ConnectionCloseErrors:  metrics.NewMeter(),
-	}
+	connMetrics := pbcmetrics.NewConnectionMetrics(metrics.NewRegistry())
 
 	var listener net.Listener = &mockListener{
 		listenSuccess: allowAccept,
