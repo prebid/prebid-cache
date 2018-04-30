@@ -76,10 +76,10 @@ func main() {
 	if maxSize := viper.GetInt("request_limits.max_size_bytes"); maxSize > 0 {
 		backend = backendDecorators.EnforceSizeLimit(backend, maxSize)
 	}
+	backend = backendDecorators.LogMetrics(backend, appMetrics)
 	if viper.GetString("compression.type") == "snappy" {
 		backend = compression.SnappyCompress(backend)
 	}
-	backend = backendDecorators.LogMetrics(backend, appMetrics)
 
 	router := httprouter.New()
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
