@@ -1,22 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"time"
 
-	"context"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/didip/tollbooth"
 	"github.com/julienschmidt/httprouter"
-	"github.com/rs/cors"
 	"github.com/spf13/viper"
-
-	"os/signal"
-	"syscall"
 
 	"github.com/didip/tollbooth/limiter"
 	"github.com/prebid/prebid-cache/backends"
@@ -26,6 +19,7 @@ import (
 	"github.com/prebid/prebid-cache/endpoints"
 	endpointDecorators "github.com/prebid/prebid-cache/endpoints/decorators"
 	"github.com/prebid/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/server"
 )
 
 func initRateLimter(next http.Handler, cfg config.RateLimiting) http.Handler {
@@ -44,7 +38,7 @@ func initRateLimter(next http.Handler, cfg config.RateLimiting) http.Handler {
 	return tollbooth.LimitHandler(limit, next)
 }
 
-func initLogging(cfg *config.Configuration) {
+func initLogging(cfg config.Configuration) {
 	level, err := log.ParseLevel(string(cfg.Log.Level))
 	if err != nil {
 		log.Fatalf("Invalid logrus level: %v", err)
@@ -57,7 +51,6 @@ func initLogging(cfg *config.Configuration) {
 func main() {
 	cfg := config.NewConfig()
 	initLogging(cfg)
-
 	appMetrics := metrics.CreateMetrics()
 
 	backend := backends.NewBackend(cfg.Backend)
@@ -77,45 +70,5 @@ func main() {
 
 	go appMetrics.Export(cfg.Metrics)
 
-	stopSignals := make(chan os.Signal)
-	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
-
-	adminURI := fmt.Sprintf(":%d", cfg.AdminPort)
-	fmt.Println("Admin running on: ", adminURI)
-	adminServer := &http.Server{Addr: adminURI, Handler: nil}
-	go (func() {
-		err := adminServer.ListenAndServe()
-		log.Errorf("Admin server failure: %v", err)
-		stopSignals <- syscall.SIGTERM
-	})()
-
-	coresCfg := cors.New(cors.Options{AllowCredentials: true})
-	corsRouter := coresCfg.Handler(router)
-
-	limitHandler := initRateLimter(corsRouter, cfg.RateLimiting)
-
-	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      limitHandler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-	}
-
-	go (func() {
-		log.Info("Starting server on port: ", server.Addr)
-		err := server.ListenAndServe()
-		log.Errorf("Main server failure: %v", err)
-		stopSignals <- syscall.SIGTERM
-	})()
-
-	<-stopSignals
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		log.Errorf("Failed to shut down server: %v", err)
-	}
-	if err := adminServer.Shutdown(ctx); err != nil {
-		log.Errorf("Failed to shut down admin server: %v", err)
-	}
+	server.Listen(cfg, router, appMetrics.Connections)
 }

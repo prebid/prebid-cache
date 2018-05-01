@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func NewConfig() *Configuration {
+func NewConfig() Configuration {
 	v := viper.New()
 
 	v.SetDefault("rate_limiter.enabled", true)
@@ -20,8 +20,8 @@ func NewConfig() *Configuration {
 	if err := v.ReadInConfig(); err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-	cfg := &Configuration{}
-	if err := v.Unmarshal(cfg); err != nil {
+	cfg := Configuration{}
+	if err := v.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Failed to unmarshal config: %v", err)
 	}
 
