@@ -26,6 +26,12 @@ type MetricsEntryByFormat struct {
 	RequestLength  metrics.Histogram
 }
 
+type ConnectionMetrics struct {
+	ActiveConnections      metrics.Counter
+	ConnectionCloseErrors  metrics.Meter
+	ConnectionAcceptErrors metrics.Meter
+}
+
 func NewMetricsEntry(name string, r metrics.Registry) *MetricsEntry {
 	return &MetricsEntry{
 		Duration:   metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
@@ -47,12 +53,21 @@ func NewMetricsEntryByType(name string, r metrics.Registry) *MetricsEntryByForma
 	}
 }
 
+func NewConnectionMetrics(r metrics.Registry) *ConnectionMetrics {
+	return &ConnectionMetrics{
+		ActiveConnections:      metrics.GetOrRegisterCounter("connections.active_incoming", r),
+		ConnectionAcceptErrors: metrics.GetOrRegisterMeter("connections.accept_errors", r),
+		ConnectionCloseErrors:  metrics.GetOrRegisterMeter("connections.close_errors", r),
+	}
+}
+
 type Metrics struct {
 	Registry    metrics.Registry
 	Puts        *MetricsEntry
 	Gets        *MetricsEntry
 	PutsBackend *MetricsEntryByFormat
 	GetsBackend *MetricsEntry
+	Connections *ConnectionMetrics
 }
 
 // Export begins sending metrics to the configured database.
@@ -77,6 +92,7 @@ func CreateMetrics() *Metrics {
 		Gets:        NewMetricsEntry("gets.current_url", r),
 		PutsBackend: NewMetricsEntryByType("puts.backend", r),
 		GetsBackend: NewMetricsEntry("gets.backend", r),
+		Connections: NewConnectionMetrics(r),
 	}
 
 	metrics.RegisterDebugGCStats(m.Registry)
