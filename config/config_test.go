@@ -1,10 +1,10 @@
 package config
 
 import (
+	"os"
 	"strings"
 	"testing"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -13,7 +13,7 @@ func TestSampleConfig(t *testing.T) {
 	v := newViperFromSample(t)
 
 	if err := v.Unmarshal(&cfg); err != nil {
-		log.Fatalf("Failed to unmarshal config: %v", err)
+		t.Fatalf("Failed to unmarshal config: %v", err)
 	}
 
 	assertIntsEqual(t, "port", cfg.Port, 2424)
@@ -37,6 +37,27 @@ func TestSampleConfig(t *testing.T) {
 	assertStringsEqual(t, "metrics.database", cfg.Metrics.Database, "default-metrics-database")
 	assertStringsEqual(t, "metrics.username", cfg.Metrics.Username, "metrics-username")
 	assertStringsEqual(t, "metrics.password", cfg.Metrics.Password, "metrics-password")
+}
+
+func TestEnvConfig(t *testing.T) {
+	defer forceEnv(t, "PBC_PORT", "2000")()
+	defer forceEnv(t, "PBC_COMPRESSION_TYPE", "none")()
+
+	v := viper.New()
+	setConfigDefaults(v)
+	setEnvVars(v)
+	v.SetConfigType("yaml")
+	if err := v.ReadConfig(strings.NewReader(sampleConfig)); err != nil {
+		t.Errorf("Failed to read sample file: %v", err)
+	}
+
+	cfg := Configuration{}
+	if err := v.Unmarshal(&cfg); err != nil {
+		t.Fatalf("Failed to unmarshal config: %v", err)
+	}
+
+	assertIntsEqual(t, "port", cfg.Port, 2000)
+	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "none")
 }
 
 func newViperFromSample(t *testing.T) *viper.Viper {
@@ -107,5 +128,27 @@ func assertStringsEqual(t *testing.T, path string, actual string, expected strin
 	t.Helper()
 	if actual != expected {
 		t.Errorf(`%s value "%s" did not equal expected "%s"`, path, actual, expected)
+	}
+}
+
+// forceEnv sets an environment variable to a certain value, and returns a function which resets it to its original value.
+func forceEnv(t *testing.T, key string, val string) func() {
+	orig, set := os.LookupEnv(key)
+	err := os.Setenv(key, val)
+	if err != nil {
+		t.Fatalf("Error setting evnvironment %s", key)
+	}
+	if set {
+		return func() {
+			if os.Setenv(key, orig) != nil {
+				t.Fatalf("Error unsetting evnvironment %s", key)
+			}
+		}
+	} else {
+		return func() {
+			if os.Unsetenv(key) != nil {
+				t.Fatalf("Error unsetting evnvironment %s", key)
+			}
+		}
 	}
 }
