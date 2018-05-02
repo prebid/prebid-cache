@@ -72,14 +72,13 @@ Content-Type: application/json
 This section does not describe permanent API contracts; it just describes limitations on the current implementation.
 
 - This application does *not* validate XML. If users `POST` malformed XML, they'll `GET` a bad response too.
-- No more than 10 values are allowed in a single POST request
-- Each cached value must be less than 10 KB
+- The host company can set a max length on payload size limits in the application config. This limit will vary from vendor to vendor.
 
 ## Development
 
 ### Prerequisites
 
-[Golang](https://golang.org/doc/install) 1.8.3 or greater and [Glide](https://github.com/Masterminds/glide#install) must be installed on your system.
+[Golang](https://golang.org/doc/install) 1.9.1 or greater and [Dep](https://github.com/golang/dep#installation) must be installed on your system.
 
 ### Automated tests
 
@@ -97,9 +96,21 @@ go build .
 
 The service will respond to requests on `localhost:2424`, and the admin data will be available on `localhost:2525`
 
+### Configuration
+
+Configuration is handled by [Viper](https://github.com/spf13/viper#putting-values-into-viper).
+The easiest way to set config during development is by editing the [config.yaml](./config.yaml) file.
+
+### Docker
+
+Prebid Cache works in Docker out of the box.
+
+```bash
+CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo  .
+docker build -t prebid-cache
+docker run -p 2424:2424 -t prebid-cache .
+```
+
 ### Profiling
 
 [pprof stats](http://artem.krylysov.com/blog/2017/03/13/profiling-and-optimizing-go-web-applications/) can be accessed from a running app on `localhost:2525`
-
-## Todo 
-- Authorization (token based)

@@ -2,34 +2,28 @@ port: 2424
 admin_port: 2525
 log:
   level: "info"
-
 rate_limiter:
-    enabled: true
-    num_requests: 100
-
+  enabled: true
+  num_requests: 100
 request_limits:
   max_size_bytes: 10240 # 10K
   max_num_values: 10
-
 backend:
-  type: "memory" # Can also be "azure", "memcache", "aerospike", or "cassandra"
+  type: "memory" # Can also be "aerospike", "azure", "cassandra", or "memcache"
   aerospike:
     host: "aerospike.prebid.com"
     port: 3000
-    namespace: "whatever" 
-  memcache:
-    hosts: "10.0.0.1:11211" # single instance
-    #hosts: ["10.0.0.1:11211", "10.0.0.2:11211"] # mutiple instances (use YAML array)
+    namespace: "whatever"
+  azure:
+    account: "azure-account-here"
+    key: "azure-key-here"
   cassandra:
     hosts: "127.0.0.1"
     keyspace: "prebid"
-  azure:
-      account: "azure-account-here"
-      key: "azure-key-here"
-
+  memcache:
+    hosts: "10.0.0.1:11211" # Can also use an array for multiple hosts
 compression:
-  type: "none" # Can also be "snappy"
-
+  type: "snappy" # Can also be "none"
 metrics:
   host: "default-metrics-host"
   database: "default-metrics-database"
