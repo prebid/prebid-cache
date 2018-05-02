@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -17,6 +19,12 @@ func NewConfig() Configuration {
 	v.AddConfigPath("/etc/prebid-cache/")  // path to look for the config file in
 	v.AddConfigPath("$HOME/.prebid-cache") // call multiple times to add many search paths
 	v.AddConfigPath(".")
+
+	// Support environment variables
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetEnvPrefix("PBC")
+	viper.AutomaticEnv()
+
 	if err := v.ReadInConfig(); err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
