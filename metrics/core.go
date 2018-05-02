@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prebid/prebid-cache/config"
 	"github.com/rcrowley/go-metrics"
-	"github.com/spf13/viper"
 	"github.com/vrischmann/go-metrics-influxdb"
 )
 
@@ -72,14 +72,14 @@ type Metrics struct {
 
 // Export begins sending metrics to the configured database.
 // This method blocks indefinitely, so it should probably be run in a goroutine.
-func (m *Metrics) Export() {
+func (m *Metrics) Export(cfg config.Metrics) {
 	influxdb.InfluxDB(
-		m.Registry,                          // metrics registry
-		time.Second*10,                      // interval
-		viper.GetString("metrics.host"),     // the InfluxDB url
-		viper.GetString("metrics.database"), // your InfluxDB database
-		viper.GetString("metrics.username"), // your InfluxDB user
-		viper.GetString("metrics.password"), // your InfluxDB password
+		m.Registry,     // metrics registry
+		time.Second*10, // interval
+		cfg.Host,       // the InfluxDB url
+		cfg.Database,   // your InfluxDB database
+		cfg.Username,   // your InfluxDB user
+		cfg.Password,   // your InfluxDB password
 	)
 }
 

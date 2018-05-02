@@ -2,9 +2,9 @@ package backends
 
 import (
 	"context"
+
 	log "github.com/Sirupsen/logrus"
-	"github.com/spf13/viper"
-	"os"
+	"github.com/prebid/prebid-cache/config"
 )
 
 // Backend interface for storing data
@@ -13,48 +13,21 @@ type Backend interface {
 	Get(ctx context.Context, key string) (string, error)
 }
 
-func NewBackend(backendType string) Backend {
-	switch backendType {
-	case "cassandra":
-		c := CassandraConfig{
-			hosts:    viper.GetString("backend.cassandra.hosts"),
-			keyspace: viper.GetString("backend.cassandra.keyspace"),
-		}
-		var backend, err = NewCassandraBackend(&c)
-		if err != nil {
-			log.Error(err)
-			os.Exit(1)
-		}
-		return backend
-	case "memory":
+func NewBackend(cfg config.Backend) Backend {
+	switch cfg.Type {
+	case config.BackendCassandra:
+		return NewCassandraBackend(cfg.Cassandra)
+	case config.BackendMemory:
 		return NewMemoryBackend()
-	case "memcache":
-		c := MemcacheConfig{
-			hosts: viper.GetStringSlice("backend.memcache.hosts"),
-		}
-		var backend, err = NewMemcacheBackend(&c)
-		if err != nil {
-			log.Error(err)
-			os.Exit(1)
-		}
-		return backend
-	case "azure":
-		return NewAzureBackend(
-			viper.GetString("backend.azure.account"),
-			viper.GetString("backend.azure.key"))
-	case "aerospike":
-		c := &AerospikeConfig{
-			host:      viper.GetString("backend.aerospike.host"),
-			port:      viper.GetInt("backend.aerospike.port"),
-			namespace: viper.GetString("backend.aerospike.namespace"),
-		}
-		backend, err := NewAerospikeBackend(c)
-		if err != nil {
-			log.Error(err)
-			os.Exit(1)
-		}
-		return backend
+	case config.BackendMemcache:
+		return NewMemcacheBackend(cfg.Memcache)
+	case config.BackendAzure:
+		return NewAzureBackend(cfg.Azure.Account, cfg.Azure.Key)
+	case config.BackendAerospike:
+		return NewAerospikeBackend(cfg.Aerospike)
 	default:
-		panic("Unknown backend")
+		log.Fatalf("Unknown backend type: %s", cfg.Type)
 	}
+
+	panic("Error creating backend. This shouldn't happen.")
 }

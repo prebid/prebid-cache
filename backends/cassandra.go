@@ -2,38 +2,34 @@ package backends
 
 import (
 	"context"
-	"github.com/gocql/gocql"
-)
 
-// CassandraConfig is used to configure the cluster
-type CassandraConfig struct {
-	hosts    string
-	keyspace string
-}
+	log "github.com/Sirupsen/logrus"
+	"github.com/gocql/gocql"
+	"github.com/prebid/prebid-cache/config"
+)
 
 // Cassandra Object use to implement backend interface
 type Cassandra struct {
-	config  *CassandraConfig
 	cluster *gocql.ClusterConfig
 	session *gocql.Session
 }
 
 // NewCassandraBackend create a new cassandra backend
-func NewCassandraBackend(config *CassandraConfig) (*Cassandra, error) {
+func NewCassandraBackend(cfg config.Cassandra) *Cassandra {
 	var err error
 
 	c := &Cassandra{}
-	c.config = config
-	c.cluster = gocql.NewCluster(c.config.hosts)
-	c.cluster.Keyspace = c.config.keyspace
+	c.cluster = gocql.NewCluster(cfg.Hosts)
+	c.cluster.Keyspace = cfg.Keyspace
 	c.cluster.Consistency = gocql.LocalOne
 
 	c.session, err = c.cluster.CreateSession()
 	if err != nil {
-		return nil, err
+		log.Fatalf("Error creating Cassandra backend: %v", err)
+		panic("Cassandra failure. This shouldn't happen.")
 	}
 
-	return c, nil
+	return c
 }
 
 func (c *Cassandra) Get(ctx context.Context, key string) (string, error) {

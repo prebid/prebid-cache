@@ -6,37 +6,33 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	as "github.com/aerospike/aerospike-client-go"
+	"github.com/prebid/prebid-cache/config"
 )
 
 const setName = "uuid"
 const binValue = "value"
 
-type AerospikeConfig struct {
-	host      string
-	port      int
-	namespace string
-}
-
 type Aerospike struct {
-	config *AerospikeConfig
+	cfg    config.Aerospike
 	client *as.Client
 }
 
-func NewAerospikeBackend(config *AerospikeConfig) (*Aerospike, error) {
-	a := &Aerospike{}
-	a.config = config
-	client, err := as.NewClient(config.host, config.port)
+func NewAerospikeBackend(cfg config.Aerospike) *Aerospike {
+	client, err := as.NewClient(cfg.Host, cfg.Port)
 	if err != nil {
-		return nil, err
+		log.Fatalf("Error creating Aerospike backend: %v", err)
+		panic("Aerospike failure. This shouldn't happen.")
 	}
-	log.Infof("Connected to Aerospike at %s:%d", config.host, config.port)
+	log.Infof("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
 
-	a.client = client
-	return a, nil
+	return &Aerospike{
+		cfg:    cfg,
+		client: client,
+	}
 }
 
 func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
-	asKey, err := as.NewKey(a.config.namespace, setName, key)
+	asKey, err := as.NewKey(a.cfg.Namespace, setName, key)
 	if err != nil {
 		return "", err
 	}
@@ -51,7 +47,7 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 }
 
 func (a *Aerospike) Put(ctx context.Context, key string, value string) error {
-	asKey, err := as.NewKey(a.config.namespace, setName, key)
+	asKey, err := as.NewKey(a.cfg.Namespace, setName, key)
 	if err != nil {
 		return err
 	}

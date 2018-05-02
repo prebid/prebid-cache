@@ -13,11 +13,12 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
+	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
 )
 
 // Listen serves requests and blocks forever, until OS signals shut down the process.
-func Listen(port int, adminPort int, handler http.Handler, metrics *metrics.ConnectionMetrics) {
+func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.ConnectionMetrics) {
 	stopSignals := make(chan os.Signal)
 	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
 
@@ -29,8 +30,8 @@ func Listen(port int, adminPort int, handler http.Handler, metrics *metrics.Conn
 	// because a shared channel would only alert one consumer (whichever one happens to read it first).
 	//
 	// After a server has finished shutting down, it should send a signal in through the "done" channel.
-	mainServer := newMainServer(port, handler)
-	adminServer := newAdminServer(adminPort)
+	mainServer := newMainServer(cfg, handler)
+	adminServer := newAdminServer(cfg)
 	go shutdownAfterSignals(mainServer, stopMain, done)
 	go shutdownAfterSignals(adminServer, stopAdmin, done)
 
@@ -55,15 +56,15 @@ func Listen(port int, adminPort int, handler http.Handler, metrics *metrics.Conn
 	return
 }
 
-func newAdminServer(adminPort int) *http.Server {
+func newAdminServer(cfg config.Configuration) *http.Server {
 	return &http.Server{
-		Addr: ":" + strconv.Itoa(adminPort),
+		Addr: ":" + strconv.Itoa(cfg.AdminPort),
 	}
 }
 
-func newMainServer(port int, handler http.Handler) *http.Server {
+func newMainServer(cfg config.Configuration, handler http.Handler) *http.Server {
 	return &http.Server{
-		Addr:         ":" + strconv.Itoa(port),
+		Addr:         ":" + strconv.Itoa(cfg.Port),
 		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,

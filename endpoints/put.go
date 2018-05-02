@@ -13,7 +13,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
-
 	"github.com/satori/go.uuid"
 )
 
