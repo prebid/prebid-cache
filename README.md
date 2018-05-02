@@ -101,6 +101,12 @@ The service will respond to requests on `localhost:2424`, and the admin data wil
 Configuration is handled by [Viper](https://github.com/spf13/viper#putting-values-into-viper).
 The easiest way to set config during development is by editing the [config.yaml](./config.yaml) file.
 
+You can also set the config through environment variables. For example:
+
+```bash
+PBC_COMPRESSION_TYPE=none ./prebid-cache
+```
+
 ### Docker
 
 Prebid Cache works in Docker out of the box.

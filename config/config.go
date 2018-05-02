@@ -1,22 +1,18 @@
 package config
 
 import (
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 func NewConfig() Configuration {
 	v := viper.New()
+	setConfigDefaults(v)
+	setConfigFile(v)
+	setEnvVars(v)
 
-	v.SetDefault("rate_limiter.enabled", true)
-	v.SetDefault("rate_limiter.num_requests", 100)
-	v.SetDefault("request_limits.max_size_bytes", 10*1024)
-	v.SetDefault("request_limits.max_num_values", 10)
-
-	v.SetConfigName("config")              // name of config file (without extension)
-	v.AddConfigPath("/etc/prebid-cache/")  // path to look for the config file in
-	v.AddConfigPath("$HOME/.prebid-cache") // call multiple times to add many search paths
-	v.AddConfigPath(".")
 	if err := v.ReadInConfig(); err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
@@ -26,6 +22,26 @@ func NewConfig() Configuration {
 	}
 
 	return cfg
+}
+
+func setConfigDefaults(v *viper.Viper) {
+	v.SetDefault("rate_limiter.enabled", true)
+	v.SetDefault("rate_limiter.num_requests", 100)
+	v.SetDefault("request_limits.max_size_bytes", 10*1024)
+	v.SetDefault("request_limits.max_num_values", 10)
+}
+
+func setConfigFile(v *viper.Viper) {
+	v.SetConfigName("config")              // name of config file (without extension)
+	v.AddConfigPath("/etc/prebid-cache/")  // path to look for the config file in
+	v.AddConfigPath("$HOME/.prebid-cache") // call multiple times to add many search paths
+	v.AddConfigPath(".")
+}
+
+func setEnvVars(v *viper.Viper) {
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.SetEnvPrefix("PBC")
+	v.AutomaticEnv()
 }
 
 type Configuration struct {
