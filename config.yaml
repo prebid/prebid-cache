@@ -25,7 +25,9 @@ backend:
 compression:
   type: "snappy" # Can also be "none"
 metrics:
-  host: "default-metrics-host"
-  database: "default-metrics-database"
-  username: "metrics-username"
-  password: "metrics-password"
+  type: "none" # Can also be "influx"
+  influx:
+    host: "http://influx.prebid.com"
+    database: "some-database"
+    username: "influx-username"
+    password: "influx-password"

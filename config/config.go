@@ -91,6 +91,18 @@ const (
 )
 
 type Metrics struct {
+	Type   MetricsType `mapstructure:"type"`
+	Influx Influx      `mapstructure:"influx"`
+}
+
+type MetricsType string
+
+const (
+	MetricsNone   MetricsType = "none"
+	MetricsInflux MetricsType = "influx"
+)
+
+type Influx struct {
 	Host     string `mapstructure:"host"`
 	Database string `mapstructure:"database"`
 	Username string `mapstructure:"username"`
