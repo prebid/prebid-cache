@@ -14,8 +14,11 @@ import (
 )
 
 func main() {
+	log.SetOutput(os.Stdout)
 	cfg := config.NewConfig()
-	initLogging(cfg)
+	setLogLevel(cfg.Log.Level)
+	cfg.ValidateAndLog()
+
 	appMetrics := metrics.CreateMetrics()
 	backend := backendConfig.NewBackend(cfg, appMetrics)
 	handler := routing.NewHandler(cfg, backend, appMetrics)
@@ -23,12 +26,10 @@ func main() {
 	server.Listen(cfg, handler, appMetrics.Connections)
 }
 
-func initLogging(cfg config.Configuration) {
-	level, err := log.ParseLevel(string(cfg.Log.Level))
+func setLogLevel(logLevel config.LogLevel) {
+	level, err := log.ParseLevel(string(logLevel))
 	if err != nil {
 		log.Fatalf("Invalid logrus level: %v", err)
 	}
-	log.SetOutput(os.Stdout)
 	log.SetLevel(level)
-	log.Info("Log level set to: ", log.GetLevel())
 }
