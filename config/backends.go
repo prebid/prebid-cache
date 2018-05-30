@@ -10,17 +10,17 @@ type Backend struct {
 	Memcache  Memcache    `mapstructure:"memcache"`
 }
 
-func (cfg *Backend) logValues() {
+func (cfg *Backend) validateAndLog() {
 	log.Infof("config.backend.type: %s", cfg.Type)
 	switch cfg.Type {
 	case BackendAerospike:
-		cfg.Aerospike.logValues()
+		cfg.Aerospike.validateAndLog()
 	case BackendAzure:
-		cfg.Azure.logValues()
+		cfg.Azure.validateAndLog()
 	case BackendCassandra:
-		cfg.Cassandra.logValues()
+		cfg.Cassandra.validateAndLog()
 	case BackendMemcache:
-		cfg.Memcache.logValues()
+		cfg.Memcache.validateAndLog()
 	case BackendMemory:
 	default:
 		log.Fatalf(`invalid config.backend.type: %s. It must be "aerospike", "azure", "cassandra", "memcache", or "memory".`, cfg.Type)
@@ -43,7 +43,7 @@ type Aerospike struct {
 	Namespace string `mapstructure:"namespace"`
 }
 
-func (cfg *Aerospike) logValues() {
+func (cfg *Aerospike) validateAndLog() {
 	log.Infof("config.backend.aerospike.host: %s", cfg.Host)
 	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
 	log.Infof("config.backend.aerospike.namespace: %s", cfg.Namespace)
@@ -54,7 +54,7 @@ type Azure struct {
 	Key     string `mapstructure:"key"`
 }
 
-func (cfg *Azure) logValues() {
+func (cfg *Azure) validateAndLog() {
 	log.Infof("config.backend.azure.account: %s", cfg.Account)
 	log.Infof("config.backend.azure.key: %s", cfg.Key)
 }
@@ -64,7 +64,7 @@ type Cassandra struct {
 	Keyspace string `mapstructure:"keyspace"`
 }
 
-func (cfg *Cassandra) logValues() {
+func (cfg *Cassandra) validateAndLog() {
 	log.Infof("config.backend.cassandra.hosts: %s", cfg.Hosts)
 	log.Infof("config.backend.cassandra.keyspace: %s", cfg.Keyspace)
 }
@@ -73,6 +73,6 @@ type Memcache struct {
 	Hosts []string `mapstructure:"hosts"`
 }
 
-func (cfg *Memcache) logValues() {
+func (cfg *Memcache) validateAndLog() {
 	log.Infof("config.backend.memcache.hosts: %v", cfg.Hosts)
 }
