@@ -55,8 +55,23 @@ type Configuration struct {
 	Metrics       Metrics       `mapstructure:"metrics"`
 }
 
+func (cfg *Configuration) LogValues() {
+	log.Infof("config.port: %d", cfg.Port)
+	log.Infof("config.admin_port: %d", cfg.AdminPort)
+	cfg.Log.logValues()
+	cfg.RateLimiting.logValues()
+	cfg.RequestLimits.logValues()
+	cfg.Backend.logValues()
+	cfg.Compression.logValues()
+	cfg.Metrics.logValues()
+}
+
 type Log struct {
 	Level LogLevel `mapstructure:"level"`
+}
+
+func (cfg *Log) logValues() {
+	log.Infof("config.log.level: %s", cfg.Level)
 }
 
 type LogLevel string
@@ -75,13 +90,27 @@ type RateLimiting struct {
 	MaxRequestsPerSecond int64 `mapstructure:"num_requests"`
 }
 
+func (cfg *RateLimiting) logValues() {
+	log.Infof("config.rate_limiter.enabled: %t", cfg.Enabled)
+	log.Infof("config.rate_limiter.num_requests: %d", cfg.MaxRequestsPerSecond)
+}
+
 type RequestLimits struct {
 	MaxSize      int `mapstructure:"max_size_bytes"`
 	MaxNumValues int `mapstructure:"max_num_values"`
 }
 
+func (cfg *RequestLimits) logValues() {
+	log.Infof("config.request_limits.max_size_bytes: %d", cfg.MaxSize)
+	log.Infof("config.request_limits.max_num_values: %d", cfg.MaxNumValues)
+}
+
 type Compression struct {
 	Type CompressionType
+}
+
+func (cfg *Compression) logValues() {
+	log.Infof("config.compression.type: %s", cfg.Type)
 }
 
 type CompressionType string
@@ -93,6 +122,17 @@ const (
 type Metrics struct {
 	Type   MetricsType `mapstructure:"type"`
 	Influx Influx      `mapstructure:"influx"`
+}
+
+func (cfg *Metrics) logValues() {
+	log.Infof("config.metrics.type: %s", cfg.Type)
+	switch cfg.Type {
+	case MetricsNone:
+	case MetricsInflux:
+		cfg.Influx.logValues()
+	default:
+		log.Fatalf(`invalid config.metrics.type: %s. It must be "none" or "influx"`, cfg.Type)
+	}
 }
 
 type MetricsType string
@@ -107,4 +147,10 @@ type Influx struct {
 	Database string `mapstructure:"database"`
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
+}
+
+func (cfg *Influx) logValues() {
+	log.Infof("config.metrics.influx.host: %s", cfg.Host)
+	log.Infof("config.metrics.influx.database: %s", cfg.Database)
+	// This intentionally skips username and password for security reasons.
 }
