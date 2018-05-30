@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/rcrowley/go-metrics"
 	"github.com/vrischmann/go-metrics-influxdb"
@@ -73,14 +74,23 @@ type Metrics struct {
 // Export begins sending metrics to the configured database.
 // This method blocks indefinitely, so it should probably be run in a goroutine.
 func (m *Metrics) Export(cfg config.Metrics) {
-	influxdb.InfluxDB(
-		m.Registry,     // metrics registry
-		time.Second*10, // interval
-		cfg.Host,       // the InfluxDB url
-		cfg.Database,   // your InfluxDB database
-		cfg.Username,   // your InfluxDB user
-		cfg.Password,   // your InfluxDB password
-	)
+	switch cfg.Type {
+	case config.MetricsInflux:
+		logrus.Infof("Metrics will be exported to Influx with host=%s, db=%s, username=%s", cfg.Influx.Host, cfg.Influx.Database, cfg.Influx.Username)
+		influxdb.InfluxDB(
+			m.Registry,          // metrics registry
+			time.Second*10,      // interval
+			cfg.Influx.Host,     // the InfluxDB url
+			cfg.Influx.Database, // your InfluxDB database
+			cfg.Influx.Username, // your InfluxDB user
+			cfg.Influx.Password, // your InfluxDB password
+		)
+	case config.MetricsNone:
+		return
+	default:
+		logrus.Fatalf("Unrecognized config metrics.type: %s", cfg.Type)
+	}
+	return
 }
 
 func CreateMetrics() *Metrics {

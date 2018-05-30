@@ -33,10 +33,11 @@ func TestSampleConfig(t *testing.T) {
 	assertStringsEqual(t, "backend.cassandra.keyspace", cfg.Backend.Cassandra.Keyspace, "prebid")
 	assertStringsEqual(t, "backend.memcache.hosts", cfg.Backend.Memcache.Hosts[0], "10.0.0.1:11211")
 	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "snappy")
-	assertStringsEqual(t, "metrics.host", cfg.Metrics.Host, "default-metrics-host")
-	assertStringsEqual(t, "metrics.database", cfg.Metrics.Database, "default-metrics-database")
-	assertStringsEqual(t, "metrics.username", cfg.Metrics.Username, "metrics-username")
-	assertStringsEqual(t, "metrics.password", cfg.Metrics.Password, "metrics-password")
+	assertStringsEqual(t, "metrics.type", string(cfg.Metrics.Type), "none")
+	assertStringsEqual(t, "metrics.influx.host", cfg.Metrics.Influx.Host, "default-metrics-host")
+	assertStringsEqual(t, "metrics.influx.database", cfg.Metrics.Influx.Database, "default-metrics-database")
+	assertStringsEqual(t, "metrics.influx.username", cfg.Metrics.Influx.Username, "metrics-username")
+	assertStringsEqual(t, "metrics.influx.password", cfg.Metrics.Influx.Password, "metrics-password")
 }
 
 func TestEnvConfig(t *testing.T) {
@@ -97,10 +98,12 @@ backend:
 compression:
   type: "snappy"
 metrics:
-  host: "default-metrics-host"
-  database: "default-metrics-database"
-  username: "metrics-username"
-  password: "metrics-password"
+  type: "none"
+  influx:
+    host: "default-metrics-host"
+    database: "default-metrics-database"
+    username: "metrics-username"
+    password: "metrics-password"
 `
 
 func assertBoolsEqual(t *testing.T, path string, actual bool, expected bool) {
