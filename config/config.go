@@ -108,7 +108,7 @@ func (cfg *RequestLimits) validateAndLog() {
 }
 
 type Compression struct {
-	Type CompressionType
+	Type CompressionType `mapstructure:"type"`
 }
 
 func (cfg *Compression) validateAndLog() {

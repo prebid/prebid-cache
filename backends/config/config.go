@@ -1,14 +1,13 @@
 package config
 
 import (
-	"log"
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/prebid/prebid-cache/backends"
 	"github.com/prebid/prebid-cache/backends/decorators"
 	"github.com/prebid/prebid-cache/compression"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
-	"github.com/spf13/viper"
 )
 
 func NewBackend(cfg config.Configuration, appMetrics *metrics.Metrics) backends.Backend {
@@ -17,10 +16,21 @@ func NewBackend(cfg config.Configuration, appMetrics *metrics.Metrics) backends.
 		backend = decorators.EnforceSizeLimit(backend, cfg.RequestLimits.MaxSize)
 	}
 	backend = decorators.LogMetrics(backend, appMetrics)
-	if viper.GetString("compression.type") == "snappy" {
-		backend = compression.SnappyCompress(backend)
-	}
+	backend = applyCompression(cfg.Compression, backend)
 	return backend
+}
+
+func applyCompression(cfg config.Compression, backend backends.Backend) backends.Backend {
+	switch cfg.Type {
+	case config.CompressionNone:
+		return backend
+	case config.CompressionSnappy:
+		return compression.SnappyCompress(backend)
+	default:
+		log.Fatalf("Unknown compression type: %s", cfg.Type)
+	}
+
+	panic("Error applying compression. This shouldn't happen.")
 }
 
 func newBaseBackend(cfg config.Backend) backends.Backend {
