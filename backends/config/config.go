@@ -15,8 +15,11 @@ func NewBackend(cfg config.Configuration, appMetrics *metrics.Metrics) backends.
 	if cfg.RequestLimits.MaxSize > 0 {
 		backend = decorators.EnforceSizeLimit(backend, cfg.RequestLimits.MaxSize)
 	}
-	backend = decorators.LogMetrics(backend, appMetrics)
+	// Metrics must be taken _before_ compression because it relies on the
+	// "json" or "xml" prefix on the payload. Compression might munge this.
+	// We should re-work this strategy at some point.
 	backend = applyCompression(cfg.Compression, backend)
+	backend = decorators.LogMetrics(backend, appMetrics)
 	return backend
 }
 
