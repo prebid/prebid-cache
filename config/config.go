@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/prebid/prebid-cache/stats"
 	"github.com/spf13/viper"
 )
 
@@ -20,7 +21,10 @@ func NewConfig() Configuration {
 	if err := v.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Failed to unmarshal config: %v", err)
 	}
-
+	//Initialize Stats Server
+	stats.InitStat(cfg.Stats.StatsHost, cfg.Stats.StatsPort,
+		cfg.Server.ServerName,
+		cfg.Stats.StatsDCName)
 	return cfg
 }
 
@@ -53,6 +57,8 @@ type Configuration struct {
 	Backend       Backend       `mapstructure:"backend"`
 	Compression   Compression   `mapstructure:"compression"`
 	Metrics       Metrics       `mapstructure:"metrics"`
+	Stats         Stats         `mapstructure:"stats"`
+	Server        Server        `mapstructure:"server"`
 }
 
 // ValidateAndLog validates the config, terminating the program on any errors.
@@ -66,6 +72,8 @@ func (cfg *Configuration) ValidateAndLog() {
 	cfg.Backend.validateAndLog()
 	cfg.Compression.validateAndLog()
 	cfg.Metrics.validateAndLog()
+	cfg.Stats.validateAndLog()
+	cfg.Server.validateAndLog()
 }
 
 type Log struct {
@@ -164,3 +172,26 @@ func (cfg *Influx) validateAndLog() {
 	log.Infof("config.metrics.influx.database: %s", cfg.Database)
 	// This intentionally skips username and password for security reasons.
 }
+
+type Stats struct {
+	StatsHost   string `mapstructure:"host"`
+	StatsPort   string `mapstructure:"port"`
+	StatsDCName string `mapstructure:"dc_name"`
+}
+
+func (cfg *Stats) validateAndLog() {
+	log.Infof("config.stats.host: %s", cfg.StatsHost)
+	log.Infof("config.stats.port: %s", cfg.StatsPort)
+	log.Infof("config.stats.dc_name: %s", cfg.StatsDCName)
+}
+
+type Server struct {
+	ServerPort string `mapstructure:"port"`
+	ServerName string `mapstructure:"name"`
+}
+
+func (cfg *Server) validateAndLog() {
+	log.Infof("config.server.port: %s", cfg.ServerPort)
+	log.Infof("config.server.name: %s", cfg.ServerName)
+}
+

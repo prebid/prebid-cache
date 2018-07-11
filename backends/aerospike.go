@@ -7,6 +7,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/prebid/prebid-cache/config"
+	"github.com/prebid/prebid-cache/stats"
 )
 
 const setName = "uuid"
@@ -20,6 +21,7 @@ type Aerospike struct {
 func NewAerospikeBackend(cfg config.Aerospike) *Aerospike {
 	client, err := as.NewClient(cfg.Host, cfg.Port)
 	if err != nil {
+		stats.LogAerospikeErrorStats()
 		log.Fatalf("Error creating Aerospike backend: %v", err)
 		panic("Aerospike failure. This shouldn't happen.")
 	}
@@ -60,3 +62,4 @@ func (a *Aerospike) Put(ctx context.Context, key string, value string) error {
 	}
 	return nil
 }
+

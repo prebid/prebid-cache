@@ -1,20 +1,24 @@
 package endpoints
 
 import (
-	"net/http"
-	"github.com/julienschmidt/httprouter"
-	"time"
-	"strings"
-	"fmt"
 	"context"
-	"github.com/prebid/prebid-cache/backends"
 	"errors"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/julienschmidt/httprouter"
+	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/stats"
 )
 
 func NewGetHandler(backend backends.Backend) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		stats.LogCacheRequestedGetStats()
 		id, err := parseUUID(r)
 		if err != nil {
+			stats.LogCacheFailedGetStats()
 			if id == "" {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 			} else {
@@ -27,6 +31,7 @@ func NewGetHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 		value, err := backend.Get(ctx, id)
 
 		if err != nil {
+			stats.LogCacheFailedGetStats()
 			http.Error(w, "No content stored for uuid="+id, http.StatusNotFound)
 			return
 		}
@@ -59,3 +64,4 @@ func parseUUID(r *http.Request) (string, error) {
 	}
 	return id, err
 }
+

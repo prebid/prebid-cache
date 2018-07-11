@@ -38,6 +38,11 @@ func TestSampleConfig(t *testing.T) {
 	assertStringsEqual(t, "metrics.influx.database", cfg.Metrics.Influx.Database, "default-metrics-database")
 	assertStringsEqual(t, "metrics.influx.username", cfg.Metrics.Influx.Username, "metrics-username")
 	assertStringsEqual(t, "metrics.influx.password", cfg.Metrics.Influx.Password, "metrics-password")
+	assertStringsEqual(t, "stats.host", cfg.Stats.StatsHost, "stats-host")
+	assertStringsEqual(t, "stats.port", cfg.Stats.StatsPort, "stats-port")
+	assertStringsEqual(t, "stats.dc_name", cfg.Stats.StatsDCName, "stats-dc-name")
+	assertStringsEqual(t, "server.port", cfg.Server.ServerPort, "server-port")
+	assertStringsEqual(t, "server.name", cfg.Server.ServerName, "server-name")
 }
 
 func TestEnvConfig(t *testing.T) {
@@ -104,6 +109,13 @@ metrics:
     database: "default-metrics-database"
     username: "metrics-username"
     password: "metrics-password"
+stats:
+  host: "stats-host"
+  port: "stats-port"
+  dc_name: "stats-dc-name"
+server:
+  port: "server-port"
+  name: "server-name"
 `
 
 func assertBoolsEqual(t *testing.T, path string, actual bool, expected bool) {

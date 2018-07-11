@@ -69,6 +69,11 @@
   branch = "master"
   name = "github.com/vrischmann/go-metrics-influxdb"
 
+[[constraint]]
+  branch = "master"
+  name = "git.pubmatic.com/PubMatic/go-common.git"
+  source = "https://git.pubmatic.com/PubMatic/go-common.git"
+
 [prune]
   go-tests = true
   unused-packages = true

@@ -31,3 +31,10 @@ metrics:
     database: "some-database"
     username: "influx-username"
     password: "influx-password"
+stats:
+  host: "$STATS_HOST"
+  port: "$STATS_PORT"
+  dc_name: "$STATS_DC_NAME"
+server:
+  port: "$SERVER_PORT"
+  name: "$SERVER_NAME"

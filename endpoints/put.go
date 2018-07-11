@@ -13,12 +13,14 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/prebid/prebid-cache/stats"
 	"github.com/satori/go.uuid"
 )
 
 // PutHandler serves "POST /cache" requests.
 func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	// TODO(future PR): Break this giant function apart
+	stats.LogCacheRequestedPutStats()
 	putAnyRequestPool := sync.Pool{
 		New: func() interface{} {
 			return PutRequest{}
@@ -34,6 +36,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
+			stats.LogCacheFailedPutStats()
 			http.Error(w, "Failed to read the request body.", http.StatusBadRequest)
 			return
 		}
@@ -44,6 +47,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 
 		err = json.Unmarshal(body, &put)
 		if err != nil {
+			stats.LogCacheFailedPutStats()
 			http.Error(w, "Request body "+string(body)+" is not valid JSON.", http.StatusBadRequest)
 			return
 		}
@@ -89,6 +93,8 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 			err = backend.Put(ctx, resps.Responses[i].UUID, toCache)
 
 			if err != nil {
+				stats.LogCacheFailedPutStats()
+
 				if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
 					http.Error(w, fmt.Sprintf("POST /cache element %d exceeded max size: %v", i, err), http.StatusBadRequest)
 					return
@@ -109,6 +115,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 
 		bytes, err := json.Marshal(&resps)
 		if err != nil {
+			stats.LogCacheFailedPutStats()
 			http.Error(w, "Failed to serialize UUIDs into JSON.", http.StatusInternalServerError)
 			return
 		}
@@ -135,3 +142,4 @@ type PutResponseObject struct {
 type PutResponse struct {
 	Responses []PutResponseObject `json:"responses"`
 }
+
