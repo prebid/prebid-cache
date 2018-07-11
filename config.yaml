@@ -9,11 +9,11 @@ request_limits:
   max_size_bytes: 10240 # 10K
   max_num_values: 10
 backend:
-  type: "memory" # Can also be "aerospike", "azure", "cassandra", or "memcache"
+  type: "aerospike" # Can also be "aerospike", "azure", "cassandra", or "memcache"
   aerospike:
-    host: "aerospike.prebid.com"
-    port: 3000
-    namespace: "whatever"
+    host: "$AEROSPIKE_HOST"
+    port: $AEROSPIKE_PORT
+    namespace: "$AEROSPIKE_NAMESPACE"
   azure:
     account: "azure-account-here"
     key: "azure-key-here"
