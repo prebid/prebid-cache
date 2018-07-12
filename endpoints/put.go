@@ -20,7 +20,6 @@ import (
 // PutHandler serves "POST /cache" requests.
 func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	// TODO(future PR): Break this giant function apart
-	stats.LogCacheRequestedPutStats()
 	putAnyRequestPool := sync.Pool{
 		New: func() interface{} {
 			return PutRequest{}
@@ -34,6 +33,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 	}
 
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		stats.LogCacheRequestedPutStats()
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			stats.LogCacheFailedPutStats()
@@ -142,4 +142,3 @@ type PutResponseObject struct {
 type PutResponse struct {
 	Responses []PutResponseObject `json:"responses"`
 }
-
