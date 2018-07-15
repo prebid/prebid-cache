@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	log "github.com/Sirupsen/logrus"
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/stats"
@@ -22,10 +22,10 @@ func NewAerospikeBackend(cfg config.Aerospike) *Aerospike {
 	client, err := as.NewClient(cfg.Host, cfg.Port)
 	if err != nil {
 		stats.LogAerospikeErrorStats()
-		log.Fatalf("Error creating Aerospike backend: %v", err)
+		logger.Fatal("Error creating Aerospike backend: %v", err)
 		panic("Aerospike failure. This shouldn't happen.")
 	}
-	log.Infof("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
+	logger.Info("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
 
 	return &Aerospike{
 		cfg:    cfg,
@@ -62,4 +62,3 @@ func (a *Aerospike) Put(ctx context.Context, key string, value string) error {
 	}
 	return nil
 }
-

@@ -9,10 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/prebid/prebid-cache/constant"
+	log "github.com/prebid/prebid-cache/logger"
 	"github.com/prebid/prebid-cache/stats"
 	"github.com/satori/go.uuid"
 )
@@ -33,10 +35,11 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 	}
 
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		start := time.Now().Unix()
 		stats.LogCacheRequestedPutStats()
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			stats.LogCacheFailedPutStats()
+			logger.Error("Failed to read the request body.")
 			http.Error(w, "Failed to read the request body.", http.StatusBadRequest)
 			return
 		}
@@ -47,12 +50,13 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 
 		err = json.Unmarshal(body, &put)
 		if err != nil {
-			stats.LogCacheFailedPutStats()
+			stats.LogCacheFailedPutStats(constant.InvalidJSON)
 			http.Error(w, "Request body "+string(body)+" is not valid JSON.", http.StatusBadRequest)
 			return
 		}
 
 		if len(put.Puts) > maxNumValues {
+			stats.LogCacheFailedPutStats(constant.KeyCountExceeded)
 			http.Error(w, fmt.Sprintf("More keys than allowed: %d", maxNumValues), http.StatusBadRequest)
 			return
 		}
@@ -63,6 +67,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 
 		for i, p := range put.Puts {
 			if len(p.Value) == 0 {
+				logger.Error("Missing value")
 				http.Error(w, "Missing value.", http.StatusBadRequest)
 				return
 			}
@@ -70,6 +75,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 			var toCache string
 			if p.Type == backends.XML_PREFIX {
 				if p.Value[0] != byte('"') || p.Value[len(p.Value)-1] != byte('"') {
+					logger.Error("XML messages must have a String value. Found %v", p.Value)
 					http.Error(w, fmt.Sprintf("XML messages must have a String value. Found %v", p.Value), http.StatusBadRequest)
 					return
 				}
@@ -82,40 +88,58 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 			} else if p.Type == backends.JSON_PREFIX {
 				toCache = p.Type + string(p.Value)
 			} else {
+				logger.Error("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type)
 				http.Error(w, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type), http.StatusBadRequest)
 				return
 			}
 
-			logrus.Debugf("Storing value: %s", toCache)
+			logger.Debug("Storing value: %s", toCache)
+
+			// log info
+			bid := make(map[string]interface{})
+			var bodyStr string
+			json.Unmarshal(p.Value, &bodyStr)
+			bodyByte := []byte(bodyStr)
+			err := json.Unmarshal(bodyByte, &bid)
+			bidExt := bid["ext"].(map[string]interface{})
+			pubID := bidExt["pubId"]           // TODO: check key name and type
+			platformID := bidExt["platformId"] // TODO: check key name and type
+			requestID := bidExt["requestId"]   // TODO: check key name and type
+			log.InfoWithRequestID(requestID.(string), "POST /cache called")
+			log.DebugWithRequestID(requestID.(string), "pubId: %s, platformId: %s", pubID, platformID)
+
 			resps.Responses[i].UUID = uuid.NewV4().String()
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
 			err = backend.Put(ctx, resps.Responses[i].UUID, toCache)
 
 			if err != nil {
-				stats.LogCacheFailedPutStats()
 
 				if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
+					stats.LogCacheFailedPutStats(constant.MaxSizeExceeded)
 					http.Error(w, fmt.Sprintf("POST /cache element %d exceeded max size: %v", i, err), http.StatusBadRequest)
 					return
 				}
 
-				logrus.Error("POST /cache Error while writing to the backend: ", err)
+				logger.Error("POST /cache Error while writing to the backend: ", err)
 				switch err {
 				case context.DeadlineExceeded:
-					logrus.Error("POST /cache timed out:", err)
+					stats.LogCacheFailedPutStats(constant.TimedOut)
+					logger.Error("POST /cache timed out:", err)
 					http.Error(w, "Timeout writing value to the backend", HttpDependencyTimeout)
 				default:
-					logrus.Error("POST /cache had an unexpected error:", err)
+					stats.LogCacheFailedPutStats(constant.UnexpErr)
+					logger.Error("POST /cache had an unexpected error:", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 				}
 				return
 			}
+			log.DebugWithRequestID(requestID.(string), "UUID: %s, Time: %v, Referer: %s", resps.Responses[i].UUID, start, r.Referer())
 		}
 
 		bytes, err := json.Marshal(&resps)
 		if err != nil {
-			stats.LogCacheFailedPutStats()
+			logger.Error("Failed to serialize UUIDs into JSON.")
 			http.Error(w, "Failed to serialize UUIDs into JSON.", http.StatusInternalServerError)
 			return
 		}

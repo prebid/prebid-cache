@@ -8,17 +8,20 @@ import (
 	"strings"
 	"time"
 
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/constant"
 	"github.com/prebid/prebid-cache/stats"
 )
 
 func NewGetHandler(backend backends.Backend) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		start := time.Now().Unix()
+		logger.Info("Get /cache called")
 		stats.LogCacheRequestedGetStats()
 		id, err := parseUUID(r)
 		if err != nil {
-			stats.LogCacheFailedGetStats()
 			if id == "" {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 			} else {
@@ -28,10 +31,11 @@ func NewGetHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
+		logger.Debug("UUID: %s requested at time: %v, Referer: %s", id, start, r.Referer())
 		value, err := backend.Get(ctx, id)
 
 		if err != nil {
-			stats.LogCacheFailedGetStats()
+			stats.LogCacheMissStats()
 			http.Error(w, "No content stored for uuid="+id, http.StatusNotFound)
 			return
 		}
@@ -57,11 +61,12 @@ func parseUUID(r *http.Request) (string, error) {
 	var err error = nil
 	if id == "" {
 		err = errors.New("Missing required parameter uuid")
+		stats.LogCacheFailedGetStats(constant.UUIDMissing)
 	} else if len(id) != 36 {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 		// ones before even checking the backend.
 		err = fmt.Errorf("No content stored for uuid=%s", id)
+		stats.LogCacheFailedGetStats(constant.InvalidUUID)
 	}
 	return id, err
 }
-

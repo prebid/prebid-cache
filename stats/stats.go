@@ -19,13 +19,19 @@ func InitStat(statIP, statPort, statServer, dc string) {
 	}
 }
 
-func LogCacheFailedGetStats() {
-	S.Increment(fmt.Sprintf(constant.StatsKeyCacheFailedGet),
+func LogCacheFailedGetStats(errorString string) {
+	fmt.Printf(constant.StatsKeyCacheFailedGet, errorString)
+	S.Increment(fmt.Sprintf(constant.StatsKeyCacheFailedGet, errorString),
 		constant.StatsKeyCacheFailedGetCutoff, 1)
 }
 
-func LogCacheFailedPutStats() {
-	S.Increment(fmt.Sprintf(constant.StatsKeyCacheFailedPut),
+func LogCacheMissStats() {
+	S.Increment(fmt.Sprintf(constant.StatsKeyCacheMiss),
+		constant.StatsKeyCacheMissCutOff, 1)
+}
+
+func LogCacheFailedPutStats(errorString string) {
+	S.Increment(fmt.Sprintf(constant.StatsKeyCacheFailedPut, errorString),
 		constant.StatsKeyCacheFailedPutCutoff, 1)
 }
 
@@ -42,4 +48,5 @@ func LogCacheRequestedPutStats() {
 func LogAerospikeErrorStats() {
 	S.Increment(fmt.Sprintf(constant.StatsKeyAerospikeCreationError),
 		constant.StatsKeyAerospikeCreationErrorCutoff, 1)
+
 }

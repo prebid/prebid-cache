@@ -4,7 +4,7 @@ import (
 	"net"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
 	"github.com/prebid/prebid-cache/metrics"
 )
 
@@ -25,7 +25,7 @@ func (l *monitorableConnection) Close() error {
 	if err == nil {
 		l.metrics.ActiveConnections.Dec(1)
 	} else {
-		log.Errorf("Error closing connection: %v", err)
+		logger.Error("Error closing connection: %v", err)
 		l.metrics.ConnectionCloseErrors.Mark(1)
 	}
 	return err
@@ -34,7 +34,7 @@ func (l *monitorableConnection) Close() error {
 func (ln *monitorableListener) Accept() (c net.Conn, err error) {
 	tc, err := ln.Listener.Accept()
 	if err != nil {
-		log.Errorf("Error accepting connection: %v", err)
+		logger.Error("Error accepting connection: %v", err)
 		ln.metrics.ConnectionAcceptErrors.Mark(1)
 		return tc, err
 	}

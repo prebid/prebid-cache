@@ -4,12 +4,16 @@ const (
 	// SERVER LEVEL STATS KEYS
 
 	//StatsKeyCacheFailedGet : stats Key for Failed Cache get operations
-	StatsKeyCacheFailedGet       = "hb:cachegetfail"
-	StatsKeyCacheFailedGetCutoff = 1
+	StatsKeyCacheFailedGet       = "hb:cachegetfail:%s"
+	StatsKeyCacheFailedGetCutoff = 10
+
+	//StatsKeyCacheMiss : stats Key for Failed Cache misses
+	StatsKeyCacheMiss       = "hb:cachemiss"
+	StatsKeyCacheMissCutOff = 10
 
 	//StatsKeyCacheFailedPut : stats Key for Failed Cache put operations
-	StatsKeyCacheFailedPut       = "hb:cacheputfail"
-	StatsKeyCacheFailedPutCutoff = 1
+	StatsKeyCacheFailedPut       = "hb:cacheputfail:%s"
+	StatsKeyCacheFailedPutCutoff = 10
 
 	//StatsKeyCacheRequestedGet : stats Key for Requested Cache get operations
 	StatsKeyCacheRequestedGet       = "hb:cachereqget"
@@ -21,5 +25,5 @@ const (
 
 	//StatsKeyAerospikeCreationError : stats Key for Aerospike creation error
 	StatsKeyAerospikeCreationError       = "hb:cacheaerospikeerr"
-	StatsKeyAerospikeCreationErrorCutoff = 1
+	StatsKeyAerospikeCreationErrorCutoff = 10
 )

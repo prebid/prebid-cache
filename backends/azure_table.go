@@ -11,9 +11,10 @@ import (
 	"time"
 
 	"context"
-	log "github.com/Sirupsen/logrus"
-	"github.com/valyala/fasthttp"
 	"sync"
+
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
+	"github.com/valyala/fasthttp"
 )
 
 type AzureValue struct {
@@ -33,7 +34,7 @@ type AzureTableBackend struct {
 
 func NewAzureBackend(account string, key string) *AzureTableBackend {
 
-	log.Debugf("New Azure Backend: Account %s Key %s", account, key)
+	logger.Debug("New Azure Backend: Account %s Key %s", account, key)
 
 	c := &AzureTableBackend{
 		Account: account,
@@ -58,7 +59,7 @@ func NewAzureBackend(account string, key string) *AzureTableBackend {
 		},
 	}
 
-	log.Infof("New Azure Client: %s", account)
+	logger.Info("New Azure Client: %s", account)
 
 	return c
 }
@@ -124,19 +125,19 @@ func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error)
 	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(c.makePartitionKey(key)))
 	err := c.Send(ctx, req, resp, "docs", resourceLink[1:])
 	if err != nil {
-		log.Debugf("Failed to make request")
+		logger.Debug("Failed to make request")
 		return "", err
 	}
 
 	av := AzureValue{}
 	err = json.Unmarshal(resp.Body(), &av)
 	if err != nil {
-		log.Debugf("Failed to decode request body into JSON")
+		logger.Debug("Failed to decode request body into JSON")
 		return "", err
 	}
 
 	if av.Value == "" {
-		log.Debugf("Response had empty value: %v", av)
+		logger.Debug("Response had empty value: %v", av)
 		return "", fmt.Errorf("Key not found")
 	}
 
@@ -153,7 +154,7 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string) e
 		return fmt.Errorf("Invalid Value")
 	}
 	partitionKey := c.makePartitionKey(key)
-	log.Debugf("POST partition key %s", partitionKey)
+	logger.Debug("POST partition key %s", partitionKey)
 	av := AzureValue{
 		ID:           key,
 		Value:        value,

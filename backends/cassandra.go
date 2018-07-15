@@ -3,7 +3,7 @@ package backends
 import (
 	"context"
 
-	log "github.com/Sirupsen/logrus"
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
 	"github.com/gocql/gocql"
 	"github.com/prebid/prebid-cache/config"
 )
@@ -25,7 +25,7 @@ func NewCassandraBackend(cfg config.Cassandra) *Cassandra {
 
 	c.session, err = c.cluster.CreateSession()
 	if err != nil {
-		log.Fatalf("Error creating Cassandra backend: %v", err)
+		logger.Fatal("Error creating Cassandra backend: %v", err)
 		panic("Cassandra failure. This shouldn't happen.")
 	}
 
