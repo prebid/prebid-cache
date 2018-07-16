@@ -37,6 +37,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		start := time.Now().Unix()
 		stats.LogCacheRequestedPutStats()
+		logger.Info("POST /cache called")
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			logger.Error("Failed to read the request body.")
@@ -95,19 +96,6 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 
 			logger.Debug("Storing value: %s", toCache)
 
-			// log info
-			bid := make(map[string]interface{})
-			var bodyStr string
-			json.Unmarshal(p.Value, &bodyStr)
-			bodyByte := []byte(bodyStr)
-			err := json.Unmarshal(bodyByte, &bid)
-			bidExt := bid["ext"].(map[string]interface{})
-			pubID := bidExt["pubId"]           // TODO: check key name and type
-			platformID := bidExt["platformId"] // TODO: check key name and type
-			requestID := bidExt["requestId"]   // TODO: check key name and type
-			log.InfoWithRequestID(requestID.(string), "POST /cache called")
-			log.DebugWithRequestID(requestID.(string), "pubId: %s, platformId: %s", pubID, platformID)
-
 			resps.Responses[i].UUID = uuid.NewV4().String()
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
@@ -134,7 +122,20 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 				}
 				return
 			}
-			log.DebugWithRequestID(requestID.(string), "UUID: %s, Time: %v, Referer: %s", resps.Responses[i].UUID, start, r.Referer())
+			// log info
+			bid := make(map[string]interface{})
+			var bodyStr string
+			json.Unmarshal(p.Value, &bodyStr)
+			bodyByte := []byte(bodyStr)
+			json.Unmarshal(bodyByte, &bid)
+			if bid != nil && bid["ext"] != nil {
+				bidExt := bid["ext"].(map[string]interface{})
+				pubID := bidExt["pubId"]           // TODO: check key name and type
+				platformID := bidExt["platformId"] // TODO: check key name and type
+				requestID := bidExt["requestId"]   // TODO: check key name and type
+				log.DebugWithRequestID(requestID.(string), "pubId: %s, platformId: %s, UUID: %s, Time: %v, Referer: %s", pubID, platformID, resps.Responses[i].UUID, start, r.Referer())
+			}
+
 		}
 
 		bytes, err := json.Marshal(&resps)
