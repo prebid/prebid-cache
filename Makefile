@@ -9,7 +9,7 @@ all:
 .PHONY: init test build image
 
 init:
-	glide install
+	dep ensure
 
 # Validates the code for style and unit tests
 test:

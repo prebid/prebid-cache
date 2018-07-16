@@ -9,15 +9,19 @@ func TestStatsInit(t *testing.T) {
 }
 
 func TestStatsLogCacheFailedGetStats(t *testing.T) {
-	LogCacheFailedGetStats()
+	LogCacheFailedGetStats("Error string")
 }
 
 func TestStatsLogCacheFailedPutStats(t *testing.T) {
-	LogCacheFailedPutStats()
+	LogCacheFailedPutStats("Error string")
 }
 
 func TestStatsLogCacheRequestedGetStats(t *testing.T) {
 	LogCacheRequestedGetStats()
+}
+
+func TestStatsLogCacheMissStats(t *testing.T) {
+	LogCacheMissStats()
 }
 
 func TestStatsLogCacheRequestedPutStats(t *testing.T) {
