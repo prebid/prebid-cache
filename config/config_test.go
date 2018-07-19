@@ -32,6 +32,10 @@ func TestSampleConfig(t *testing.T) {
 	assertStringsEqual(t, "backend.cassandra.hosts", cfg.Backend.Cassandra.Hosts, "127.0.0.1")
 	assertStringsEqual(t, "backend.cassandra.keyspace", cfg.Backend.Cassandra.Keyspace, "prebid")
 	assertStringsEqual(t, "backend.memcache.hosts", cfg.Backend.Memcache.Hosts[0], "10.0.0.1:11211")
+	assertIntsEqual(t, "backend.redis.port", cfg.Backend.Redis.Port, 6379)
+	assertIntsEqual(t, "backend.redis.db", cfg.Backend.Redis.Db, 1)
+	assertStringsEqual(t, "backend.redis.host", cfg.Backend.Redis.Host, "127.0.0.1")
+	assertStringsEqual(t, "backend.redis.password", cfg.Backend.Redis.Password, "")
 	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "snappy")
 	assertStringsEqual(t, "metrics.type", string(cfg.Metrics.Type), "none")
 	assertStringsEqual(t, "metrics.influx.host", cfg.Metrics.Influx.Host, "default-metrics-host")
@@ -95,6 +99,11 @@ backend:
   azure:
     account: "azure-account-here"
     key: "azure-key-here"
+  redis:
+    host: "127.0.0.1"
+    port: 6379
+    password: ""
+    db: 1
 compression:
   type: "snappy"
 metrics:

@@ -48,6 +48,8 @@ func newBaseBackend(cfg config.Backend) backends.Backend {
 		return backends.NewAzureBackend(cfg.Azure.Account, cfg.Azure.Key)
 	case config.BackendAerospike:
 		return backends.NewAerospikeBackend(cfg.Aerospike)
+	case config.BackendRedis:
+		return backends.NewRedisBackend(cfg.Redis)
 	default:
 		log.Fatalf("Unknown backend type: %s", cfg.Type)
 	}

@@ -8,6 +8,7 @@ type Backend struct {
 	Azure     Azure       `mapstructure:"azure"`
 	Cassandra Cassandra   `mapstructure:"cassandra"`
 	Memcache  Memcache    `mapstructure:"memcache"`
+	Redis     Redis       `mapstructure:"redis"`
 }
 
 func (cfg *Backend) validateAndLog() {
@@ -21,9 +22,11 @@ func (cfg *Backend) validateAndLog() {
 		cfg.Cassandra.validateAndLog()
 	case BackendMemcache:
 		cfg.Memcache.validateAndLog()
+	case BackendRedis:
+		cfg.Redis.validateAndLog()
 	case BackendMemory:
 	default:
-		log.Fatalf(`invalid config.backend.type: %s. It must be "aerospike", "azure", "cassandra", "memcache", or "memory".`, cfg.Type)
+		log.Fatalf(`invalid config.backend.type: %s. It must be "aerospike", "azure", "cassandra", "memcache", "redis", or "memory".`, cfg.Type)
 	}
 }
 
@@ -35,7 +38,9 @@ const (
 	BackendCassandra BackendType = "cassandra"
 	BackendMemcache  BackendType = "memcache"
 	BackendMemory    BackendType = "memory"
+	BackendRedis     BackendType = "redis"
 )
+
 
 type Aerospike struct {
 	Host      string `mapstructure:"host"`
@@ -75,4 +80,18 @@ type Memcache struct {
 
 func (cfg *Memcache) validateAndLog() {
 	log.Infof("config.backend.memcache.hosts: %v", cfg.Hosts)
+}
+
+type Redis struct {
+	Host      string `mapstructure:"host"`
+	Port      int    `mapstructure:"port"`
+	Password  string `mapstructure:"password"`
+	Db        int    `mapstructure:"db"`
+}
+
+func(cfg *Redis) validateAndLog() {
+	log.Infof("config.backend.redis.host: %s", cfg.Host)
+	log.Infof("config.backend.redis.port: %d", cfg.Port)
+	log.Infof("config.backend.redis.password: %s", cfg.Password)
+	log.Infof("config.backend.redis.db : %d", cfg.Db)
 }
