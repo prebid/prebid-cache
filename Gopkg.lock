@@ -22,14 +22,14 @@
     "types/rand",
     "utils/buffer"
   ]
-  revision = "dcec4388c832b931227afe511b7f047c6b1b53ce"
-  version = "v1.30.0"
+  revision = "9841592db73b2add0b2cce3f9d7e2c346c536726"
+  version = "v1.34.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/bradfitz/gomemcache"
   packages = ["memcache"]
-  revision = "1952afaa557dc08e8e0d89eafab110fb501c1a2b"
+  revision = "bc664df9673713a0ccf26e3b55a673ec7301088b"
 
 [[projects]]
   name = "github.com/didip/tollbooth"
@@ -39,15 +39,32 @@
     "libstring",
     "limiter"
   ]
-  revision = "357c7558d6ba332d2c6f81a6896a055b718dce7e"
-  version = "v2.1.0"
+  revision = "8a5832d289e4375d2fc658ed42ef08975b66dceb"
+  version = "v2.2.0"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
-  revision = "4da3e2cfbabc9f751898f250b49f2439785783a1"
+  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  version = "v1.4.7"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/go-redis/redis"
+  packages = [
+    ".",
+    "internal",
+    "internal/consistenthash",
+    "internal/hashtag",
+    "internal/pool",
+    "internal/proto",
+    "internal/singleflight",
+    "internal/util"
+  ]
+  revision = "ee41b9092371454ee7c2aa9049ab4d06d5d387fd"
+
+[[projects]]
+  branch = "master"
   name = "github.com/gocql/gocql"
   packages = [
     ".",
@@ -55,13 +72,13 @@
     "internal/murmur",
     "internal/streams"
   ]
-  revision = "605a5e0a265c95891d9159dae6030ea195b4a3bd"
+  revision = "e06f8c1bcd787e6bf0608288b314522f08cc7848"
 
 [[projects]]
   branch = "master"
   name = "github.com/golang/snappy"
   packages = ["."]
-  revision = "553a641470496b2327abcac10b36396bd98e45c9"
+  revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
 
 [[projects]]
   branch = "master"
@@ -70,11 +87,13 @@
   revision = "e80d13ce29ede4452c43dea11e79b9bc8a15b478"
 
 [[projects]]
+  branch = "master"
   name = "github.com/hashicorp/hcl"
   packages = [
     ".",
     "hcl/ast",
     "hcl/parser",
+    "hcl/printer",
     "hcl/scanner",
     "hcl/strconv",
     "hcl/token",
@@ -82,7 +101,7 @@
     "json/scanner",
     "json/token"
   ]
-  revision = "8f6b1344a92ff8877cf24a5de9177bf7d0a2a187"
+  revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
 
 [[projects]]
   name = "github.com/influxdata/influxdb"
@@ -91,8 +110,8 @@
     "models",
     "pkg/escape"
   ]
-  revision = "6d2685d1738277a1c2672fc58df7994627769be6"
-  version = "v1.4.2"
+  revision = "62ab18a0f43ee342b84debaaae5486b8b2d8682c"
+  version = "v1.6.0"
 
 [[projects]]
   name = "github.com/julienschmidt/httprouter"
@@ -107,7 +126,8 @@
     "gzip",
     "zlib"
   ]
-  revision = "f3dce52e0576655d55fd69e74b63da96ad1108f3"
+  revision = "b939724e787a27c0005cabe3f78e7ed7987ac74f"
+  version = "v1.4.0"
 
 [[projects]]
   name = "github.com/klauspost/cpuid"
@@ -118,12 +138,14 @@
 [[projects]]
   name = "github.com/magiconair/properties"
   packages = ["."]
-  revision = "8d7837e64d3c1ee4e54a880c5a920ab4316fc90a"
+  revision = "c2353362d570a7bfa228149c62842019201cfb71"
+  version = "v1.8.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "d0303fe809921458f417bcf828397a65db30a7e4"
+  revision = "f15292f7a699fcc1a38a80977f80a046874ba8ac"
 
 [[projects]]
   name = "github.com/patrickmn/go-cache"
@@ -134,24 +156,26 @@
 [[projects]]
   name = "github.com/pelletier/go-toml"
   packages = ["."]
-  revision = "1d6b12b7cb290426e27e6b4e38b89fcda3aeef03"
+  revision = "c01d1270ff3e442a8a57cddc1c92dc1138598194"
+  version = "v1.2.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
-  revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
+  revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
 
 [[projects]]
   name = "github.com/rs/cors"
   packages = ["."]
-  revision = "feef513b9575b32f84bafa580aad89b011259019"
-  version = "v1.3.0"
+  revision = "ca016a06a5753f8ba03029c0aa5e54afb1bf713f"
+  version = "v1.4.0"
 
 [[projects]]
   name = "github.com/satori/go.uuid"
   packages = ["."]
-  revision = "879c5887cd475cd7864858769793b2ceb0d44feb"
-  version = "v1.1.0"
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -159,29 +183,32 @@
     ".",
     "mem"
   ]
-  revision = "ee1bd8ee15a1306d1f9201acc41ef39cd9f99a1b"
+  revision = "787d034dfe70e44075ccc060d346146ef53270ad"
+  version = "v1.1.1"
 
 [[projects]]
   name = "github.com/spf13/cast"
   packages = ["."]
-  revision = "acbeb36b902d72a7a4c18e8f3241075e7ab763e4"
-  version = "v1.1.0"
+  revision = "8965335b8c7107321228e3e3702cab9832751bac"
+  version = "v1.2.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/spf13/jwalterweatherman"
   packages = ["."]
-  revision = "12bd96e66386c1960ab0f74ced1362f66f552f7b"
+  revision = "7c0cea34c8ece3fbeb2b27ab9b59511d360fb394"
 
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "7aff26db30c1be810f9de5038ec5ef96ac41fd7c"
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/spf13/viper"
   packages = ["."]
-  revision = "25b30aa063fc18e48662b86996252eabdcf2f0c7"
-  version = "v1.0.0"
+  revision = "b5e8006cbee93ec955a89ab31e0e3ce3204f3736"
+  version = "v1.0.2"
 
 [[projects]]
   name = "github.com/valyala/fasthttp"
@@ -199,6 +226,7 @@
   revision = "43af8332c303f62ef62663b02b3b7d8a9802002a"
 
 [[projects]]
+  branch = "master"
   name = "github.com/yuin/gopher-lua"
   packages = [
     ".",
@@ -206,17 +234,19 @@
     "parse",
     "pm"
   ]
-  revision = "609c9cd2697344dec90fe0543c6493e3b8da3435"
+  revision = "46796da1b0b4794e1e341883a399f12cc7574b55"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "66aacef3dd8a676686c7ae3716979581e8b03c47"
+  revision = "81d44fd177a98d09fe3bc40a5a78d495d3f042ea"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "9aade4d3a3b7e6d876cd3823ad20ec45fc035402"
+  revision = "ac767d655b305d4e9612f5f6e33120b9176c4ad4"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -228,27 +258,30 @@
     "unicode/cldr",
     "unicode/norm"
   ]
-  revision = "bd91bbf73e9a4a801adbfb97133c992678533126"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/time"
   packages = ["rate"]
-  revision = "8be79e1e0910c292df4e79c241bb7e8f7e725959"
+  revision = "fbb02b2291d28baffd63558aa44b4b56f178d650"
 
 [[projects]]
   name = "gopkg.in/inf.v0"
   packages = ["."]
-  revision = "3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4"
-  version = "v0.9.0"
+  revision = "d2d2541c53f18d2a059457998ce2876cc8e67cbf"
+  version = "v0.9.1"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "eb3733d160e74a9c7e442f435eb3bea458e1d19f"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "27493861b171f80ed7d74baf2a6c13e68b9882a913e9e83363a940cb66fb26d2"
+  inputs-digest = "94b8ae1a83e1580fc85388ef879d81a37e60fc21ad5e35d015d88e5ca6c1256e"
   solver-name = "gps-cdcl"
   solver-version = 1
