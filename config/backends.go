@@ -83,14 +83,16 @@ func (cfg *Memcache) validateAndLog() {
 }
 
 type Redis struct {
-	Host      string `mapstructure:"host"`
-	Port      int    `mapstructure:"port"`
-	Password  string `mapstructure:"password"`
-	Db        int    `mapstructure:"db"`
+	Host       string `mapstructure:"host"`
+	Port       int    `mapstructure:"port"`
+	Password   string `mapstructure:"password"`
+	Db         int    `mapstructure:"db"`
+	Expiration int    `mapstructure:"expiration"`
 }
 
 func(cfg *Redis) validateAndLog() {
 	log.Infof("config.backend.redis.host: %s", cfg.Host)
 	log.Infof("config.backend.redis.port: %d", cfg.Port)
 	log.Infof("config.backend.redis.db : %d", cfg.Db)
+	log.Infof("config.backend.redis.ttl : %d", cfg.Expiration)
 }

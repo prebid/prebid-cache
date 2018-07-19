@@ -6,6 +6,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/prebid/prebid-cache/config"
 	"strconv"
+	"time"
 )
 
 type Redis struct {
@@ -25,7 +26,6 @@ func NewRedisBackend(cfg config.Redis) *Redis {
 
 	if err != nil {
 		log.Fatalf("Error creating Redis backend: %v", err)
-		panic("Failed Connecting to Redis.")
 	}
 
 	log.Infof("Connected to Redis at %s:%d", cfg.Host, cfg.Port)
@@ -47,7 +47,7 @@ func (redis *Redis) Get(ctx context.Context, key string) (string, error) {
 }
 
 func (redis *Redis) Put(ctx context.Context, key string, value string) error {
-	err := redis.client.Set(key, value, 0).Err()
+	err := redis.client.Set(key, value, time.Duration(redis.cfg.Expiration)*time.Minute).Err()
 
 	if err != nil {
 		return err
