@@ -92,6 +92,5 @@ type Redis struct {
 func(cfg *Redis) validateAndLog() {
 	log.Infof("config.backend.redis.host: %s", cfg.Host)
 	log.Infof("config.backend.redis.port: %d", cfg.Port)
-	log.Infof("config.backend.redis.password: %s", cfg.Password)
 	log.Infof("config.backend.redis.db : %d", cfg.Db)
 }
