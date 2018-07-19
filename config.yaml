@@ -9,7 +9,7 @@ request_limits:
   max_size_bytes: 10240 # 10K
   max_num_values: 10
 backend:
-  type: "redis" # Can also be "aerospike", "azure", "cassandra", or "memcache"
+  type: "memory" # Can also be "aerospike", "azure", "cassandra", or "memcache"
   aerospike:
     host: "aerospike.prebid.com"
     port: 3000

@@ -41,7 +41,6 @@ const (
 	BackendRedis     BackendType = "redis"
 )
 
-
 type Aerospike struct {
 	Host      string `mapstructure:"host"`
 	Port      int    `mapstructure:"port"`
@@ -90,9 +89,9 @@ type Redis struct {
 	Expiration int    `mapstructure:"expiration"`
 }
 
-func(cfg *Redis) validateAndLog() {
+func (cfg *Redis) validateAndLog() {
 	log.Infof("config.backend.redis.host: %s", cfg.Host)
 	log.Infof("config.backend.redis.port: %d", cfg.Port)
-	log.Infof("config.backend.redis.db : %d", cfg.Db)
-	log.Infof("config.backend.redis.ttl : %d", cfg.Expiration)
+	log.Infof("config.backend.redis.db: %d", cfg.Db)
+	log.Infof("config.backend.redis.expiration: %d", cfg.Expiration)
 }
