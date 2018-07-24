@@ -1,6 +1,6 @@
 all:
 	@echo ""
-	@echo "  init: Install glide dependencies. Assumes go and glide are installed already."
+	@echo "  init: Install dep dependencies. Assumes go and dep are installed already."
 	@echo "  test: Run the unit tests and code style validation"
 	@echo "  build: Build a linux binary which runs prebid-cache"
 	@echo "  image: Build a docker which runs prebid-cache"
