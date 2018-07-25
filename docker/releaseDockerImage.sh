@@ -4,8 +4,6 @@
 #cd ../
 
 
-#Login to the docker remote repository
-#sudo docker login -u PubMaticDockerAdmin -p PmD0cK3r -e manoj.danane@pubmatic.com  docker.pubmatic.com
 
 echo $GROUP_ID : $ARTIFACT_ID : $ARTIFACT_VERSION : $FINAL_ARTIFACT_NAME : $ARTIFACT_PACKAGING_TYPE ;
 
