@@ -4,7 +4,7 @@
 #cd ../
 
 
-
+sudo docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD -e $DOCKER_EMAIL  docker.pubmatic.com
 echo $GROUP_ID : $ARTIFACT_ID : $ARTIFACT_VERSION : $FINAL_ARTIFACT_NAME : $ARTIFACT_PACKAGING_TYPE ;
 
 #Copy the template docker file to actual docker file which will be used for current build.
