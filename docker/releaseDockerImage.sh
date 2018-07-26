@@ -3,10 +3,9 @@
 #cd ${WORKSPACE}
 #cd ../
 
-
-#sudo docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD -e $DOCKER_EMAIL  docker.pubmatic.com
-#echo $DOCKER_USERNAME : $DOCKER_PASSWORD : $DOCKER_EMAIL
-#echo $GROUP_ID : $ARTIFACT_ID : $ARTIFACT_VERSION : $FINAL_ARTIFACT_NAME : $ARTIFACT_PACKAGING_TYPE ;
+mkdir cache
+cp -rf ../prebid-cache ./cache/
+cp -rf ../applications-k8s-config/docker ./cache/app-resources
 
 #Copy the template docker file to actual docker file which will be used for current build.
 rm -rf Dockerfile
