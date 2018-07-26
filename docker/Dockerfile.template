@@ -33,6 +33,7 @@ RUN echo $ARTIFACT_URL
 RUN mkdir -p $LOGDIR
 ADD cache /cache
 RUN ls cache
+RUN chmod 777 -R /cache
 #RUN wget --header "Authorization: Basic ${OKTA_CREDS}" "${ARTIFACT_URL}" -O ${INSTALLDIR}/${FINAL_ARTIFACT_NAME}.${ARTIFACT_PACKAGING_TYPE}
 
 
