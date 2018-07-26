@@ -1,4 +1,10 @@
 FROM docker.pubmatic.com/centos6go1.8
+
+ADD startup.sh /startup.sh
+
+ADD propertyReplace.sh /propertyReplace.sh
+RUN chmod +x /propertyReplace.sh
+
 # Get project details
  ENV OKTA_CREDS=SmVua2luczpjb250aW51b3VzLWludGVncmF0aW9u
  #ENV GROUP_ID GROUP_ID_VAR
@@ -14,21 +20,14 @@ ENV ENVIORNMENT Nothing
 
 RUN echo ${GROUP_ID}
 
-#FOR TEST
-#ENV ARTIFACT_ID SSHeaderBidding
-#ENV ARTIFACT_VERSION 0.0.2-docker.170
 ENV ARTIFACT_PACKAGING_TYPE zip
-#ENV FINAL_ARTIFACT_NAME dmhbserver
-ENV INSTALLDIR /usr/local/prebid-cache
-ENV ENVIORNMENT dev
+ENV INSTALLDIR cache
+#ENV ENVIORNMENT dev
 ENV LOGDIR /var/log/
 
-#http://repo.pubmatic.com/artifactory/libs-release-local/com/pubmatic/alchemy/SSHeaderBidding/0.0.2-docker.170/SSHeaderBidding-0.0.2-docker.170.zip
 ENV ARTIFACT_URL http://repo.pubmatic.com/artifactory/libs-release-local/${GROUP_ID}/${ARTIFACT_ID}/${ARTIFACT_VERSION}/${ARTIFACT_ID}-${ARTIFACT_VERSION}.${ARTIFACT_PACKAGING_TYPE}
 
 RUN echo $ARTIFACT_URL
-
-#ENV APP_RESOURCES_URL  http://repo.pubmatic.com/artifactory/libs-release-local/${GROUP_ID}/${APP_RESOURCES_ARTIFACT}/${ARTIFACT_VERSION}/${APP_RESOURCES_ARTIFACT}-${ARTIFACT_VERSION}-app-resources.tar.gz
 
 RUN mkdir -p $INSTALLDIR
 RUN mkdir -p $LOGDIR
@@ -38,9 +37,11 @@ RUN wget --header "Authorization: Basic ${OKTA_CREDS}" "${ARTIFACT_URL}" -O ${IN
 
 RUN yum install -y unzip
 RUN unzip ${INSTALLDIR}/${FINAL_ARTIFACT_NAME}.${ARTIFACT_PACKAGING_TYPE} -d ${INSTALLDIR}
-#RUN tar -xvf ${INSTALLDIR}/dmhbserver.tar -C ${INSTALLDIR}
 
 # Run Startup script
-CMD ["./usr/local/prebid-cache/prebid-cache"]
+#CMD ["./usr/local/prebid-cache/prebid-cache"]
+CMD ["sh","/startup.sh"]
 
-EXPOSE 22 8001
+EXPOSE 2424
+
+ADD cache /
