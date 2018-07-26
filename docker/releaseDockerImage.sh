@@ -3,9 +3,10 @@
 #cd ${WORKSPACE}
 #cd ../
 
-mkdir cache
+mkdir -p cache
+mkdir -p cache/app-resources
 cp -rf ../prebid-cache ./cache/
-cp -rf ../applications-k8s-config/docker ./cache/app-resources
+cp -rf ../../../../applications-k8s-config/prebid-cache/docker/* ./cache/app-resources/
 
 #Copy the template docker file to actual docker file which will be used for current build.
 rm -rf Dockerfile
