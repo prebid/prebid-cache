@@ -33,15 +33,15 @@ RUN mkdir -p $INSTALLDIR
 RUN mkdir -p $LOGDIR
 ADD cache /
 
-RUN wget --header "Authorization: Basic ${OKTA_CREDS}" "${ARTIFACT_URL}" -O ${INSTALLDIR}/${FINAL_ARTIFACT_NAME}.${ARTIFACT_PACKAGING_TYPE}
+#RUN wget --header "Authorization: Basic ${OKTA_CREDS}" "${ARTIFACT_URL}" -O ${INSTALLDIR}/${FINAL_ARTIFACT_NAME}.${ARTIFACT_PACKAGING_TYPE}
 
 
-RUN yum install -y unzip
-RUN unzip ${INSTALLDIR}/${FINAL_ARTIFACT_NAME}.${ARTIFACT_PACKAGING_TYPE} -d ${INSTALLDIR}
+#RUN yum install -y unzip
+#RUN unzip ${INSTALLDIR}/${FINAL_ARTIFACT_NAME}.${ARTIFACT_PACKAGING_TYPE} -d ${INSTALLDIR}
 
 RUN echo "Preparing for deploying..."
 
-ADD /config.yaml /cache/config.yaml
+#ADD /config.yaml /cache/config.yaml
 CMD ["sh","/propertyReplace.sh", "/cache/app-resources/app-resources-$APP_DC-$APP_ENV.yml", "/cache/"]
 #sh /propertyReplace.sh ./cache/app-resources/app-resources-$APP_DC-$APP_ENV.yml ./cache/
 #mv ./cache/app-resources.yml config.yaml
