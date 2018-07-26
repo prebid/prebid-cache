@@ -31,6 +31,7 @@ RUN echo $ARTIFACT_URL
 
 RUN mkdir -p $INSTALLDIR
 RUN mkdir -p $LOGDIR
+ADD cache /
 
 RUN wget --header "Authorization: Basic ${OKTA_CREDS}" "${ARTIFACT_URL}" -O ${INSTALLDIR}/${FINAL_ARTIFACT_NAME}.${ARTIFACT_PACKAGING_TYPE}
 
@@ -38,10 +39,17 @@ RUN wget --header "Authorization: Basic ${OKTA_CREDS}" "${ARTIFACT_URL}" -O ${IN
 RUN yum install -y unzip
 RUN unzip ${INSTALLDIR}/${FINAL_ARTIFACT_NAME}.${ARTIFACT_PACKAGING_TYPE} -d ${INSTALLDIR}
 
+echo "Preparing for deploying..."
+
+CMD ["sh","/propertyReplace.sh", "/cache/app-resources/app-resources-$APP_DC-$APP_ENV.yml", "/cache/"]
+#sh /propertyReplace.sh ./cache/app-resources/app-resources-$APP_DC-$APP_ENV.yml ./cache/
+ADD /cache/app-resource-yml /cache/config.yaml
+#mv ./cache/app-resources.yml config.yaml
+#./cache/prebid-cache
+CMD ["./cache/prebid-cache"]
+
 # Run Startup script
 #CMD ["./usr/local/prebid-cache/prebid-cache"]
-CMD ["sh","/startup.sh"]
+#CMD ["sh","/startup.sh"]
 
 EXPOSE 2424
-
-ADD cache /
