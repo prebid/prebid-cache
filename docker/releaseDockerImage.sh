@@ -1,13 +1,9 @@
 #!/bin/sh -xe
 #You need to be in dokcer directory to execute this script
-#cd ${WORKSPACE}
-#cd ../
 
-mkdir -p cache
 mkdir -p cache/app-resources
 cp -rf ../prebid-cache ./cache/
-cp -rf ../config.yaml ./cache/
-cp -rf ../../../../applications-k8s-config.git/prebid-cache/docker/* ./cache/app-resources/
+cp -rf ../../../../applications-k8s-config/prebid-cache/docker/* ./cache/app-resources/
 
 #Copy the template docker file to actual docker file which will be used for current build.
 rm -rf Dockerfile
