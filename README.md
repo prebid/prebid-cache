@@ -15,10 +15,12 @@ Adds one or more values to the cache. Values can be given as either JSON or XML.
   "puts": [
     {
       "type": "xml",
+      "ttlseconds": 60,
       "value": "<tag>Your XML content goes here.</tag>"
     },
     {
       "type": "json",
+      "ttlseconds": 300,
       "value": [1, true, "JSON value of any type can go here."]
     }
   ]
@@ -28,6 +30,9 @@ Adds one or more values to the cache. Values can be given as either JSON or XML.
 If any of the `puts` are invalid, then it responds with a **400** none of the values will be retrievable.
 Assuming that all of the values are well-formed, then the server will respond with IDs which can be used to
 fetch the values later.
+
+**Note**: `ttlseconds` is optional, and will only be honored on a _best effort_ basis.
+Callers should never _assume_ that the data will stay in the cache for that long.
 
 ```json
 {
