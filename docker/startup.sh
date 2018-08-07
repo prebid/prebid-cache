@@ -11,8 +11,7 @@ if [ $APP_ENV != "Nothing" ] && [ $APP_DC != "Nothing" ]
     then
         echo "Using APP_ENV and APP_DC environment variables."
         cp /cache/app-resources/prebid-cache_$APP_DC-$APP_ENV.yaml /config.yaml
-        nohup ./cache/prebid-cache &
+        ./cache/prebid-cache
     else
         echo "APP_ENV or APP DC environment variables not passed."
 fi
-echo "startup.sh execution complete"
