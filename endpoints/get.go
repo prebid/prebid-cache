@@ -40,6 +40,7 @@ func NewGetHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 		logger.Info("Time taken by backend.Get: %v", backendDiffTime)
 		if err != nil {
 			stats.LogCacheMissStats()
+			logger.Info("Cache miss for uuid: %v", id)
 			http.Error(w, "No content stored for uuid="+id, http.StatusNotFound)
 			end := time.Now()
 			totalTime := (end.Sub(start)).Nanoseconds() / 1000000
