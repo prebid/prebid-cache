@@ -1,9 +1,13 @@
 package compression
 
 import (
-	"github.com/prebid/prebid-cache/backends"
 	"context"
+	"time"
+
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
+
 	"github.com/golang/snappy"
+	"github.com/prebid/prebid-cache/backends"
 )
 
 // SnappyCompress runs snappy compression on data before saving it in the backend.
@@ -14,15 +18,22 @@ func SnappyCompress(backend backends.Backend) backends.Backend {
 	}
 }
 
-type snappyCompressor struct{
+type snappyCompressor struct {
 	delegate backends.Backend
 }
 
 func (s *snappyCompressor) Put(ctx context.Context, key string, value string) error {
-	return s.delegate.Put(ctx, key, string(snappy.Encode(nil, []byte(value))))
+	start := time.Now().Nanosecond()
+
+	p := s.delegate.Put(ctx, key, string(snappy.Encode(nil, []byte(value))))
+	end := time.Now().Nanosecond()
+	totalTime := (end.Sub(start.Nanosecond())) / 1000000
+	logger.Info("Time for snappy put: %v", totalTime)
+	return p
 }
 
 func (s *snappyCompressor) Get(ctx context.Context, key string) (string, error) {
+	start := time.Now().Nanosecond()
 	compressed, err := s.delegate.Get(ctx, key)
 	if err != nil {
 		return "", err
@@ -32,6 +43,9 @@ func (s *snappyCompressor) Get(ctx context.Context, key string) (string, error) 
 	if err != nil {
 		return "", err
 	}
+	end := time.Now().Nanosecond()
+	totalTime := (end.Sub(start.Nanosecond())) / 1000000
+	logger.Info("Time for snappy get: %v", totalTime)
 
 	return string(decompressed), nil
 }

@@ -35,7 +35,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 	}
 
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		start := time.Now().Unix()
+		start := time.Now()
 		stats.LogCacheRequestedPutStats()
 		logger.Info("POST /cache called")
 		body, err := ioutil.ReadAll(r.Body)
@@ -99,8 +99,11 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 			resps.Responses[i].UUID = uuid.NewV4().String()
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
+			backendStartTime := time.Now().Nanosecond()
 			err = backend.Put(ctx, resps.Responses[i].UUID, toCache)
-
+			backendEndTime := time.Now().Nanosecond()
+			backendDiffTime := (backendEndTime.Sub(backendStartTime)) / 1000000
+			logger.Info("Time taken by backend.Put: %v", backendDiffTime)
 			if err != nil {
 
 				if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
@@ -120,6 +123,9 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 					logger.Error("POST /cache had an unexpected error:", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 				}
+				end := time.Now().Nanosecond()
+				totalTime := (end.Sub(start.Nanosecond())) / 1000000
+				logger.Info("Total time for put: %v", totalTime)
 				return
 			}
 			// log info
@@ -133,7 +139,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 				pubID := bidExt["pubId"]           // TODO: check key name and type
 				platformID := bidExt["platformId"] // TODO: check key name and type
 				requestID := bidExt["requestId"]   // TODO: check key name and type
-				log.DebugWithRequestID(requestID.(string), "pubId: %s, platformId: %s, UUID: %s, Time: %v, Referer: %s", pubID, platformID, resps.Responses[i].UUID, start, r.Referer())
+				log.DebugWithRequestID(requestID.(string), "pubId: %s, platformId: %s, UUID: %s, Time: %v, Referer: %s", pubID, platformID, resps.Responses[i].UUID, start.Unix(), r.Referer())
 			}
 
 		}
@@ -148,6 +154,9 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 		/* Handles POST */
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(bytes)
+		end := time.Now().Nanosecond()
+		totalTime := (end.Sub(start.Nanosecond())) / 1000000
+		logger.Info("Total time for put: %v", totalTime)
 	}
 }
 
