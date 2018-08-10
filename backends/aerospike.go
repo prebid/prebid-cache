@@ -35,7 +35,7 @@ func NewAerospikeBackend(cfg config.Aerospike) *Aerospike {
 }
 
 func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
-	aerospikeStartTime := time.Now().Nanosecond()
+	aerospikeStartTime := time.Now()
 	asKey, err := as.NewKey(a.cfg.Namespace, setName, key)
 	if err != nil {
 		return "", err
@@ -47,14 +47,14 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 	if rec == nil {
 		return "", errors.New("client.Get returned a nil record. Is aerospike configured properly?")
 	}
-	aerospikeEndTime := time.Now().Nanosecond()
-	aerospikeDiffTime := (aerospikeEndTime.Sub(aerospikeStartTime)) / 1000000
+	aerospikeEndTime := time.Now()
+	aerospikeDiffTime := (aerospikeEndTime.Sub(aerospikeStartTime)).Nanoseconds() / 1000000
 	logger.Info("Time taken by Aerospike for get: %v", aerospikeDiffTime)
 	return rec.Bins[binValue].(string), nil
 }
 
 func (a *Aerospike) Put(ctx context.Context, key string, value string) error {
-	aerospikeStartTime := time.Now().Nanosecond()
+	aerospikeStartTime := time.Now()
 	asKey, err := as.NewKey(a.cfg.Namespace, setName, key)
 	if err != nil {
 		return err
@@ -66,8 +66,8 @@ func (a *Aerospike) Put(ctx context.Context, key string, value string) error {
 	if err != nil {
 		return err
 	}
-	aerospikeEndTime := time.Now().Nanosecond()
-	aerospikeDiffTime := (aerospikeEndTime.Sub(aerospikeStartTime)) / 1000000
+	aerospikeEndTime := time.Now()
+	aerospikeDiffTime := (aerospikeEndTime.Sub(aerospikeStartTime)).Nanoseconds() / 1000000
 	logger.Info("Time taken by Aerospike for put: %v", aerospikeDiffTime)
 	return nil
 }

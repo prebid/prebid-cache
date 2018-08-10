@@ -99,10 +99,10 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 			resps.Responses[i].UUID = uuid.NewV4().String()
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
-			backendStartTime := time.Now().Nanosecond()
+			backendStartTime := time.Now()
 			err = backend.Put(ctx, resps.Responses[i].UUID, toCache)
-			backendEndTime := time.Now().Nanosecond()
-			backendDiffTime := (backendEndTime.Sub(backendStartTime)) / 1000000
+			backendEndTime := time.Now()
+			backendDiffTime := (backendEndTime.Sub(backendStartTime)).Nanoseconds() / 1000000
 			logger.Info("Time taken by backend.Put: %v", backendDiffTime)
 			if err != nil {
 
@@ -123,8 +123,8 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 					logger.Error("POST /cache had an unexpected error:", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 				}
-				end := time.Now().Nanosecond()
-				totalTime := (end.Sub(start.Nanosecond())) / 1000000
+				end := time.Now()
+				totalTime := (end.Sub(start)).Nanoseconds() / 1000000
 				logger.Info("Total time for put: %v", totalTime)
 				return
 			}
@@ -154,8 +154,8 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 		/* Handles POST */
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(bytes)
-		end := time.Now().Nanosecond()
-		totalTime := (end.Sub(start.Nanosecond())) / 1000000
+		end := time.Now()
+		totalTime := (end.Sub(start)).Nanoseconds() / 1000000
 		logger.Info("Total time for put: %v", totalTime)
 	}
 }

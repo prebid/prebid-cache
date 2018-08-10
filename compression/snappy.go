@@ -23,17 +23,17 @@ type snappyCompressor struct {
 }
 
 func (s *snappyCompressor) Put(ctx context.Context, key string, value string) error {
-	start := time.Now().Nanosecond()
+	start := time.Now()
 
 	p := s.delegate.Put(ctx, key, string(snappy.Encode(nil, []byte(value))))
-	end := time.Now().Nanosecond()
-	totalTime := (end.Sub(start.Nanosecond())) / 1000000
+	end := time.Now()
+	totalTime := (end.Sub(start)).Nanoseconds() / 1000000
 	logger.Info("Time for snappy put: %v", totalTime)
 	return p
 }
 
 func (s *snappyCompressor) Get(ctx context.Context, key string) (string, error) {
-	start := time.Now().Nanosecond()
+	start := time.Now()
 	compressed, err := s.delegate.Get(ctx, key)
 	if err != nil {
 		return "", err
@@ -43,8 +43,8 @@ func (s *snappyCompressor) Get(ctx context.Context, key string) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	end := time.Now().Nanosecond()
-	totalTime := (end.Sub(start.Nanosecond())) / 1000000
+	end := time.Now()
+	totalTime := (end.Sub(start)).Nanoseconds() / 1000000
 	logger.Info("Time for snappy get: %v", totalTime)
 
 	return string(decompressed), nil

@@ -32,17 +32,17 @@ func NewGetHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
 		logger.Debug("UUID: %s requested at time: %v, Referer: %s", id, start.Unix(), r.Referer())
-		backendStartTime := time.Now().Nanosecond()
+		backendStartTime := time.Now()
 		value, err := backend.Get(ctx, id)
 
-		backendEndTime := time.Now().Nanosecond()
-		backendDiffTime := (backendEndTime.Sub(backendStartTime)) / 1000000
+		backendEndTime := time.Now()
+		backendDiffTime := (backendEndTime.Sub(backendStartTime)).Nanoseconds() / 1000000
 		logger.Info("Time taken by backend.Get: %v", backendDiffTime)
 		if err != nil {
 			stats.LogCacheMissStats()
 			http.Error(w, "No content stored for uuid="+id, http.StatusNotFound)
-			end := time.Now().Nanosecond()
-			totalTime := (end.Sub(start.Nanosecond())) / 1000000
+			end := time.Now()
+			totalTime := (end.Sub(start)).Nanoseconds() / 1000000
 			logger.Info("Total time for get: %v", totalTime)
 			return
 		}
@@ -56,8 +56,8 @@ func NewGetHandler(backend backends.Backend) func(http.ResponseWriter, *http.Req
 		} else {
 			http.Error(w, "Cache data was corrupted. Cannot determine type.", http.StatusInternalServerError)
 		}
-		end := time.Now().Nanosecond()
-		totalTime := (end.Sub(start.Nanosecond())) / 1000000
+		end := time.Now()
+		totalTime := (end.Sub(start)).Nanoseconds() / 1000000
 		logger.Info("Total time for get: %v", totalTime)
 	}
 }
