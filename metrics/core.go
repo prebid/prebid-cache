@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/rcrowley/go-metrics"
 	"github.com/vrischmann/go-metrics-influxdb"
@@ -76,7 +76,7 @@ type Metrics struct {
 func (m *Metrics) Export(cfg config.Metrics) {
 	switch cfg.Type {
 	case config.MetricsInflux:
-		logrus.Infof("Metrics will be exported to Influx with host=%s, db=%s, username=%s", cfg.Influx.Host, cfg.Influx.Database, cfg.Influx.Username)
+		logger.Info("Metrics will be exported to Influx with host=%s, db=%s, username=%s", cfg.Influx.Host, cfg.Influx.Database, cfg.Influx.Username)
 		influxdb.InfluxDB(
 			m.Registry,          // metrics registry
 			time.Second*10,      // interval
@@ -88,7 +88,7 @@ func (m *Metrics) Export(cfg config.Metrics) {
 	case config.MetricsNone:
 		return
 	default:
-		logrus.Fatalf("Unrecognized config metrics.type: %s", cfg.Type)
+		logger.Fatal("Unrecognized config metrics.type: %s", cfg.Type)
 	}
 	return
 }

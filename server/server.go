@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
 
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
@@ -38,12 +38,12 @@ func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.Con
 	// Attach the servers to the sockets
 	mainListener, err := newListener(mainServer.Addr, metrics)
 	if err != nil {
-		log.Errorf("Error listening for TCP connections on %s: %v", mainServer.Addr, err)
+		logger.Error("Error listening for TCP connections on %s: %v", mainServer.Addr, err)
 		return
 	}
 	adminListener, err := newListener(adminServer.Addr, nil)
 	if err != nil {
-		log.Errorf("Error listening for TCP connections on %s: %v", adminServer.Addr, err)
+		logger.Error("Error listening for TCP connections on %s: %v", adminServer.Addr, err)
 		return
 	}
 	go runServer(mainServer, "Main", mainListener)
@@ -72,9 +72,9 @@ func newMainServer(cfg config.Configuration, handler http.Handler) *http.Server 
 }
 
 func runServer(server *http.Server, name string, listener net.Listener) {
-	log.Infof("%s server starting on: %s", name, server.Addr)
+	logger.Info("%s server starting on: %s", name, server.Addr)
 	err := server.Serve(listener)
-	log.Errorf("%s server quit with error: %v", name, err)
+	logger.Error("%s server quit with error: %v", name, err)
 }
 
 func newListener(address string, metrics *metrics.ConnectionMetrics) (net.Listener, error) {
@@ -87,7 +87,7 @@ func newListener(address string, metrics *metrics.ConnectionMetrics) (net.Listen
 	if casted, ok := ln.(*net.TCPListener); ok {
 		ln = &tcpKeepAliveListener{casted}
 	} else {
-		log.Warning("net.Listen(\"tcp\", \"addr\") didn't return a TCPListener as it did in Go 1.9. Things will probably work fine... but this should be investigated.")
+		logger.Warn("net.Listen(\"tcp\", \"addr\") didn't return a TCPListener as it did in Go 1.9. Things will probably work fine... but this should be investigated.")
 	}
 
 	if metrics != nil {
@@ -116,9 +116,9 @@ func shutdownAfterSignals(server *http.Server, stopper <-chan os.Signal, done ch
 	defer cancel()
 
 	var s struct{}
-	log.Infof("Stopping %s because of signal: %s", server.Addr, sig.String())
+	logger.Info("Stopping %s because of signal: %s", server.Addr, sig.String())
 	if err := server.Shutdown(ctx); err != nil {
-		log.Errorf("Failed to shutdown %s: %v", server.Addr, err)
+		logger.Error("Failed to shutdown %s: %v", server.Addr, err)
 	}
 	done <- s
 }

@@ -2,8 +2,9 @@ package config
 
 import (
 	"strings"
+	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
 	"github.com/prebid/prebid-cache/stats"
 	"github.com/spf13/viper"
 )
@@ -15,16 +16,25 @@ func NewConfig() Configuration {
 	setEnvVars(v)
 
 	if err := v.ReadInConfig(); err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		logger.Fatal("Failed to load config: %v", err)
 	}
 	cfg := Configuration{}
 	if err := v.Unmarshal(&cfg); err != nil {
-		log.Fatalf("Failed to unmarshal config: %v", err)
+		logger.Fatal("Failed to unmarshal config: %v", err)
 	}
 	//Initialize Stats Server
 	stats.InitStat(cfg.Stats.StatsHost, cfg.Stats.StatsPort,
 		cfg.Server.ServerName,
 		cfg.Stats.StatsDCName)
+
+	var logConf logger.LogConf
+	logConf.LogLevel = cfg.OWLog.LogLevel
+	logConf.LogPath = cfg.OWLog.LogPath
+	logConf.LogRotationTime = cfg.OWLog.LogRotationTime
+	logConf.MaxLogFiles = cfg.OWLog.MaxLogFiles
+	logConf.MaxLogSize = cfg.OWLog.MaxLogSize
+	//Initialize logger
+	logger.InitGlog(logConf)
 	return cfg
 }
 
@@ -59,13 +69,14 @@ type Configuration struct {
 	Metrics       Metrics       `mapstructure:"metrics"`
 	Stats         Stats         `mapstructure:"stats"`
 	Server        Server        `mapstructure:"server"`
+	OWLog         OWLog         `mapstructure:"ow_log"`
 }
 
 // ValidateAndLog validates the config, terminating the program on any errors.
 // It also logs the config values that it used.
 func (cfg *Configuration) ValidateAndLog() {
-	log.Infof("config.port: %d", cfg.Port)
-	log.Infof("config.admin_port: %d", cfg.AdminPort)
+	logger.Info("config.port: %d", cfg.Port)
+	logger.Info("config.admin_port: %d", cfg.AdminPort)
 	cfg.Log.validateAndLog()
 	cfg.RateLimiting.validateAndLog()
 	cfg.RequestLimits.validateAndLog()
@@ -74,6 +85,7 @@ func (cfg *Configuration) ValidateAndLog() {
 	cfg.Metrics.validateAndLog()
 	cfg.Stats.validateAndLog()
 	cfg.Server.validateAndLog()
+	cfg.OWLog.validateAndLog()
 }
 
 type Log struct {
@@ -81,7 +93,7 @@ type Log struct {
 }
 
 func (cfg *Log) validateAndLog() {
-	log.Infof("config.log.level: %s", cfg.Level)
+	logger.Info("config.log.level: %s", cfg.Level)
 }
 
 type LogLevel string
@@ -101,8 +113,8 @@ type RateLimiting struct {
 }
 
 func (cfg *RateLimiting) validateAndLog() {
-	log.Infof("config.rate_limiter.enabled: %t", cfg.Enabled)
-	log.Infof("config.rate_limiter.num_requests: %d", cfg.MaxRequestsPerSecond)
+	logger.Info("config.rate_limiter.enabled: %t", cfg.Enabled)
+	logger.Info("config.rate_limiter.num_requests: %d", cfg.MaxRequestsPerSecond)
 }
 
 type RequestLimits struct {
@@ -111,8 +123,8 @@ type RequestLimits struct {
 }
 
 func (cfg *RequestLimits) validateAndLog() {
-	log.Infof("config.request_limits.max_size_bytes: %d", cfg.MaxSize)
-	log.Infof("config.request_limits.max_num_values: %d", cfg.MaxNumValues)
+	logger.Info("config.request_limits.max_size_bytes: %d", cfg.MaxSize)
+	logger.Info("config.request_limits.max_num_values: %d", cfg.MaxNumValues)
 }
 
 type Compression struct {
@@ -124,9 +136,9 @@ func (cfg *Compression) validateAndLog() {
 	case CompressionNone:
 		fallthrough
 	case CompressionSnappy:
-		log.Infof("config.compression.type: %s", cfg.Type)
+		logger.Info("config.compression.type: %s", cfg.Type)
 	default:
-		log.Fatalf(`invalid config.compression.type: %s. It must be "none" or "snappy"`, cfg.Type)
+		logger.Fatal(`invalid config.compression.type: %s. It must be "none" or "snappy"`, cfg.Type)
 	}
 }
 
@@ -143,13 +155,13 @@ type Metrics struct {
 }
 
 func (cfg *Metrics) validateAndLog() {
-	log.Infof("config.metrics.type: %s", cfg.Type)
+	logger.Info("config.metrics.type: %s", cfg.Type)
 	switch cfg.Type {
 	case MetricsNone:
 	case MetricsInflux:
 		cfg.Influx.validateAndLog()
 	default:
-		log.Fatalf(`invalid config.metrics.type: %s. It must be "none" or "influx"`, cfg.Type)
+		logger.Fatal(`invalid config.metrics.type: %s. It must be "none" or "influx"`, cfg.Type)
 	}
 }
 
@@ -168,8 +180,8 @@ type Influx struct {
 }
 
 func (cfg *Influx) validateAndLog() {
-	log.Infof("config.metrics.influx.host: %s", cfg.Host)
-	log.Infof("config.metrics.influx.database: %s", cfg.Database)
+	logger.Info("config.metrics.influx.host: %s", cfg.Host)
+	logger.Info("config.metrics.influx.database: %s", cfg.Database)
 	// This intentionally skips username and password for security reasons.
 }
 
@@ -180,9 +192,9 @@ type Stats struct {
 }
 
 func (cfg *Stats) validateAndLog() {
-	log.Infof("config.stats.host: %s", cfg.StatsHost)
-	log.Infof("config.stats.port: %s", cfg.StatsPort)
-	log.Infof("config.stats.dc_name: %s", cfg.StatsDCName)
+	logger.Info("config.stats.host: %s", cfg.StatsHost)
+	logger.Info("config.stats.port: %s", cfg.StatsPort)
+	logger.Info("config.stats.dc_name: %s", cfg.StatsDCName)
 }
 
 type Server struct {
@@ -191,7 +203,22 @@ type Server struct {
 }
 
 func (cfg *Server) validateAndLog() {
-	log.Infof("config.server.port: %s", cfg.ServerPort)
-	log.Infof("config.server.name: %s", cfg.ServerName)
+	logger.Info("config.server.port: %s", cfg.ServerPort)
+	logger.Info("config.server.name: %s", cfg.ServerName)
 }
 
+type OWLog struct {
+	LogLevel        logger.LogLevel `mapstructure:"level"`
+	LogPath         string          `mapstructure:"path"`
+	LogRotationTime time.Duration   `mapstructure:"rotation_time"`
+	MaxLogFiles     int             `mapstructure:"max_log_files"`
+	MaxLogSize      uint64          `mapstructure:"max_log_size"`
+}
+
+func (cfg *OWLog) validateAndLog() {
+	logger.Info("config.ow_log.level: %v", cfg.LogLevel)
+	logger.Info("config.ow_log.path: %s", cfg.LogPath)
+	logger.Info("config.ow_log.rotation_time: %v", cfg.LogRotationTime)
+	logger.Info("config.ow_log.max_log_files: %v", cfg.MaxLogFiles)
+	logger.Info("config.ow_log.max_log_size: %v", cfg.MaxLogSize)
+}

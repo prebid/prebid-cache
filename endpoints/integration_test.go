@@ -10,7 +10,13 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/stats"
 )
+
+func init() {
+	//Initialize Stats Server
+	stats.InitStat("127.0.0.1", "8888", "TestHost", "TestDC")
+}
 
 func doMockGet(t *testing.T, router *httprouter.Router, id string) *httptest.ResponseRecorder {
 	requestRecorder := httptest.NewRecorder()

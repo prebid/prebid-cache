@@ -38,3 +38,9 @@ stats:
 server:
   port: "$SERVER_PORT"
   name: "$SERVER_NAME"
+ow_log:
+  path: "/var/log/prebidcache/"
+  level: 1 #DEBUG=1, INFO=2, WARN=3, ERROR=4, CRITICAL=5, FATAL=6
+  max_log_size: 2000000000   #size in byte
+  rotation_time: 60      # time is in minutes
+  max_log_files: 10   # Number of log files to be kept at log path

@@ -1,6 +1,8 @@
 package config
 
-import log "github.com/Sirupsen/logrus"
+import (
+	"git.pubmatic.com/PubMatic/go-common.git/logger"
+)
 
 type Backend struct {
 	Type      BackendType `mapstructure:"type"`
@@ -11,7 +13,7 @@ type Backend struct {
 }
 
 func (cfg *Backend) validateAndLog() {
-	log.Infof("config.backend.type: %s", cfg.Type)
+	logger.Info("config.backend.type: %s", cfg.Type)
 	switch cfg.Type {
 	case BackendAerospike:
 		cfg.Aerospike.validateAndLog()
@@ -23,7 +25,7 @@ func (cfg *Backend) validateAndLog() {
 		cfg.Memcache.validateAndLog()
 	case BackendMemory:
 	default:
-		log.Fatalf(`invalid config.backend.type: %s. It must be "aerospike", "azure", "cassandra", "memcache", or "memory".`, cfg.Type)
+		logger.Fatal(`invalid config.backend.type: %s. It must be "aerospike", "azure", "cassandra", "memcache", or "memory".`, cfg.Type)
 	}
 }
 
@@ -44,9 +46,9 @@ type Aerospike struct {
 }
 
 func (cfg *Aerospike) validateAndLog() {
-	log.Infof("config.backend.aerospike.host: %s", cfg.Host)
-	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
-	log.Infof("config.backend.aerospike.namespace: %s", cfg.Namespace)
+	logger.Info("config.backend.aerospike.host: %s", cfg.Host)
+	logger.Info("config.backend.aerospike.port: %d", cfg.Port)
+	logger.Info("config.backend.aerospike.namespace: %s", cfg.Namespace)
 }
 
 type Azure struct {
@@ -55,8 +57,8 @@ type Azure struct {
 }
 
 func (cfg *Azure) validateAndLog() {
-	log.Infof("config.backend.azure.account: %s", cfg.Account)
-	log.Infof("config.backend.azure.key: %s", cfg.Key)
+	logger.Info("config.backend.azure.account: %s", cfg.Account)
+	logger.Info("config.backend.azure.key: %s", cfg.Key)
 }
 
 type Cassandra struct {
@@ -65,8 +67,8 @@ type Cassandra struct {
 }
 
 func (cfg *Cassandra) validateAndLog() {
-	log.Infof("config.backend.cassandra.hosts: %s", cfg.Hosts)
-	log.Infof("config.backend.cassandra.keyspace: %s", cfg.Keyspace)
+	logger.Info("config.backend.cassandra.hosts: %s", cfg.Hosts)
+	logger.Info("config.backend.cassandra.keyspace: %s", cfg.Keyspace)
 }
 
 type Memcache struct {
@@ -74,5 +76,5 @@ type Memcache struct {
 }
 
 func (cfg *Memcache) validateAndLog() {
-	log.Infof("config.backend.memcache.hosts: %v", cfg.Hosts)
+	logger.Info("config.backend.memcache.hosts: %v", cfg.Hosts)
 }
