@@ -3,7 +3,7 @@
 
 mkdir -p cache/app-resources
 cp -rf ../prebid-cache ./cache/
-cp -rf ../../../../applications-k8s-config.git/prebid-cache/docker/* ./cache/app-resources/
+cp -rf ../../../../applications-k8s-config.git/prebid-cache/app-config/* ./cache/app-resources/
 
 #Copy the template docker file to actual docker file which will be used for current build.
 rm -rf Dockerfile
