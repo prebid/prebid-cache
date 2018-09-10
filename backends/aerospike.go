@@ -51,12 +51,14 @@ func (a *Aerospike) Put(ctx context.Context, key string, value string, ttlSecond
 	if err != nil {
 		return err
 	}
-	// TODO: if ttlSeconds == 0 { ...set to default config option... }
+	if ttlSeconds == 0 {
+		ttlSeconds = a.cfg.DefaultTTL
+	}
 	bins := as.BinMap{
 		binValue: value,
 	}
 	err = a.client.Put(&as.WritePolicy{
-		Expiration: uint32(a.cfg.DefaultTTL),
+		Expiration: uint32(ttlSeconds),
 	}, asKey, bins)
 	if err != nil {
 		return err
