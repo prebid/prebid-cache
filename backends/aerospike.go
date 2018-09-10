@@ -3,7 +3,6 @@ package backends
 import (
 	"context"
 	"errors"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	as "github.com/aerospike/aerospike-client-go"
@@ -14,9 +13,8 @@ const setName = "uuid"
 const binValue = "value"
 
 type Aerospike struct {
-	cfg        config.Aerospike
-	client     *as.Client
-	defaultTTL time.Duration
+	cfg    config.Aerospike
+	client *as.Client
 }
 
 func NewAerospikeBackend(cfg config.Aerospike) *Aerospike {
