@@ -55,7 +55,9 @@ func (a *Aerospike) Put(ctx context.Context, key string, value string, ttlSecond
 	bins := as.BinMap{
 		binValue: value,
 	}
-	err = a.client.Put(nil, asKey, bins)
+	err = a.client.Put(&as.WritePolicy{
+		Expiration: uint32(a.cfg.DefaultTTL),
+	}, asKey, bins)
 	if err != nil {
 		return err
 	}
