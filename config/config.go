@@ -98,8 +98,9 @@ func (cfg *RateLimiting) validateAndLog() {
 }
 
 type RequestLimits struct {
-	MaxSize      int `mapstructure:"max_size_bytes"`
-	MaxNumValues int `mapstructure:"max_num_values"`
+	MaxSize       int `mapstructure:"max_size_bytes"`
+	MaxNumValues  int `mapstructure:"max_num_values"`
+	MaxTTLSeconds int `mapstructure:"max_ttl_seconds"`
 }
 
 func (cfg *RequestLimits) validateAndLog() {
