@@ -3,6 +3,7 @@ package backends
 import (
 	"context"
 	"errors"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	as "github.com/aerospike/aerospike-client-go"
@@ -13,8 +14,9 @@ const setName = "uuid"
 const binValue = "value"
 
 type Aerospike struct {
-	cfg    config.Aerospike
-	client *as.Client
+	cfg        config.Aerospike
+	client     *as.Client
+	defaultTTL time.Duration
 }
 
 func NewAerospikeBackend(cfg config.Aerospike) *Aerospike {
@@ -54,7 +56,9 @@ func (a *Aerospike) Put(ctx context.Context, key string, value string) error {
 	bins := as.BinMap{
 		binValue: value,
 	}
-	err = a.client.Put(nil, asKey, bins)
+	err = a.client.Put(&as.WritePolicy{
+		Expiration: uint32(a.cfg.DefaultTTL),
+	}, asKey, bins)
 	if err != nil {
 		return err
 	}
