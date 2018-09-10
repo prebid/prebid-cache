@@ -24,6 +24,7 @@ func TestSampleConfig(t *testing.T) {
 	assertIntsEqual(t, "request_limits.max_size_bytes", cfg.RequestLimits.MaxSize, 10240)
 	assertIntsEqual(t, "request_limits.max_num_values", cfg.RequestLimits.MaxNumValues, 10)
 	assertStringsEqual(t, "backend.type", string(cfg.Backend.Type), "memory")
+	assertIntsEqual(t, "backend.aerospike.default_ttl_seconds", cfg.Backend.Aerospike.DefaultTTL, 3600)
 	assertStringsEqual(t, "backend.aerospike.host", cfg.Backend.Aerospike.Host, "aerospike.prebid.com")
 	assertIntsEqual(t, "backend.aerospike.port", cfg.Backend.Aerospike.Port, 3000)
 	assertStringsEqual(t, "backend.aerospike.namespace", cfg.Backend.Aerospike.Namespace, "whatever")
@@ -88,6 +89,7 @@ request_limits:
 backend:
   type: "memory"
   aerospike:
+    default_ttl_seconds: 3600
     host: "aerospike.prebid.com"
     port: 3000
     namespace: "whatever"

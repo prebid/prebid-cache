@@ -1,6 +1,8 @@
 package config
 
-import log "github.com/Sirupsen/logrus"
+import (
+	log "github.com/Sirupsen/logrus"
+)
 
 type Backend struct {
 	Type      BackendType `mapstructure:"type"`
@@ -42,12 +44,14 @@ const (
 )
 
 type Aerospike struct {
-	Host      string `mapstructure:"host"`
-	Port      int    `mapstructure:"port"`
-	Namespace string `mapstructure:"namespace"`
+	DefaultTTL int    `mapstructure:"default_ttl_seconds"`
+	Host       string `mapstructure:"host"`
+	Port       int    `mapstructure:"port"`
+	Namespace  string `mapstructure:"namespace"`
 }
 
 func (cfg *Aerospike) validateAndLog() {
+	log.Infof("config.backend.aerospike.default_ttl_seconds: %d", cfg.DefaultTTL)
 	log.Infof("config.backend.aerospike.host: %s", cfg.Host)
 	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
 	log.Infof("config.backend.aerospike.namespace: %s", cfg.Namespace)
