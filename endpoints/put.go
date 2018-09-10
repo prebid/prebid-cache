@@ -13,12 +13,11 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
-	"github.com/prebid/prebid-cache/config"
 	"github.com/satori/go.uuid"
 )
 
 // PutHandler serves "POST /cache" requests.
-func NewPutHandler(backend backends.Backend, requestLimits config.RequestLimits) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	// TODO(future PR): Break this giant function apart
 	putAnyRequestPool := sync.Pool{
 		New: func() interface{} {
@@ -49,8 +48,8 @@ func NewPutHandler(backend backends.Backend, requestLimits config.RequestLimits)
 			return
 		}
 
-		if len(put.Puts) > requestLimits.MaxNumValues {
-			http.Error(w, fmt.Sprintf("More keys than allowed: %d", requestLimits.MaxNumValues), http.StatusBadRequest)
+		if len(put.Puts) > maxNumValues {
+			http.Error(w, fmt.Sprintf("More keys than allowed: %d", maxNumValues), http.StatusBadRequest)
 			return
 		}
 
