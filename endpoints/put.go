@@ -67,9 +67,6 @@ func NewPutHandler(backend backends.Backend, requestLimits config.RequestLimits)
 				http.Error(w, fmt.Sprintf("request.puts[%d].ttlseconds must not be negative.", p.TTLSeconds), http.StatusBadRequest)
 				return
 			}
-			if p.TTLSeconds > requestLimits.MaxTTLSeconds {
-				p.TTLSeconds = requestLimits.MaxTTLSeconds
-			}
 
 			var toCache string
 			if p.Type == backends.XML_PREFIX {
