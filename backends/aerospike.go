@@ -46,11 +46,12 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 	return rec.Bins[binValue].(string), nil
 }
 
-func (a *Aerospike) Put(ctx context.Context, key string, value string) error {
+func (a *Aerospike) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	asKey, err := as.NewKey(a.cfg.Namespace, setName, key)
 	if err != nil {
 		return err
 	}
+	// TODO: if ttlSeconds == 0 { ...set to default config option... }
 	bins := as.BinMap{
 		binValue: value,
 	}

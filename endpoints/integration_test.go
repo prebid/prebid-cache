@@ -10,6 +10,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/config"
 )
 
 func doMockGet(t *testing.T, router *httprouter.Router, id string) *httptest.ResponseRecorder {
@@ -57,7 +58,10 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 	router := httprouter.New()
 	backend := backends.NewMemoryBackend()
 
-	router.POST("/cache", NewPutHandler(backend, 10))
+	router.POST("/cache", NewPutHandler(backend, config.RequestLimits{
+		MaxNumValues:  10,
+		MaxTTLSeconds: 3600,
+	}))
 	router.GET("/cache", NewGetHandler(backend))
 
 	uuid, putTrace := doMockPut(t, router, putBody)
@@ -85,7 +89,10 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 func expectFailedPut(t *testing.T, requestBody string) {
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	router.POST("/cache", NewPutHandler(backend, 10))
+	router.POST("/cache", NewPutHandler(backend, config.RequestLimits{
+		MaxNumValues:  10,
+		MaxTTLSeconds: 3600,
+	}))
 
 	_, putTrace := doMockPut(t, router, requestBody)
 	if putTrace.Code != http.StatusBadRequest {

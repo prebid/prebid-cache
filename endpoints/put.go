@@ -13,11 +13,12 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/prebid/prebid-cache/config"
 	"github.com/satori/go.uuid"
 )
 
 // PutHandler serves "POST /cache" requests.
-func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(backend backends.Backend, requestLimits config.RequestLimits) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	// TODO(future PR): Break this giant function apart
 	putAnyRequestPool := sync.Pool{
 		New: func() interface{} {
@@ -48,8 +49,8 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 			return
 		}
 
-		if len(put.Puts) > maxNumValues {
-			http.Error(w, fmt.Sprintf("More keys than allowed: %d", maxNumValues), http.StatusBadRequest)
+		if len(put.Puts) > requestLimits.MaxNumValues {
+			http.Error(w, fmt.Sprintf("More keys than allowed: %d", requestLimits.MaxNumValues), http.StatusBadRequest)
 			return
 		}
 
@@ -65,6 +66,9 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 			if p.TTLSeconds < 0 {
 				http.Error(w, fmt.Sprintf("request.puts[%d].ttlseconds must not be negative.", p.TTLSeconds), http.StatusBadRequest)
 				return
+			}
+			if p.TTLSeconds > requestLimits.MaxTTLSeconds {
+				p.TTLSeconds = requestLimits.MaxTTLSeconds
 			}
 
 			var toCache string
@@ -90,7 +94,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 			resps.Responses[i].UUID = uuid.NewV4().String()
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
-			err = backend.Put(ctx, resps.Responses[i].UUID, toCache)
+			err = backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
 
 			if err != nil {
 				if _, ok := err.(*backendDecorators.BadPayloadSize); ok {

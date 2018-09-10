@@ -11,9 +11,10 @@ import (
 	"time"
 
 	"context"
+	"sync"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/valyala/fasthttp"
-	"sync"
 )
 
 type AzureValue struct {
@@ -143,7 +144,7 @@ func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error)
 	return av.Value, nil
 }
 
-func (c *AzureTableBackend) Put(ctx context.Context, key string, value string) error {
+func (c *AzureTableBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 
 	if key == "" {
 		return fmt.Errorf("Invalid Key")

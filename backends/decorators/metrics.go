@@ -27,7 +27,7 @@ func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error
 	return val, err
 }
 
-func (b *backendWithMetrics) Put(ctx context.Context, key string, value string) error {
+func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	if strings.HasPrefix(value, backends.XML_PREFIX) {
 		b.puts.XmlRequest.Mark(1)
 	} else if strings.HasPrefix(value, backends.JSON_PREFIX) {
@@ -36,7 +36,7 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string) 
 		b.puts.InvalidRequest.Mark(1)
 	}
 	start := time.Now()
-	err := b.delegate.Put(ctx, key, value)
+	err := b.delegate.Put(ctx, key, value, ttlSeconds)
 	if err == nil {
 		b.puts.Duration.UpdateSince(start)
 	} else {
