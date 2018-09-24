@@ -1,9 +1,10 @@
 package compression
 
 import (
-	"github.com/prebid/prebid-cache/backends"
 	"context"
+
 	"github.com/golang/snappy"
+	"github.com/prebid/prebid-cache/backends"
 )
 
 // SnappyCompress runs snappy compression on data before saving it in the backend.
@@ -14,12 +15,12 @@ func SnappyCompress(backend backends.Backend) backends.Backend {
 	}
 }
 
-type snappyCompressor struct{
+type snappyCompressor struct {
 	delegate backends.Backend
 }
 
-func (s *snappyCompressor) Put(ctx context.Context, key string, value string) error {
-	return s.delegate.Put(ctx, key, string(snappy.Encode(nil, []byte(value))))
+func (s *snappyCompressor) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+	return s.delegate.Put(ctx, key, string(snappy.Encode(nil, []byte(value))), ttlSeconds)
 }
 
 func (s *snappyCompressor) Get(ctx context.Context, key string) (string, error) {

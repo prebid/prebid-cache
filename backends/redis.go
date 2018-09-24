@@ -2,11 +2,12 @@ package backends
 
 import (
 	"context"
+	"strconv"
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-redis/redis"
 	"github.com/prebid/prebid-cache/config"
-	"strconv"
-	"time"
 )
 
 type Redis struct {
@@ -46,8 +47,11 @@ func (redis *Redis) Get(ctx context.Context, key string) (string, error) {
 	return string(res), nil
 }
 
-func (redis *Redis) Put(ctx context.Context, key string, value string) error {
-	err := redis.client.Set(key, value, time.Duration(redis.cfg.Expiration)*time.Minute).Err()
+func (redis *Redis) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+	if ttlSeconds == 0 {
+		ttlSeconds = redis.cfg.Expiration * 60
+	}
+	err := redis.client.Set(key, value, time.Duration(ttlSeconds)*time.Second).Err()
 
 	if err != nil {
 		return err

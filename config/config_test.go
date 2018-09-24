@@ -23,6 +23,7 @@ func TestSampleConfig(t *testing.T) {
 	assertInt64sEqual(t, "rate_limiter.num_requests", cfg.RateLimiting.MaxRequestsPerSecond, 100)
 	assertIntsEqual(t, "request_limits.max_size_bytes", cfg.RequestLimits.MaxSize, 10240)
 	assertIntsEqual(t, "request_limits.max_num_values", cfg.RequestLimits.MaxNumValues, 10)
+	assertIntsEqual(t, "request_limits.max_ttl_seconds", cfg.RequestLimits.MaxTTLSeconds, 5000)
 	assertStringsEqual(t, "backend.type", string(cfg.Backend.Type), "memory")
 	assertIntsEqual(t, "backend.aerospike.default_ttl_seconds", cfg.Backend.Aerospike.DefaultTTL, 3600)
 	assertStringsEqual(t, "backend.aerospike.host", cfg.Backend.Aerospike.Host, "aerospike.prebid.com")
@@ -86,6 +87,7 @@ rate_limiter:
 request_limits:
   max_size_bytes: 10240
   max_num_values: 10
+  max_ttl_seconds: 5000
 backend:
   type: "memory"
   aerospike:

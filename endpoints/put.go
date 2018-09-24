@@ -62,6 +62,10 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 				http.Error(w, "Missing value.", http.StatusBadRequest)
 				return
 			}
+			if p.TTLSeconds < 0 {
+				http.Error(w, fmt.Sprintf("request.puts[%d].ttlseconds must not be negative.", p.TTLSeconds), http.StatusBadRequest)
+				return
+			}
 
 			var toCache string
 			if p.Type == backends.XML_PREFIX {
@@ -86,7 +90,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 			resps.Responses[i].UUID = uuid.NewV4().String()
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
-			err = backend.Put(ctx, resps.Responses[i].UUID, toCache)
+			err = backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
 
 			if err != nil {
 				if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
@@ -124,8 +128,9 @@ type PutRequest struct {
 }
 
 type PutObject struct {
-	Type  string          `json:"type"`
-	Value json.RawMessage `json:"value"`
+	Type       string          `json:"type"`
+	TTLSeconds int             `json:"ttlseconds"`
+	Value      json.RawMessage `json:"value"`
 }
 
 type PutResponseObject struct {

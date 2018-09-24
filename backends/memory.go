@@ -18,7 +18,7 @@ func (b *MemoryBackend) Get(ctx context.Context, key string) (string, error) {
 	return v, nil
 }
 
-func (b *MemoryBackend) Put(ctx context.Context, key string, value string) error {
+func (b *MemoryBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	b.db[key] = value
 	return nil
 }

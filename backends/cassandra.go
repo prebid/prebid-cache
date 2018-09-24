@@ -42,8 +42,11 @@ func (c *Cassandra) Get(ctx context.Context, key string) (string, error) {
 	return res, err
 }
 
-func (c *Cassandra) Put(ctx context.Context, key string, value string) error {
-	err := c.session.Query(`INSERT INTO cache (key, value) VALUES (?, ?) USING TTL 2400`, key, value).
+func (c *Cassandra) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+	if ttlSeconds == 0 {
+		ttlSeconds = 2400
+	}
+	err := c.session.Query(`INSERT INTO cache (key, value) VALUES (?, ?) USING TTL ?`, key, value, ttlSeconds).
 		WithContext(ctx).
 		Exec()
 
