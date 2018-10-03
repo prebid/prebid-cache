@@ -11,7 +11,7 @@ import (
 )
 
 func NewBackend(cfg config.Configuration, appMetrics *metrics.Metrics) backends.Backend {
-	backend := newBaseBackend(cfg.Backend)
+	backend := newBaseBackend(cfg.Backend, appMetrics)
 	backend = decorators.LimitTTLs(backend, cfg.RequestLimits.MaxTTLSeconds)
 	if cfg.RequestLimits.MaxSize > 0 {
 		backend = decorators.EnforceSizeLimit(backend, cfg.RequestLimits.MaxSize)
@@ -37,7 +37,7 @@ func applyCompression(cfg config.Compression, backend backends.Backend) backends
 	panic("Error applying compression. This shouldn't happen.")
 }
 
-func newBaseBackend(cfg config.Backend) backends.Backend {
+func newBaseBackend(cfg config.Backend, appMetrics *metrics.Metrics) backends.Backend {
 	switch cfg.Type {
 	case config.BackendCassandra:
 		return backends.NewCassandraBackend(cfg.Cassandra)
@@ -48,7 +48,7 @@ func newBaseBackend(cfg config.Backend) backends.Backend {
 	case config.BackendAzure:
 		return backends.NewAzureBackend(cfg.Azure.Account, cfg.Azure.Key)
 	case config.BackendAerospike:
-		return backends.NewAerospikeBackend(cfg.Aerospike)
+		return backends.NewAerospikeBackend(cfg.Aerospike, appMetrics.ExtraTTLSeconds)
 	case config.BackendRedis:
 		return backends.NewRedisBackend(cfg.Redis)
 	default:

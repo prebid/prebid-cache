@@ -63,12 +63,13 @@ func NewConnectionMetrics(r metrics.Registry) *ConnectionMetrics {
 }
 
 type Metrics struct {
-	Registry    metrics.Registry
-	Puts        *MetricsEntry
-	Gets        *MetricsEntry
-	PutsBackend *MetricsEntryByFormat
-	GetsBackend *MetricsEntry
-	Connections *ConnectionMetrics
+	Registry        metrics.Registry
+	Puts            *MetricsEntry
+	Gets            *MetricsEntry
+	PutsBackend     *MetricsEntryByFormat
+	GetsBackend     *MetricsEntry
+	Connections     *ConnectionMetrics
+	ExtraTTLSeconds metrics.Histogram
 }
 
 // Export begins sending metrics to the configured database.
@@ -97,12 +98,13 @@ func CreateMetrics() *Metrics {
 	flushTime := time.Second * 10
 	r := metrics.NewPrefixedRegistry("prebidcache.")
 	m := &Metrics{
-		Registry:    r,
-		Puts:        NewMetricsEntry("puts.current_url", r),
-		Gets:        NewMetricsEntry("gets.current_url", r),
-		PutsBackend: NewMetricsEntryByType("puts.backend", r),
-		GetsBackend: NewMetricsEntry("gets.backend", r),
-		Connections: NewConnectionMetrics(r),
+		Registry:        r,
+		Puts:            NewMetricsEntry("puts.current_url", r),
+		Gets:            NewMetricsEntry("gets.current_url", r),
+		PutsBackend:     NewMetricsEntryByType("puts.backend", r),
+		GetsBackend:     NewMetricsEntry("gets.backend", r),
+		Connections:     NewConnectionMetrics(r),
+		ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000)),
 	}
 
 	metrics.RegisterDebugGCStats(m.Registry)

@@ -7,17 +7,19 @@ import (
 	log "github.com/Sirupsen/logrus"
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/prebid/prebid-cache/config"
+	metrics "github.com/rcrowley/go-metrics"
 )
 
 const setName = "uuid"
 const binValue = "value"
 
 type Aerospike struct {
-	cfg    config.Aerospike
-	client *as.Client
+	cfg          config.Aerospike
+	client       *as.Client
+	ttlHistogram metrics.Histogram
 }
 
-func NewAerospikeBackend(cfg config.Aerospike) *Aerospike {
+func NewAerospikeBackend(cfg config.Aerospike, ttlHistogram metrics.Histogram) *Aerospike {
 	client, err := as.NewClient(cfg.Host, cfg.Port)
 	if err != nil {
 		log.Fatalf("Error creating Aerospike backend: %v", err)
@@ -26,8 +28,9 @@ func NewAerospikeBackend(cfg config.Aerospike) *Aerospike {
 	log.Infof("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
 
 	return &Aerospike{
-		cfg:    cfg,
-		client: client,
+		cfg:          cfg,
+		client:       client,
+		ttlHistogram: ttlHistogram,
 	}
 }
 
@@ -43,6 +46,7 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 	if rec == nil {
 		return "", errors.New("client.Get returned a nil record. Is aerospike configured properly?")
 	}
+	a.ttlHistogram.Update(int64(rec.Expiration))
 	return rec.Bins[binValue].(string), nil
 }
 
