@@ -23,6 +23,7 @@ type MetricsEntryByFormat struct {
 	BadRequest     metrics.Meter
 	JsonRequest    metrics.Meter
 	XmlRequest     metrics.Meter
+	DefinesTTL     metrics.Meter
 	InvalidRequest metrics.Meter
 	RequestLength  metrics.Histogram
 }
@@ -42,13 +43,14 @@ func NewMetricsEntry(name string, r metrics.Registry) *MetricsEntry {
 	}
 }
 
-func NewMetricsEntryByType(name string, r metrics.Registry) *MetricsEntryByFormat {
+func NewMetricsEntryBackendPuts(name string, r metrics.Registry) *MetricsEntryByFormat {
 	return &MetricsEntryByFormat{
 		Duration:       metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
 		Errors:         metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
 		BadRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
 		JsonRequest:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.json_request_count", name), r),
 		XmlRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.xml_request_count", name), r),
+		DefinesTTL:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.defines_ttl", name), r),
 		InvalidRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.unknown_request_count", name), r),
 		RequestLength:  metrics.GetOrRegisterHistogram(name+".request_size_bytes", r, metrics.NewExpDecaySample(1028, 0.015)),
 	}
@@ -101,7 +103,7 @@ func CreateMetrics() *Metrics {
 		Registry:        r,
 		Puts:            NewMetricsEntry("puts.current_url", r),
 		Gets:            NewMetricsEntry("gets.current_url", r),
-		PutsBackend:     NewMetricsEntryByType("puts.backend", r),
+		PutsBackend:     NewMetricsEntryBackendPuts("puts.backend", r),
 		GetsBackend:     NewMetricsEntry("gets.backend", r),
 		Connections:     NewConnectionMetrics(r),
 		ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000)),

@@ -47,6 +47,18 @@ func TestPutSuccessMetrics(t *testing.T) {
 	if m.PutsBackend.XmlRequest.Count() != 1 {
 		t.Errorf("An xml request should have been logged.")
 	}
+	if m.PutsBackend.DefinesTTL.Count() != 0 {
+		t.Errorf("An event for TTL defined shouldn't be logged if the TTL was 0")
+	}
+}
+
+func TestTTLDefinedMetrics(t *testing.T) {
+	m := metrics.CreateMetrics()
+	backend := LogMetrics(backends.NewMemoryBackend(), m)
+	backend.Put(context.Background(), "foo", "xml<vast></vast>", 1)
+	if m.PutsBackend.DefinesTTL.Count() != 1 {
+		t.Errorf("An event for TTL defined should be logged if the TTL is not 0")
+	}
 }
 
 func TestPutErrorMetrics(t *testing.T) {

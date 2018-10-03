@@ -35,6 +35,9 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 	} else {
 		b.puts.InvalidRequest.Mark(1)
 	}
+	if ttlSeconds != 0 {
+		b.puts.DefinesTTL.Mark(1)
+	}
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)
 	if err == nil {
