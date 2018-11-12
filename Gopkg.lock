@@ -2,10 +2,14 @@
 
 
 [[projects]]
-  name = "github.com/Sirupsen/logrus"
-  packages = ["."]
-  revision = "ba1b36c82c5e05c4f912a88eab0dcd91a171688f"
-  version = "v0.11.5"
+  branch = "master"
+  name = "git.pubmatic.com/PubMatic/go-common.git"
+  packages = [
+    "logger",
+    "stats"
+  ]
+  revision = "a1cffd740166113519976d7544fb0194e93652e3"
+  source = "https://git.pubmatic.com/PubMatic/go-common.git"
 
 [[projects]]
   name = "github.com/aerospike/aerospike-client-go"
@@ -56,6 +60,12 @@
     "internal/streams"
   ]
   revision = "605a5e0a265c95891d9159dae6030ea195b4a3bd"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/golang/glog"
+  packages = ["."]
+  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
   branch = "master"
@@ -249,6 +259,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "27493861b171f80ed7d74baf2a6c13e68b9882a913e9e83363a940cb66fb26d2"
+  inputs-digest = "4a60b020e00d3960fd6b2d809fb5daf7ab352578d347ed59904b582fae0ca550"
   solver-name = "gps-cdcl"
   solver-version = 1

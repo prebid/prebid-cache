@@ -65,7 +65,7 @@
   name = "github.com/vrischmann/go-metrics-influxdb"
 
 [[constraint]]
-  version = "a1cffd740166113519976d7544fb0194e93652e3"
+  branch = "master"
   name = "git.pubmatic.com/PubMatic/go-common.git"
   source = "https://git.pubmatic.com/PubMatic/go-common.git"
 
