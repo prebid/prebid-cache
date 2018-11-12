@@ -202,3 +202,16 @@ func TestReadinessCheck(t *testing.T) {
 		t.Errorf("/status endpoint should always return a 204. Got %d", requestRecorder.Code)
 	}
 }
+
+func TestHealthCheck(t *testing.T) {
+	requestRecorder := httptest.NewRecorder()
+
+	router := httprouter.New()
+	router.GET("/healthcheck", HealthCheck)
+	req, _ := http.NewRequest("GET", "/healthcheck", new(bytes.Buffer))
+	router.ServeHTTP(requestRecorder, req)
+
+	if requestRecorder.Code != http.StatusOK {
+		t.Errorf("/healthcheck endpoint should always return a 200. Got %d", requestRecorder.Code)
+	}
+}
