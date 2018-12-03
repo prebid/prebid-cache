@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
+	"github.com/PubMatic-OpenWrap/prebid-cache/backends"
+	"github.com/PubMatic-OpenWrap/prebid-cache/constant"
+	"github.com/PubMatic-OpenWrap/prebid-cache/stats"
 	"github.com/julienschmidt/httprouter"
-	"github.com/prebid/prebid-cache/backends"
-	"github.com/prebid/prebid-cache/constant"
-	"github.com/prebid/prebid-cache/stats"
 )
 
 func NewGetHandler(backend backends.Backend) func(http.ResponseWriter, *http.Request, httprouter.Params) {

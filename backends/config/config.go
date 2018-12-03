@@ -2,11 +2,11 @@ package config
 
 import (
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
-	"github.com/prebid/prebid-cache/backends"
-	"github.com/prebid/prebid-cache/backends/decorators"
-	"github.com/prebid/prebid-cache/compression"
-	"github.com/prebid/prebid-cache/config"
-	"github.com/prebid/prebid-cache/metrics"
+	"github.com/PubMatic-OpenWrap/prebid-cache/backends"
+	"github.com/PubMatic-OpenWrap/prebid-cache/backends/decorators"
+	"github.com/PubMatic-OpenWrap/prebid-cache/compression"
+	"github.com/PubMatic-OpenWrap/prebid-cache/config"
+	"github.com/PubMatic-OpenWrap/prebid-cache/metrics"
 )
 
 func NewBackend(cfg config.Configuration, appMetrics *metrics.Metrics) backends.Backend {

@@ -3,11 +3,11 @@ package main
 import (
 	_ "net/http/pprof"
 
-	backendConfig "github.com/prebid/prebid-cache/backends/config"
-	"github.com/prebid/prebid-cache/config"
-	"github.com/prebid/prebid-cache/endpoints/routing"
-	"github.com/prebid/prebid-cache/metrics"
-	"github.com/prebid/prebid-cache/server"
+	backendConfig "github.com/PubMatic-OpenWrap/prebid-cache/backends/config"
+	"github.com/PubMatic-OpenWrap/prebid-cache/config"
+	"github.com/PubMatic-OpenWrap/prebid-cache/endpoints/routing"
+	"github.com/PubMatic-OpenWrap/prebid-cache/metrics"
+	"github.com/PubMatic-OpenWrap/prebid-cache/server"
 )
 
 func main() {

@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
+	"github.com/PubMatic-OpenWrap/prebid-cache/config"
+	"github.com/PubMatic-OpenWrap/prebid-cache/stats"
 	as "github.com/aerospike/aerospike-client-go"
-	"github.com/prebid/prebid-cache/config"
-	"github.com/prebid/prebid-cache/stats"
 )
 
 const setName = "uuid"

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	pbcmetrics "github.com/prebid/prebid-cache/metrics"
+	pbcmetrics "github.com/PubMatic-OpenWrap/prebid-cache/metrics"
 	metrics "github.com/rcrowley/go-metrics"
 )
 

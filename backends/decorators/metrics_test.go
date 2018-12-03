@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/prebid/prebid-cache/backends"
-	"github.com/prebid/prebid-cache/metrics"
-	"github.com/prebid/prebid-cache/metrics/metricstest"
+	"github.com/PubMatic-OpenWrap/prebid-cache/backends"
+	"github.com/PubMatic-OpenWrap/prebid-cache/metrics"
+	"github.com/PubMatic-OpenWrap/prebid-cache/metrics/metricstest"
 )
 
 type failedBackend struct{}
