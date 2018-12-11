@@ -17,6 +17,7 @@ import (
 
 func NewHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics) http.Handler {
 	router := httprouter.New()
+	router.GET("/", endpoints.Index)
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
 	router.POST("/cache", decorators.MonitorHttp(endpoints.NewPutHandler(dataStore, cfg.RequestLimits.MaxNumValues), appMetrics.Puts))
 	router.GET("/cache", decorators.MonitorHttp(endpoints.NewGetHandler(dataStore), appMetrics.Gets))
