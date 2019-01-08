@@ -101,6 +101,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			}
 			// If we have a blank UUID, don't store anything.
 			// Eventually we may want to provide error details, but as of today this is the only non-fatal error
+			// Future error details could go into a second property of the Responses object, such as "errors"
 			if len(resps.Responses[i].UUID) > 0 {
 				err = backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
 			}
