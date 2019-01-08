@@ -13,11 +13,11 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 // PutHandler serves "POST /cache" requests.
-func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	// TODO(future PR): Break this giant function apart
 	putAnyRequestPool := sync.Pool{
 		New: func() interface{} {
@@ -90,7 +90,20 @@ func NewPutHandler(backend backends.Backend, maxNumValues int) func(http.Respons
 			resps.Responses[i].UUID = uuid.NewV4().String()
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
-			err = backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
+			// Only allow setting a provided key if configured (and ensure a key is provided).
+			if allowKeys && len(p.Key) > 0 {
+				s, err := backend.Get(ctx, p.Key)
+				if err == nil && len(s) == 0 {
+					resps.Responses[i].UUID = p.Key
+				} else {
+					resps.Responses[i].UUID = ""
+				}
+			}
+			// If we have a blank UUID, don't store anything.
+			// Eventually we may want to provide error details, but as of today this is the only non-fatal error
+			if len(resps.Responses[i].UUID) > 0 {
+				err = backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
+			}
 
 			if err != nil {
 				if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
@@ -131,6 +144,7 @@ type PutObject struct {
 	Type       string          `json:"type"`
 	TTLSeconds int             `json:"ttlseconds"`
 	Value      json.RawMessage `json:"value"`
+	Key        string          `json:"key"`
 }
 
 type PutResponseObject struct {
