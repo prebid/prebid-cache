@@ -93,7 +93,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			// Only allow setting a provided key if configured (and ensure a key is provided).
 			if allowKeys && len(p.Key) > 0 {
 				s, err := backend.Get(ctx, p.Key)
-				if err == nil && len(s) == 0 {
+				if err != nil || len(s) == 0 {
 					resps.Responses[i].UUID = p.Key
 				} else {
 					resps.Responses[i].UUID = ""
