@@ -27,7 +27,7 @@ func NewConfig() Configuration {
 func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limiter.enabled", true)
 	v.SetDefault("rate_limiter.num_requests", 100)
-	v.SetDefault("request_limits.allow_setting_keys", true)
+	v.SetDefault("request_limits.allow_setting_keys", false)
 	v.SetDefault("request_limits.max_size_bytes", 10*1024)
 	v.SetDefault("request_limits.max_num_values", 10)
 	v.SetDefault("request_limits.max_ttl_seconds", 3600)
