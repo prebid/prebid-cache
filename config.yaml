@@ -6,6 +6,7 @@ rate_limiter:
   enabled: true
   num_requests: 100
 request_limits:
+  allow_setting_keys: false
   max_size_bytes: 10240 # 10K
   max_num_values: 10
   max_ttl_seconds: 3600
