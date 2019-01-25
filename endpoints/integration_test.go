@@ -58,7 +58,7 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 	backend := backends.NewMemoryBackend()
 
 	router.POST("/cache", NewPutHandler(backend, 10, true))
-	router.GET("/cache", NewGetHandler(backend))
+	router.GET("/cache", NewGetHandler(backend, true))
 
 	uuid, putTrace := doMockPut(t, router, putBody)
 	if putTrace.Code != http.StatusOK {
@@ -169,7 +169,7 @@ func TestXMLOther(t *testing.T) {
 func TestGetInvalidUUIDs(t *testing.T) {
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	router.GET("/cache", NewGetHandler(backend))
+	router.GET("/cache", NewGetHandler(backend, false))
 
 	getResults := doMockGet(t, router, "fdd9405b-ef2b-46da-a55a-2f526d338e16")
 	if getResults.Code != http.StatusNotFound {
