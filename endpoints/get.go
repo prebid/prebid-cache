@@ -1,19 +1,20 @@
 package endpoints
 
 import (
-	"net/http"
-	"github.com/julienschmidt/httprouter"
-	"time"
-	"strings"
-	"fmt"
 	"context"
-	"github.com/prebid/prebid-cache/backends"
 	"errors"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/julienschmidt/httprouter"
+	"github.com/prebid/prebid-cache/backends"
 )
 
-func NewGetHandler(backend backends.Backend) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewGetHandler(backend backends.Backend, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		id, err := parseUUID(r)
+		id, err := parseUUID(r, allowKeys)
 		if err != nil {
 			if id == "" {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -47,12 +48,12 @@ type GetResponse struct {
 	Value interface{} `json:"value"`
 }
 
-func parseUUID(r *http.Request) (string, error) {
+func parseUUID(r *http.Request, allowKeys bool) (string, error) {
 	id := r.URL.Query().Get("uuid")
 	var err error = nil
 	if id == "" {
 		err = errors.New("Missing required parameter uuid")
-	} else if len(id) != 36 {
+	} else if len(id) != 36 && (!allowKeys) {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 		// ones before even checking the backend.
 		err = fmt.Errorf("No content stored for uuid=%s", id)
