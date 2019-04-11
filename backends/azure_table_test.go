@@ -1,14 +1,21 @@
 package backends
 
 import (
-	"github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 	"testing"
 )
+
+var u1 = uuid.Must(uuid.NewV4())
 
 func TestPartitionKey(t *testing.T) {
 	azureTable := NewAzureBackend("abc", "def")
 
-	id := uuid.NewV4().String()
+	u2, err := uuid.NewV4()
+	if err != nil {
+		t.Errorf("Error generating version 4 UUID")
+	}
+	id := u2.String()
+
 	expected := id[0:4]
 
 	got := azureTable.makePartitionKey(id)
@@ -43,7 +50,12 @@ func TestEmptyPartitionKey(t *testing.T) {
 func TestPartitionKeyHeader(t *testing.T) {
 	azureTable := NewAzureBackend("abc", "def")
 
-	id := uuid.NewV4().String()
+	u2, err := uuid.NewV4()
+	if err != nil {
+		t.Errorf("Error generating version 4 UUID")
+	}
+	id := u2.String()
+
 	expected := "[\"" + id[0:4] + "\"]"
 
 	got := azureTable.wrapForHeader(azureTable.makePartitionKey(id))
