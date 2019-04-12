@@ -16,8 +16,6 @@ import (
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
 )
 
-var u1 = uuid.Must(uuid.NewV4())
-
 // PutHandler serves "POST /cache" requests.
 func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	// TODO(future PR): Break this giant function apart

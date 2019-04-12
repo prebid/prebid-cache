@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-var u1 = uuid.Must(uuid.NewV4())
-
 func TestPartitionKey(t *testing.T) {
 	azureTable := NewAzureBackend("abc", "def")
 
