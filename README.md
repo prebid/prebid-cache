@@ -163,3 +163,10 @@ docker run -p 2424:2424 -t prebid-cache .
 ### Profiling
 
 [pprof stats](http://artem.krylysov.com/blog/2017/03/13/profiling-and-optimizing-go-web-applications/) can be accessed from a running app on `localhost:2525`
+
+
+#!/usr/bin/env bash
+
+docker build . --tag=prebid-cache:latest
+docker tag prebid-cache us.gcr.io/custom-citadel-106116/prebid-cache:latest
+docker push us.gcr.io/custom-citadel-106116/prebid-cache:latest

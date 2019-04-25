@@ -4,31 +4,19 @@ log:
   level: "info"
 rate_limiter:
   enabled: true
-  num_requests: 100
+  num_requests: 500
 request_limits:
   allow_setting_keys: false
   max_size_bytes: 10240 # 10K
   max_num_values: 10
   max_ttl_seconds: 3600
 backend:
-  type: "memory" # Can also be "aerospike", "azure", "cassandra", or "memcache"
-  aerospike:
-    host: "aerospike.prebid.com"
-    port: 3000
-    namespace: "whatever"
-  azure:
-    account: "azure-account-here"
-    key: "azure-key-here"
-  cassandra:
-    hosts: "127.0.0.1"
-    keyspace: "prebid"
-  memcache:
-    hosts: "10.0.0.1:11211" # Can also use an array for multiple hosts
+  type: "redis" # Can also be "aerospike", "azure", "cassandra", or "memcache"
   redis:
-    host: "127.0.0.1"
+    host: "localhost"
     port: 6379
     password: ""
-    db: 1
+    db: 0
     expiration: 10 # in Minutes
 compression:
   type: "snappy" # Can also be "none"
