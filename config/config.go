@@ -31,6 +31,9 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("request_limits.max_size_bytes", 10*1024)
 	v.SetDefault("request_limits.max_num_values", 10)
 	v.SetDefault("request_limits.max_ttl_seconds", 3600)
+	v.SetDefault("metrics.graphite.host", "")
+	v.SetDefault("metrics.graphite.prefix", "")
+	v.SetDefault("metrics.graphite.interval_sec", 10)
 }
 
 func setConfigFile(v *viper.Viper) {
@@ -136,8 +139,9 @@ const (
 )
 
 type Metrics struct {
-	Type   MetricsType `mapstructure:"type"`
-	Influx Influx      `mapstructure:"influx"`
+	Type     MetricsType `mapstructure:"type"`
+	Influx   Influx      `mapstructure:"influx"`
+	Graphite Graphite    `mapstructure:"graphite"`
 }
 
 func (cfg *Metrics) validateAndLog() {
@@ -146,16 +150,18 @@ func (cfg *Metrics) validateAndLog() {
 	case MetricsNone:
 	case MetricsInflux:
 		cfg.Influx.validateAndLog()
+	case MetricsGraphite:
 	default:
-		log.Fatalf(`invalid config.metrics.type: %s. It must be "none" or "influx"`, cfg.Type)
+		log.Fatalf(`invalid config.metrics.type: %s. It must be "none", "influx" or "graphite"`, cfg.Type)
 	}
 }
 
 type MetricsType string
 
 const (
-	MetricsNone   MetricsType = "none"
-	MetricsInflux MetricsType = "influx"
+	MetricsNone     MetricsType = "none"
+	MetricsInflux   MetricsType = "influx"
+	MetricsGraphite MetricsType = "graphite"
 )
 
 type Influx struct {
@@ -169,4 +175,10 @@ func (cfg *Influx) validateAndLog() {
 	log.Infof("config.metrics.influx.host: %s", cfg.Host)
 	log.Infof("config.metrics.influx.database: %s", cfg.Database)
 	// This intentionally skips username and password for security reasons.
+}
+
+type Graphite struct {
+	Host        string `mapstructure:"host"`
+	Prefix      string `mapstructure:"prefix"`
+	IntervalSec uint   `mapstructure:"interval_sec"`
 }
