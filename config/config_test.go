@@ -44,6 +44,9 @@ func TestSampleConfig(t *testing.T) {
 	assertStringsEqual(t, "metrics.influx.database", cfg.Metrics.Influx.Database, "default-metrics-database")
 	assertStringsEqual(t, "metrics.influx.username", cfg.Metrics.Influx.Username, "metrics-username")
 	assertStringsEqual(t, "metrics.influx.password", cfg.Metrics.Influx.Password, "metrics-password")
+	assertStringsEqual(t, "metrics.graphite.host", cfg.Metrics.Graphite.Host, "graphite_host:2003")
+	assertStringsEqual(t, "metrics.graphite.prefix", cfg.Metrics.Graphite.Prefix, "test_prefix")
+	assertIntsEqual(t, "metrics.graphite.interval_sec", int(cfg.Metrics.Graphite.IntervalSec), 3)
 }
 
 func TestEnvConfig(t *testing.T) {
@@ -117,6 +120,10 @@ metrics:
     database: "default-metrics-database"
     username: "metrics-username"
     password: "metrics-password"
+  graphite:
+    host: "graphite_host:2003"
+    prefix: "test_prefix"
+    interval_sec: 3
 `
 
 func assertBoolsEqual(t *testing.T, path string, actual bool, expected bool) {

@@ -71,6 +71,10 @@
 
 [[constraint]]
   branch = "master"
+  name = "github.com/cyberdelia/go-metrics-graphite"
+
+[[constraint]]
+  branch = "master"
   name = "github.com/go-redis/redis"
 
 [prune]
