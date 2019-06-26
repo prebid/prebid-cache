@@ -30,6 +30,14 @@
   revision = "bc664df9673713a0ccf26e3b55a673ec7301088b"
 
 [[projects]]
+  branch = "master"
+  digest = "1:7b274cc72af687fe6eb618acd83b9601c4317fbe5ac1dfb41cc116e3495f68b0"
+  name = "github.com/cyberdelia/go-metrics-graphite"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "39f87cc3b432bbb898d7c643c0e93cac2bc865ad"
+
+[[projects]]
   digest = "1:7edfbefda01740a366780dc21902c43cc33bdaf68cf70349f9dfca4afb4fd50b"
   name = "github.com/didip/tollbooth"
   packages = [
@@ -355,6 +363,7 @@
   input-imports = [
     "github.com/aerospike/aerospike-client-go",
     "github.com/bradfitz/gomemcache/memcache",
+    "github.com/cyberdelia/go-metrics-graphite",
     "github.com/didip/tollbooth",
     "github.com/didip/tollbooth/limiter",
     "github.com/go-redis/redis",

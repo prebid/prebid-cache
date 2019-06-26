@@ -2,12 +2,14 @@ package metrics
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/prebid/prebid-cache/config"
 	"github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
 	"github.com/vrischmann/go-metrics-influxdb"
+	graphite "github.com/cyberdelia/go-metrics-graphite"
 )
 
 type MetricsEntry struct {
@@ -88,6 +90,19 @@ func (m *Metrics) Export(cfg config.Metrics) {
 			cfg.Influx.Username, // your InfluxDB user
 			cfg.Influx.Password, // your InfluxDB password
 		)
+	case config.MetricsGraphite:
+		logrus.Infof("Metrics will be exported to Graphite with host=%s, prefix=%s, interval=%d", cfg.Graphite.Host, cfg.Graphite.Prefix, cfg.Graphite.IntervalSec)
+		addr, err := net.ResolveTCPAddr("tcp", cfg.Graphite.Host)
+		if err == nil {
+			go graphite.Graphite(
+				m.Registry,
+				time.Duration(cfg.Graphite.IntervalSec)*time.Second,
+				cfg.Graphite.Prefix,
+				addr,
+			)
+		} else {
+			logrus.Errorf("Cannot resolve graphite host %s: %v", cfg.Graphite.Host, err)
+		}
 	case config.MetricsNone:
 		return
 	default:
