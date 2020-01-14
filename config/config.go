@@ -136,8 +136,9 @@ const (
 )
 
 type Metrics struct {
-	Type   MetricsType `mapstructure:"type"`
-	Influx Influx      `mapstructure:"influx"`
+	Types      []MetricsType     `mapstructure:"type"`   //Is this needed? What if we copy
+	Influx     Influx            `mapstructure:"influx"` //prebid-server where this is not needed?
+	Prometheus PrometheusMetrics `mapstructure:"prometheus"`
 }
 
 func (cfg *Metrics) validateAndLog() {
@@ -154,8 +155,9 @@ func (cfg *Metrics) validateAndLog() {
 type MetricsType string
 
 const (
-	MetricsNone   MetricsType = "none"
-	MetricsInflux MetricsType = "influx"
+	MetricsNone       MetricsType = "none"
+	MetricsInflux     MetricsType = "influx"
+	MetricsPrometheus MetricsType = "prometheus"
 )
 
 type Influx struct {
@@ -163,6 +165,13 @@ type Influx struct {
 	Database string `mapstructure:"database"`
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
+}
+
+type PrometheusMetrics struct {
+	Port             int    `mapstructure:"port"`
+	Namespace        string `mapstructure:"namespace"`
+	Subsystem        string `mapstructure:"subsystem"`
+	TimeoutMillisRaw int    `mapstructure:"timeout_ms"`
 }
 
 func (cfg *Influx) validateAndLog() {
