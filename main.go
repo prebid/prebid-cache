@@ -19,7 +19,7 @@ func main() {
 	setLogLevel(cfg.Log.Level)
 	cfg.ValidateAndLog()
 
-	appMetrics := metrics.CreateMetrics() //Needs to be written to create both Influx and Prometheus
+	appMetrics := metrics.CreateMetrics(cfg)
 	backend := backendConfig.NewBackend(cfg, appMetrics)
 	handler := routing.NewHandler(cfg, backend, appMetrics)
 	go appMetrics.Export(cfg.Metrics)

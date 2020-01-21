@@ -1,8 +1,11 @@
 package metrics
 
 import (
+	"github.com/Sirupsen/logrus"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prometheus/client_golang/prometheus"
+	"strconv"
+	"time"
 )
 
 /**************************************************
@@ -25,47 +28,34 @@ type PrometheusMetrics struct {
 	Gets            *PrometheusMetricsEntry
 	PutsBackend     *PrometheusMetricsEntryByFormat
 	GetsBackend     *PrometheusMetricsEntry
-	Connections     *PrometheusConnectionMetrics
+	Connections     *prometheus.CounterVec
 	ExtraTTLSeconds *prometheus.HistogramVec
 }
 type PrometheusMetricsEntry struct {
-	Duration   *prometheus.HistogramVec
-	Errors     prometheus.Counter
-	BadRequest prometheus.Counter
-	Request    prometheus.Counter
+	Duration       *prometheus.HistogramVec
+	RequestMetrics *prometheus.CounterVec
 }
 
 type PrometheusMetricsEntryByFormat struct {
-	Duration       metrics.Histogram
-	Errors         prometheus.Counter
-	BadRequest     prometheus.Counter
-	JsonRequest    prometheus.Counter
-	XmlRequest     prometheus.Counter
-	DefinesTTL     prometheus.Counter
-	InvalidRequest prometheus.Counter
-	RequestLength  metrics.Histogram
-}
-
-type PrometheusConnectionMetrics struct {
-	ActiveConnections      prometheus.Counter
-	ConnectionCloseErrors  prometheus.Counter
-	ConnectionAcceptErrors prometheus.Counter
+	Duration          *prometheus.HistogramVec
+	BackendPutMetrics *prometheus.CounterVec
+	RequestLength     *prometheus.HistogramVec
 }
 
 /**************************************************
  *	Init functions
  **************************************************/
 
-func newCounterWithoutLabels(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string) prometheus.Counter {
+func newCounterVecWithLabels(cfg config.PrometheusMetrics, registry *prometheus.Registry, name string, help string, labels []string) *prometheus.CounterVec {
 	opts := prometheus.CounterOpts{
 		Namespace: cfg.Namespace,
 		Subsystem: cfg.Subsystem,
 		Name:      name,
 		Help:      help,
 	}
-	counter := prometheus.NewCounter(opts)
+	counterVec := prometheus.NewCounterVec(opts, labels)
 	registry.MustRegister(counter)
-	return counter
+	return &counterVec
 }
 
 func newHistogram(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string, labels []string, buckets []float64) *prometheus.HistogramVec {
@@ -89,23 +79,23 @@ func newHistogram(cfg config.PrometheusMetrics, registry *prometheus.Registry, n
 // Export begins sending metrics to the configured database.
 // This method blocks indefinitely, so it should probably be run in a goroutine.
 func (m PrometheusMetrics) Export(cfg config.Metrics) {
-	logrus.Infof("Metrics will be exported to Influx with host=%s, db=%s, username=%s", cfg.Influx.Host, cfg.Influx.Database, cfg.Influx.Username)
-	influxdb.InfluxDB(
-		m.Registry,          // metrics registry
-		time.Second*10,      // interval
-		cfg.Influx.Host,     // the InfluxDB url
-		cfg.Influx.Database, // your InfluxDB database
-		cfg.Influx.Username, // your InfluxDB user
-		cfg.Influx.Password, // your InfluxDB password
-	)
+	logrus.Infof("Metrics will be exported to Prometheus with host=%s, db=%s, username=%s", cfg.Influx.Host, cfg.Influx.Database, cfg.Influx.Username)
+	//influxdb.InfluxDB(
+	//	m.Registry,          // metrics registry
+	//	time.Second*10,      // interval
+	//	cfg.Influx.Host,     // the InfluxDB url
+	//	cfg.Influx.Database, // your InfluxDB database
+	//	cfg.Influx.Username, // your InfluxDB user
+	//	cfg.Influx.Password, // your InfluxDB password
+	//)
 	return
 }
 
-func (m PrometheusMetrics) Increment(metricName string, start *Time, value string) {
+func (m PrometheusMetrics) Increment(metricName string, start *time.Time, value string) {
 	switch metricName {
 	case "puts.current_url.request_duration":
 		m.Puts.Duration.With(prometheus.Labels{
-			successLabel: strconv.FormatBool("success"),
+			"success": strconv.FormatBool(true),
 		}).Observe(time.Since(*start).Seconds())
 	case "puts.current_url.error_count":
 		m.Puts.Errors.Inc()
@@ -115,7 +105,7 @@ func (m PrometheusMetrics) Increment(metricName string, start *Time, value strin
 		m.Puts.Request.Inc()
 	case "gets.current_url.request_duration":
 		m.Gets.Duration.With(prometheus.Labels{
-			successLabel: strconv.FormatBool("success"),
+			"success": strconv.FormatBool(true),
 		}).Observe(time.Since(*start).Seconds())
 	case "gets.current_url.error_count":
 		m.Gets.Errors.Inc()
@@ -125,7 +115,7 @@ func (m PrometheusMetrics) Increment(metricName string, start *Time, value strin
 		m.Gets.Request.Inc()
 	case "puts.backend.request_duration":
 		m.PutsBackend.Duration.With(prometheus.Labels{
-			successLabel: strconv.FormatBool("success"),
+			"success": strconv.FormatBool(true),
 		}).Observe(time.Since(*start).Seconds())
 	case "puts.backend.error_count":
 		m.PutsBackend.Errors.Inc()
@@ -141,11 +131,11 @@ func (m PrometheusMetrics) Increment(metricName string, start *Time, value strin
 		m.PutsBackend.InvalidRequest.Inc()
 	case "puts.backend.request_size_bytes":
 		m.PutsBackend.RequestLength.With(prometheus.Labels{
-			successLabel: strconv.FormatBool("request_size_bytes"),
-		}).Inc(uint64(len(value)))
+			"success": strconv.FormatBool(true),
+		}).Observe(float64(len(value)))
 	case "gets.backend.request_duration":
 		m.GetsBackend.Duration.With(prometheus.Labels{
-			successLabel: strconv.FormatBool("success"),
+			"success": strconv.FormatBool(true),
 		}).Observe(time.Since(*start).Seconds())
 	case "gets.backend.error_count":
 		m.GetsBackend.Errors.Inc()
@@ -163,10 +153,3 @@ func (m PrometheusMetrics) Increment(metricName string, start *Time, value strin
 		//error
 	}
 }
-
-/*  To record:
-m.Puts.Duration.With(prometheus.Labels{ successLabel: strconv.FormatBool("success"), }).Observe(time.Since(*start).Seconds())
-m.Gets.Duration.With(prometheus.Labels{ successLabel: strconv.FormatBool("success"), }).Observe(time.Since(*start).Seconds())
-m.PutsBackend.Duration.With(prometheus.Labels{ successLabel: strconv.FormatBool("success"), }).Observe(time.Since(*start).Seconds())
-m.GetsBackend.Duration.With(prometheus.Labels{ successLabel: strconv.FormatBool("success"), }).Observe(time.Since(*start).Seconds())
-*/

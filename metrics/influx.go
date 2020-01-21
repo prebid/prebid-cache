@@ -34,7 +34,7 @@ type ConnectionMetrics struct {
 	ConnectionAcceptErrors metrics.Meter
 }
 
-func NewMetricsEntry(name string, r metrics.Registry) *MetricsEntry {
+func NewInfluxMetricsEntry(name string, r metrics.Registry) *MetricsEntry {
 	return &MetricsEntry{
 		Duration:   metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
 		Errors:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
@@ -43,7 +43,7 @@ func NewMetricsEntry(name string, r metrics.Registry) *MetricsEntry {
 	}
 }
 
-func NewMetricsEntryBackendPuts(name string, r metrics.Registry) *MetricsEntryByFormat {
+func NewInfluxMetricsEntryBackendPuts(name string, r metrics.Registry) *MetricsEntryByFormat {
 	return &MetricsEntryByFormat{
 		Duration:       metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
 		Errors:         metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
@@ -56,7 +56,7 @@ func NewMetricsEntryBackendPuts(name string, r metrics.Registry) *MetricsEntryBy
 	}
 }
 
-func NewConnectionMetrics(r metrics.Registry) *ConnectionMetrics {
+func NewInfluxConnectionMetrics(r metrics.Registry) *ConnectionMetrics {
 	return &ConnectionMetrics{
 		ActiveConnections:      metrics.GetOrRegisterCounter("connections.active_incoming", r),
 		ConnectionAcceptErrors: metrics.GetOrRegisterMeter("connections.accept_errors", r),
@@ -89,28 +89,7 @@ func (m InfluxMetrics) Export(cfg config.Metrics) {
 	return
 }
 
-func (m InfluxMetrics) CreateMetrics() {
-	flushTime := time.Second * 10
-	r := metrics.NewPrefixedRegistry("prebidcache.")
-
-	m.Registry = r
-	m.Puts = NewMetricsEntry("puts.current_url", r)
-	m.Gets = NewMetricsEntry("gets.current_url", r)
-	m.PutsBackend = NewMetricsEntryBackendPuts("puts.backend", r)
-	m.GetsBackend = NewMetricsEntry("gets.backend", r)
-	m.Connections = NewConnectionMetrics(r)
-	m.ExtraTTLSeconds = metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000))
-
-	metrics.RegisterDebugGCStats(m.Registry)
-	metrics.RegisterRuntimeMemStats(m.Registry)
-
-	go metrics.CaptureRuntimeMemStats(m.Registry, flushTime)
-	go metrics.CaptureDebugGCStats(m.Registry, flushTime)
-
-	return
-}
-
-func (m InfluxMetrics) Increment(metricName string, start *Time, value string) {
+func (m InfluxMetrics) Increment(metricName string, start *time.Time, value string) {
 	switch metricName {
 	case "puts.current_url.request_duration":
 		m.Puts.Duration.UpdateSince(*start)

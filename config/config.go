@@ -136,19 +136,27 @@ const (
 )
 
 type Metrics struct {
-	Types      []MetricsType     `mapstructure:"type"`   //Is this needed? What if we copy
+	Types      []string          `mapstructure:"type"`   //Is this needed? What if we copy
 	Influx     Influx            `mapstructure:"influx"` //prebid-server where this is not needed?
 	Prometheus PrometheusMetrics `mapstructure:"prometheus"`
 }
 
 func (cfg *Metrics) validateAndLog() {
-	log.Infof("config.metrics.type: %s", cfg.Type)
-	switch cfg.Type {
-	case MetricsNone:
-	case MetricsInflux:
-		cfg.Influx.validateAndLog()
-	default:
-		log.Fatalf(`invalid config.metrics.type: %s. It must be "none" or "influx"`, cfg.Type)
+	for metricsType := range cfg.Types {
+		log.Infof("config.metrics.type: %s", metricsType)
+		mtype := MetricsType(metricsType)
+		switch mtype {
+		case MetricsPrometheus:
+			cfg.Prometheus.validateAndLog()
+		case MetricsNone:
+		case MetricsInflux:
+			cfg.Influx.validateAndLog()
+		default:
+			log.Fatalf(`invalid config.metrics.type: %s. It must be "none" or "influx"`, metricsType)
+		}
+	}
+	if len(cfg.Types) == 0 {
+		log.Fatalf(`No metrics specified in configuration file`)
 	}
 }
 
@@ -167,6 +175,12 @@ type Influx struct {
 	Password string `mapstructure:"password"`
 }
 
+func (cfg *Influx) validateAndLog() {
+	log.Infof("config.metrics.influx.host: %s", cfg.Host)
+	log.Infof("config.metrics.influx.database: %s", cfg.Database)
+	// This intentionally skips username and password for security reasons.
+}
+
 type PrometheusMetrics struct {
 	Port             int    `mapstructure:"port"`
 	Namespace        string `mapstructure:"namespace"`
@@ -174,8 +188,8 @@ type PrometheusMetrics struct {
 	TimeoutMillisRaw int    `mapstructure:"timeout_ms"`
 }
 
-func (cfg *Influx) validateAndLog() {
-	log.Infof("config.metrics.influx.host: %s", cfg.Host)
-	log.Infof("config.metrics.influx.database: %s", cfg.Database)
+func (cfg *PrometheusMetrics) validateAndLog() {
+	log.Infof("config.metrics.prometheus.namespace: %s", cfg.Namespace)
+	log.Infof("config.metrics.prometheus.subsystem: %s", cfg.Subsystem)
 	// This intentionally skips username and password for security reasons.
 }
