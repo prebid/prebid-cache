@@ -1,10 +1,11 @@
 package metrics
 
 import (
+	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prometheus/client_golang/prometheus"
-	"strconv"
+	"strings"
 	"time"
 )
 
@@ -23,23 +24,12 @@ import (
  **************************************************/
 
 type PrometheusMetrics struct {
-	Registry        *prometheus.Registry
-	Puts            *PrometheusMetricsEntry
-	Gets            *PrometheusMetricsEntry
-	PutsBackend     *PrometheusMetricsEntryByFormat
-	GetsBackend     *PrometheusMetricsEntry
-	Connections     *prometheus.CounterVec
-	ExtraTTLSeconds *prometheus.HistogramVec
-}
-type PrometheusMetricsEntry struct {
-	Duration       *prometheus.HistogramVec
-	RequestMetrics *prometheus.CounterVec
-}
-
-type PrometheusMetricsEntryByFormat struct {
-	Duration          *prometheus.HistogramVec
-	BackendPutMetrics *prometheus.CounterVec
-	RequestLength     *prometheus.HistogramVec
+	Registry                *prometheus.Registry
+	RequestDurationMetrics  *prometheus.HistogramVec
+	MethodToEndpointMetrics *prometheus.CounterVec
+	RequestSyzeBytes        *prometheus.HistogramVec
+	ConnectionMetrics       *prometheus.CounterVec
+	ExtraTTLSeconds         prometheus.Histogram
 }
 
 /**************************************************
@@ -54,11 +44,11 @@ func newCounterVecWithLabels(cfg config.PrometheusMetrics, registry *prometheus.
 		Help:      help,
 	}
 	counterVec := prometheus.NewCounterVec(opts, labels)
-	registry.MustRegister(counter)
-	return &counterVec
+	registry.MustRegister(counterVec)
+	return counterVec
 }
 
-func newHistogram(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string, labels []string, buckets []float64) *prometheus.HistogramVec {
+func newHistogramVector(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string, labels []string, buckets []float64) *prometheus.HistogramVec {
 	opts := prometheus.HistogramOpts{
 		Namespace: cfg.Namespace,
 		Subsystem: cfg.Subsystem,
@@ -92,64 +82,28 @@ func (m PrometheusMetrics) Export(cfg config.Metrics) {
 }
 
 func (m PrometheusMetrics) Increment(metricName string, start *time.Time, value string) {
-	switch metricName {
-	case "puts.current_url.request_duration":
-		m.Puts.Duration.With(prometheus.Labels{
-			"success": strconv.FormatBool(true),
-		}).Observe(time.Since(*start).Seconds())
-	case "puts.current_url.error_count":
-		m.Puts.Errors.Inc()
-	case "puts.current_url.bad_request_count":
-		m.Puts.BadRequest.Inc()
-	case "puts.current_url.request_count":
-		m.Puts.Request.Inc()
-	case "gets.current_url.request_duration":
-		m.Gets.Duration.With(prometheus.Labels{
-			"success": strconv.FormatBool(true),
-		}).Observe(time.Since(*start).Seconds())
-	case "gets.current_url.error_count":
-		m.Gets.Errors.Inc()
-	case "gets.current_url.bad_request_count":
-		m.Gets.BadRequest.Inc()
-	case "gets.current_url.request_count":
-		m.Gets.Request.Inc()
-	case "puts.backend.request_duration":
-		m.PutsBackend.Duration.With(prometheus.Labels{
-			"success": strconv.FormatBool(true),
-		}).Observe(time.Since(*start).Seconds())
-	case "puts.backend.error_count":
-		m.PutsBackend.Errors.Inc()
-	case "puts.backend.bad_request_count":
-		m.PutsBackend.BadRequest.Inc()
-	case "puts.backend.json_request_count":
-		m.PutsBackend.JsonRequest.Inc()
-	case "puts.backend.xml_request_count":
-		m.PutsBackend.XmlRequest.Inc()
-	case "puts.backend.defines_ttl":
-		m.PutsBackend.DefinesTTL.Inc()
-	case "puts.backend.unknown_request_count":
-		m.PutsBackend.InvalidRequest.Inc()
-	case "puts.backend.request_size_bytes":
-		m.PutsBackend.RequestLength.With(prometheus.Labels{
-			"success": strconv.FormatBool(true),
-		}).Observe(float64(len(value)))
-	case "gets.backend.request_duration":
-		m.GetsBackend.Duration.With(prometheus.Labels{
-			"success": strconv.FormatBool(true),
-		}).Observe(time.Since(*start).Seconds())
-	case "gets.backend.error_count":
-		m.GetsBackend.Errors.Inc()
-	case "gets.backend.bad_request_count":
-		m.GetsBackend.BadRequest.Inc()
-	case "gets.backend.request_count":
-		m.GetsBackend.Request.Inc()
-	case "connections.active_incoming":
-		m.Connections.ActiveConnections.Inc()
-	case "connections.accept_errors":
-		m.Connections.ConnectionCloseErrors.Inc()
-	case "connections.close_errors":
-		m.Connections.ConnectionAcceptErrors.Inc()
-	default:
-		//error
+	metricNameTokens := strings.Split(metricName, ".")
+
+	if len(metricNameTokens) == 2 && metricNameTokens[0] == "connections" {
+		m.ConnectionMetrics.With(prometheus.Labels{
+			metricNameTokens[0]: metricNameTokens[2], // {"connections.active_incoming", "connections.accept_errors", "connections.close_errors"}
+		}).Inc()
+	} else if len(metricNameTokens) == 3 {
+		label := fmt.Sprintf("%s.%s", metricNameTokens[0], metricNameTokens[1])
+		if metricNameTokens[0] == "gets" || metricNameTokens[0] == "puts" {
+			if metricNameTokens[2] == "request_duration" {
+				m.RequestDurationMetrics.With(prometheus.Labels{
+					label: metricNameTokens[2], // {"puts.current_url.request_duration", "gets.current_url.request_duration", "puts.backend.request_duration", "gets.backend.request_duration"}
+				}).Observe(time.Since(*start).Seconds())
+			} else if metricNameTokens[2] == "request_size_bytes" {
+				m.RequestSyzeBytes.With(prometheus.Labels{
+					"method": fmt.Sprintf("%s.%s", label, metricNameTokens[2]), // {"puts.current_url.request_duration", "gets.current_url.request_duration", "puts.backend.request_duration", "gets.backend.request_duration"}
+				}).Observe(float64(len(value)))
+			} else {
+				m.MethodToEndpointMetrics.With(prometheus.Labels{
+					label: metricNameTokens[2], // {"connections.active_incoming", "connections.accept_errors", "connections.close_errors"}
+				}).Inc()
+			}
+		}
 	}
 }

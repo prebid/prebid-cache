@@ -14,7 +14,7 @@ import (
 type CacheMetrics interface {
 	//Export(cfg config.Metrics) {
 	//Implement differently for Prometheus and for Influx. This means we'll have to trim the current Inflix implementation a bit
-	Export(cfg config.Metrics)
+	Export(cfg config.Configuration)
 
 	//Increment()
 	// This one is absolutely needed because we are going to substitute `Mark(1)` and `Inc()` with this function. In other words, this function
@@ -29,10 +29,10 @@ type CacheMetricsEngines struct {
 
 func (me *CacheMetricsEngines) Export(cfg config.Configuration) {
 	if cfg.Metrics.Influx.Host != "" {
-		me.Influx.Export(cfg)
+		me.Influx.Export(cfg.Metrics)
 	}
 	if cfg.Metrics.Prometheus.Port != 0 {
-		me.Prometheus.Export(cfg)
+		me.Prometheus.Export(cfg.Metrics)
 	}
 }
 
@@ -86,74 +86,47 @@ func CreateInfluxMetrics() *InfluxMetrics {
 func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	cacheWriteTimeBuckts := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1}
 	registry := prometheus.NewRegistry()
-	return &PrometheusMetrics{
+	promMetrics := &PrometheusMetrics{
 		Registry: registry,
-		Puts: &PrometheusMetricsEntry{
-			Duration: newHistogram(cfg, registry,
-				"puts.current_url.request_duration",
-				"Duration in seconds to write to Prebid Cache labeled by success or failure.", //Ask in the Github comment section if this descriptions are ok
-				[]string{"success"},
-				cacheWriteTimeBuckts),
-			RequestMetrics: newCounterVecWithLabels(cfg, registry,
-				"puts.current_url.",
-				"Count of put requests that were successful, returned errors, or were simply bad requests",
-				[]string{"error_count", "bad_request_count", "request_count"},
-			),
-		},
-		Gets: &PrometheusMetricsEntry{
-			Duration: newHistogram(cfg, registry,
-				"gets.current_url.request_duration",
-				"Duration in seconds to read from Prebid Cache labeled by success or failure.",
-				[]string{"success"},
-				cacheWriteTimeBuckts),
-			RequestMetrics: newCounterVecWithLabels(cfg, registry,
-				"gets.current_url.",
-				"Count of get requests that were successful, returned errors, or were simply bad requests",
-				[]string{"error_count", "bad_request_count", "request_count"},
-			),
-		},
-		PutsBackend: &PrometheusMetricsEntryByFormat{
-			Duration: newHistogram(cfg, registry,
-				"puts.backend.request_duration",
-				"Duration in seconds to write to Prebid Cache backend labeled by success or failure.",
-				[]string{"success"},
-				cacheWriteTimeBuckts),
-			BackendPutMetrics: newCounterVecWithLabels(cfg, registry,
-				"puts.backend.",
-				"Count of backend put requests that came in XML format, JSON format, were bad requests, returned errors, were invalid or defined a time to live limit.",
-				[]string{"error_count", "bad_request_count", "json_request_count", "xml_request_count", "defines_ttl", "unknown_request_count"},
-			),
-			RequestLength: newHistogram(cfg, registry,
-				"puts.backend.request_size_bytes",
-				"Size in bytes of backend put request.",
-				[]string{"success"},
-				cacheWriteTimeBuckts),
-		},
-		GetsBackend: &PrometheusMetricsEntry{
-			Duration: newHistogram(cfg, registry,
-				"gets.backend.request_duration",
-				"Seconds to write to Prebid Cache labeled by success or failure.",
-				[]string{"success"},
-				cacheWriteTimeBuckts),
-			RequestMetrics: newCounterVecWithLabels(cfg, registry,
-				"gets.backend.",
-				"Count of backend get requests that were successful, returned errors, or were simply bad requests",
-				[]string{"error_count", "bad_request_count", "request_count"},
-			),
-		},
-		Connections: &PrometheusConnectionMetrics{
-			RequestMetrics: newCounterVecWithLabels(cfg, registry,
-				"connections.",
-				"Count of number of active connections, connection close errors and conection accept errors.",
-				[]string{"active_incoming", "accept_errors", "close_errors"},
-			),
-		},
-		ExtraTTLSeconds: newHistogram(cfg, registry,
-			"puts.backend.request_duration",
-			"Seconds of extra time to live in seconds labeled as success.",
-			[]string{"success"},
-			cacheWriteTimeBuckts),
+		RequestDurationMetrics: newHistogramVector(cfg, registry,
+			"Request duration",
+			"Duration in seconds to write to Prebid Cache labeled by get or put method and current URL or backend request type.",
+			[]string{"method", "result"},
+			cacheWriteTimeBuckts,
+		),
+		MethodToEndpointMetrics: newCounterVecWithLabels(cfg, registry,
+			"Puts and gets and GetsBackend request counts",
+			"How many get requests, put requests, and get backend requests cathegorized by total requests, bad requests, and error requests.",
+			[]string{"method", "count_type"},
+		),
+		RequestSyzeBytes: newHistogramVector(cfg, registry,
+			"Request size in bytes",
+			"Currently implemented only for backend put requests.",
+			[]string{"method"},
+			cacheWriteTimeBuckts,
+		),
+		ConnectionMetrics: newCounterVecWithLabels(cfg, registry,
+			"Connection success and error counts",
+			"How many active_incoming, accept_errors, or close_errors connections",
+			[]string{"connections"},
+		),
+		//ExtraTTLSeconds:         *prometheus.Histogram
+		//ExtraTTLSeconds: newHistogram(cfg, registry,
+		//	"puts.backend.request_duration",
+		//	"Seconds of extra time to live in seconds labeled as success.",
+		//	[]string{"success"},
+		//	cacheWriteTimeBuckts,
+		//),
+		ExtraTTLSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "pond_temperature_celsius",
+			Help:    "The temperature of the frog pond.",
+			Buckets: cacheWriteTimeBuckts,
+		}),
 	}
+
+	promMetrics.ExtraTTLSeconds.Observe(5000.00)
+
+	return promMetrics
 }
 
 // A blank metrics engine in case no  metrics service was specified in the configuration file
