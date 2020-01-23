@@ -20,6 +20,9 @@ type CacheMetrics interface {
 	// This one is absolutely needed because we are going to substitute `Mark(1)` and `Inc()` with this function. In other words, this function
 	// will call `Mark(1)` or `Inc()` depending whether this is an Influx or a Prometheus metric object
 	Increment(metricName string, start *time.Time, value string)
+
+	//Decrement()
+	Decrement(metricName string)
 }
 
 type CacheMetricsEngines struct {
@@ -58,6 +61,15 @@ func (cacheMetrics CacheMetricsEngines) Add(metricName string, start *time.Time,
 	}
 	if cacheMetrics.Prometheus != nil {
 		cacheMetrics.Prometheus.Increment(metricName, start, value)
+	}
+}
+
+func (cacheMetrics CacheMetricsEngines) Substract(metricName string) {
+	if cacheMetrics.Influx != nil {
+		cacheMetrics.Influx.Decrement(metricName)
+	}
+	if cacheMetrics.Prometheus != nil {
+		cacheMetrics.Prometheus.Decrement(metricName)
 	}
 }
 
@@ -105,21 +117,18 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 			[]string{"method"},
 			cacheWriteTimeBuckts,
 		),
-		ConnectionMetrics: newCounterVecWithLabels(cfg, registry,
+		ConnectionErrorMetrics: newCounterVecWithLabels(cfg, registry,
 			"Connection success and error counts",
-			"How many active_incoming, accept_errors, or close_errors connections",
+			"How many accept_errors, or close_errors connections",
 			[]string{"connections"},
 		),
-		//ExtraTTLSeconds:         *prometheus.Histogram
-		//ExtraTTLSeconds: newHistogram(cfg, registry,
-		//	"puts.backend.request_duration",
-		//	"Seconds of extra time to live in seconds labeled as success.",
-		//	[]string{"success"},
-		//	cacheWriteTimeBuckts,
-		//),
+		ActiveConnections: newGaugeMetric(cfg, registry,
+			"connections.active_incoming",
+			"How many connections are currenctly opened",
+		),
 		ExtraTTLSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name:    "pond_temperature_celsius",
-			Help:    "The temperature of the frog pond.",
+			Name:    "extra_ttl_seconds",
+			Help:    "Time to live in seconds",
 			Buckets: cacheWriteTimeBuckts,
 		}),
 	}

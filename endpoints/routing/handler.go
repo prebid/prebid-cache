@@ -15,12 +15,12 @@ import (
 	"github.com/rs/cors"
 )
 
-func NewHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics) http.Handler {
+func NewHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.CacheMetricsEngines) http.Handler {
 	router := httprouter.New()
 	router.GET("/", endpoints.Index)        //Default route handler
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
-	router.POST("/cache", decorators.MonitorHttp(endpoints.NewPutHandler(dataStore, cfg.RequestLimits.MaxNumValues, cfg.RequestLimits.AllowSettingKeys), appMetrics.Puts))
-	router.GET("/cache", decorators.MonitorHttp(endpoints.NewGetHandler(dataStore, cfg.RequestLimits.AllowSettingKeys), appMetrics.Gets))
+	router.POST("/cache", decorators.MonitorHttp(endpoints.NewPutHandler(dataStore, cfg.RequestLimits.MaxNumValues, cfg.RequestLimits.AllowSettingKeys), appMetrics, "puts"))
+	router.GET("/cache", decorators.MonitorHttp(endpoints.NewGetHandler(dataStore, cfg.RequestLimits.AllowSettingKeys), appMetrics, "gets"))
 
 	handler := handleCors(router)
 	handler = handleRateLimiting(handler, cfg.RateLimiting)

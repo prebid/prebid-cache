@@ -87,7 +87,8 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			}
 
 			logrus.Debugf("Storing value: %s", toCache)
-			resps.Responses[i].UUID = uuid.NewV4().String()
+			newUUID, _ := uuid.NewV4()
+			resps.Responses[i].UUID = newUUID.String()
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
 			// Only allow setting a provided key if configured (and ensure a key is provided).

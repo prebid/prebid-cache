@@ -28,7 +28,8 @@ type PrometheusMetrics struct {
 	RequestDurationMetrics  *prometheus.HistogramVec
 	MethodToEndpointMetrics *prometheus.CounterVec
 	RequestSyzeBytes        *prometheus.HistogramVec
-	ConnectionMetrics       *prometheus.CounterVec
+	ConnectionErrorMetrics  *prometheus.CounterVec
+	ActiveConnections       prometheus.Gauge
 	ExtraTTLSeconds         prometheus.Histogram
 }
 
@@ -46,6 +47,18 @@ func newCounterVecWithLabels(cfg config.PrometheusMetrics, registry *prometheus.
 	counterVec := prometheus.NewCounterVec(opts, labels)
 	registry.MustRegister(counterVec)
 	return counterVec
+}
+
+func newGaugeMetric(cfg config.PrometheusMetrics, registry *prometheus.Registry, name string, help string) prometheus.Gauge {
+	opts := prometheus.GaugeOpts{
+		Namespace: cfg.Namespace,
+		Subsystem: cfg.Subsystem,
+		Name:      name,
+		Help:      help,
+	}
+	gauge := prometheus.NewGauge(opts)
+	registry.MustRegister(gauge)
+	return gauge
 }
 
 func newHistogramVector(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string, labels []string, buckets []float64) *prometheus.HistogramVec {
@@ -85,9 +98,15 @@ func (m PrometheusMetrics) Increment(metricName string, start *time.Time, value 
 	metricNameTokens := strings.Split(metricName, ".")
 
 	if len(metricNameTokens) == 2 && metricNameTokens[0] == "connections" {
-		m.ConnectionMetrics.With(prometheus.Labels{
-			metricNameTokens[0]: metricNameTokens[2], // {"connections.active_incoming", "connections.accept_errors", "connections.close_errors"}
-		}).Inc()
+		switch metricNameTokens[1] {
+		case "close_errors":
+		case "accept_errors":
+			m.ConnectionErrorMetrics.With(prometheus.Labels{
+				metricNameTokens[0]: metricNameTokens[2], // { "connections.accept_errors", "connections.close_errors"}
+			}).Inc()
+		case "active_incoming":
+			m.ActiveConnections.Inc()
+		}
 	} else if len(metricNameTokens) == 3 {
 		label := fmt.Sprintf("%s.%s", metricNameTokens[0], metricNameTokens[1])
 		if metricNameTokens[0] == "gets" || metricNameTokens[0] == "puts" {
@@ -105,5 +124,13 @@ func (m PrometheusMetrics) Increment(metricName string, start *time.Time, value 
 				}).Inc()
 			}
 		}
+	}
+}
+func (m PrometheusMetrics) Decrement(metricName string) {
+	switch metricName {
+	case "connections.active_incoming":
+		m.ActiveConnections.Dec()
+	default:
+		//error
 	}
 }

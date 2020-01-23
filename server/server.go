@@ -18,7 +18,7 @@ import (
 )
 
 // Listen serves requests and blocks forever, until OS signals shut down the process.
-func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.ConnectionMetrics) {
+func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.CacheMetricsEngines) {
 	stopSignals := make(chan os.Signal)
 	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
 
@@ -77,7 +77,7 @@ func runServer(server *http.Server, name string, listener net.Listener) {
 	log.Errorf("%s server quit with error: %v", name, err)
 }
 
-func newListener(address string, metrics *metrics.ConnectionMetrics) (net.Listener, error) {
+func newListener(address string, metrics *metrics.CacheMetricsEngines) (net.Listener, error) {
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("Error listening for TCP connections on %s: %v", address, err)

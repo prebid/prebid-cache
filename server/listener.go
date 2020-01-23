@@ -11,22 +11,24 @@ import (
 // monitorableListener tracks any opened connections in the metrics.
 type monitorableListener struct {
 	net.Listener
-	metrics *metrics.ConnectionMetrics
+	metrics *metrics.CacheMetricsEngines
 }
 
 // monitorableConnection tracks any closed connections in the metrics.
 type monitorableConnection struct {
 	net.Conn
-	metrics *metrics.ConnectionMetrics
+	metrics *metrics.CacheMetricsEngines
 }
 
 func (l *monitorableConnection) Close() error {
 	err := l.Conn.Close()
 	if err == nil {
-		l.metrics.ActiveConnections.Dec(1)
+		//l.metrics.ActiveConnections.Dec(1)
+		l.metrics.Substract("connections.active_incoming")
 	} else {
 		log.Errorf("Error closing connection: %v", err)
-		l.metrics.ConnectionCloseErrors.Mark(1)
+		//l.metrics.ConnectionCloseErrors.Mark(1)
+		l.metrics.Add("connections.close_errors", nil, "")
 	}
 	return err
 }
@@ -35,10 +37,12 @@ func (ln *monitorableListener) Accept() (c net.Conn, err error) {
 	tc, err := ln.Listener.Accept()
 	if err != nil {
 		log.Errorf("Error accepting connection: %v", err)
-		ln.metrics.ConnectionAcceptErrors.Mark(1)
+		//ln.metrics.ConnectionAcceptErrors.Mark(1)
+		ln.metrics.Add("connections.accept_errors", nil, "")
 		return tc, err
 	}
-	ln.metrics.ActiveConnections.Inc(1)
+	//ln.metrics.ActiveConnections.Inc(1)
+	ln.metrics.Add("connections.active_incoming", nil, "")
 	return &monitorableConnection{
 		tc,
 		ln.metrics,

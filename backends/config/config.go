@@ -10,7 +10,7 @@ import (
 	"github.com/prebid/prebid-cache/metrics"
 )
 
-func NewBackend(cfg config.Configuration, appMetrics *metrics.Metrics) backends.Backend {
+func NewBackend(cfg config.Configuration, appMetrics *metrics.CacheMetricsEngines) backends.Backend {
 	backend := newBaseBackend(cfg.Backend, appMetrics)
 	backend = decorators.LimitTTLs(backend, cfg.RequestLimits.MaxTTLSeconds)
 	if cfg.RequestLimits.MaxSize > 0 {
@@ -37,7 +37,7 @@ func applyCompression(cfg config.Compression, backend backends.Backend) backends
 	panic("Error applying compression. This shouldn't happen.")
 }
 
-func newBaseBackend(cfg config.Backend, appMetrics *metrics.Metrics) backends.Backend {
+func newBaseBackend(cfg config.Backend, appMetrics *metrics.CacheMetricsEngines) backends.Backend {
 	switch cfg.Type {
 	case config.BackendCassandra:
 		return backends.NewCassandraBackend(cfg.Cassandra)
@@ -48,7 +48,7 @@ func newBaseBackend(cfg config.Backend, appMetrics *metrics.Metrics) backends.Ba
 	case config.BackendAzure:
 		return backends.NewAzureBackend(cfg.Azure.Account, cfg.Azure.Key)
 	case config.BackendAerospike:
-		return backends.NewAerospikeBackend(cfg.Aerospike, appMetrics.InfluxMetrics.ExtraTTLSeconds)
+		return backends.NewAerospikeBackend(cfg.Aerospike, appMetrics.Influx.ExtraTTLSeconds)
 	case config.BackendRedis:
 		return backends.NewRedisBackend(cfg.Redis)
 	default:
