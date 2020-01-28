@@ -101,36 +101,36 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	promMetrics := &PrometheusMetrics{
 		Registry: registry,
 		RequestDurationMetrics: newHistogramVector(cfg, registry,
-			"Request duration",
+			"request_duration",
 			"Duration in seconds to write to Prebid Cache labeled by get or put method and current URL or backend request type.",
 			[]string{"method", "result"},
 			cacheWriteTimeBuckts,
-		),
+		), // {"puts.current_url.request_duration", "gets.current_url.request_duration", "puts.backend.request_duration", "gets.backend.request_duration"}
 		MethodToEndpointMetrics: newCounterVecWithLabels(cfg, registry,
-			"Puts and gets and GetsBackend request counts",
+			"request_counts",
 			"How many get requests, put requests, and get backend requests cathegorized by total requests, bad requests, and error requests.",
 			[]string{"method", "count_type"},
-		),
+		), //{"puts.current_url.error_count", "puts.current_url.bad_request_count", "puts.current_url.request_count", "gets.current_url.error_count", "gets.current_url.bad_request_count", "gets.current_url.request_count", "puts.backend.error_count", "puts.backend.bad_request_count", "puts.backend.json_request_count", "puts.backend.xml_request_count","puts.backend.defines_ttl", "puts.backend.unknown_request_count", "gets.backend.error_count", "gets.backend.bad_request_count", "gets.backend.request_count"}
 		RequestSyzeBytes: newHistogramVector(cfg, registry,
-			"Request size in bytes",
+			"request_size",
 			"Currently implemented only for backend put requests.",
 			[]string{"method"},
 			cacheWriteTimeBuckts,
-		),
+		), //{ "puts.backend.request_size_bytes" }
 		ConnectionErrorMetrics: newCounterVecWithLabels(cfg, registry,
-			"Connection success and error counts",
+			"connection_error_counts",
 			"How many accept_errors, or close_errors connections",
 			[]string{"connections"},
-		),
+		), // { "connections.accept_errors", "connections.close_errors"}
 		ActiveConnections: newGaugeMetric(cfg, registry,
-			"connections.active_incoming",
+			"connections_active_incoming",
 			"How many connections are currenctly opened",
-		),
+		), // {"connections.active_incoming"}
 		ExtraTTLSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name:    "extra_ttl_seconds",
+			Name:    "extra_ttl",
 			Help:    "Time to live in seconds",
 			Buckets: cacheWriteTimeBuckts,
-		}),
+		}), //{"extra_ttl_seconds"}
 	}
 
 	promMetrics.ExtraTTLSeconds.Observe(5000.00)
