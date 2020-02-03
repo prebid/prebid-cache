@@ -262,3 +262,68 @@ func (m PrometheusMetrics) Decrement(metricName string) {
 		//error
 	}
 }
+
+/**************************************************
+ *	NEW Functions to record metrics
+ **************************************************/
+func (metricObj *PrometheusRequestStatusMetric) RecordRequestMetric(status string, duration *time.Time) {
+	//Duration      prometheus.Histogram   //Non vector
+	//RequestStatus *prometheus.CounterVec // CounterVec "status": "ok", "error", or "bad_request"
+	switch status {
+	case "ok":
+		fallthrough
+	case "error":
+		fallthrough
+	case "bad_request":
+		metricObj.RequestStatus.With(prometheus.Labels{
+			"status": status,
+		}).Inc()
+	case "duration":
+		metricObj.Duration.Observe(duration.Seconds())
+	default:
+		//err := &errortypes.AnError{
+		//	Message: fmt.Sprintf(unexpectedStatusCodeFormat, bidderRawResponse.StatusCode),
+		//}
+	}
+}
+func (metricByFormat *PrometheusRequestStatusMetricByFormat) RecordRequestMetricByFormat(status string, duration *time.Time, sizeInBytes float64) {
+	//Duration      metrics.Histogram
+	//PutBackendRequests *prometheus.CounterVec // CounterVec "format": "json", "xml", "invalid_format", or "defines_ttl"
+	//RequestLength      metrics.Histogram
+	switch status {
+	case "json":
+		fallthrough
+	case "xml":
+		fallthrough
+	case "invalid_format":
+		fallthrough
+	case "defines_ttl":
+		metricByFormat.RequestStatus.With(prometheus.Labels{
+			"format": status,
+		}).Inc()
+	case "duration":
+		metricByFormat.Duration.Observe(duration.Seconds())
+	case "size_bytes":
+		metricByFormat.RequestLength.Observe(sizeInBytes)
+	default:
+		//err := &errortypes.AnError{
+		//	Message: fmt.Sprintf(unexpectedStatusCodeFormat, bidderRawResponse.StatusCode),
+		//}
+	}
+}
+func (metricObj *PrometheusConnectionMetrics) RecordConnectionMetrics(accept bool) {
+	//ConnectionsErrors *prometheus.CounterVec // the "Connection_error" label will hold the values "accept" or "close"
+	var labelValue string
+	if success {
+		labelValue = "accept"
+	} else {
+		labelValue = "close"
+	}
+	metricObj.ConnectionsErrors.With(prometheus.Labels{
+		"connection_error": labelValue,
+	}).Inc()
+}
+
+func (m *Metrics) RecordExtraTTLSeconds(success bool) {
+	//ExtraTTLSeconds *prometheus.HistogramVec
+}
