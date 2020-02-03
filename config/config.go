@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
-	"github.com/prebid/prebid-cache/stats"
+	"github.com/PubMatic-OpenWrap/prebid-cache/stats"
 	"github.com/spf13/viper"
 )
 

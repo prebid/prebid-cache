@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
+	"github.com/PubMatic-OpenWrap/prebid-cache/config"
 	"github.com/gocql/gocql"
-	"github.com/prebid/prebid-cache/config"
 )
 
 // Cassandra Object use to implement backend interface

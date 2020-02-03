@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
+	"github.com/PubMatic-OpenWrap/prebid-cache/backends"
+	backendDecorators "github.com/PubMatic-OpenWrap/prebid-cache/backends/decorators"
+	"github.com/PubMatic-OpenWrap/prebid-cache/constant"
+	log "github.com/PubMatic-OpenWrap/prebid-cache/logger"
+	"github.com/PubMatic-OpenWrap/prebid-cache/stats"
 	"github.com/julienschmidt/httprouter"
-	"github.com/prebid/prebid-cache/backends"
-	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
-	"github.com/prebid/prebid-cache/constant"
-	log "github.com/prebid/prebid-cache/logger"
-	"github.com/prebid/prebid-cache/stats"
 	"github.com/satori/go.uuid"
 )
 

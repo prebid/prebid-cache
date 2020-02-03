@@ -1,8 +1,9 @@
 package metricstest
 
 import (
-	"github.com/prebid/prebid-cache/metrics"
 	"testing"
+
+	"github.com/PubMatic-OpenWrap/prebid-cache/metrics"
 )
 
 // metricstest contains utilities for testing metrics. These should only be imported into *_test.go files, and

@@ -13,8 +13,8 @@ import (
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
 
-	"github.com/prebid/prebid-cache/config"
-	"github.com/prebid/prebid-cache/metrics"
+	"github.com/PubMatic-OpenWrap/prebid-cache/config"
+	"github.com/PubMatic-OpenWrap/prebid-cache/metrics"
 )
 
 // Listen serves requests and blocks forever, until OS signals shut down the process.

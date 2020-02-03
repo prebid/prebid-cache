@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
-	"github.com/prebid/prebid-cache/config"
+	"github.com/PubMatic-OpenWrap/prebid-cache/config"
 	"github.com/rcrowley/go-metrics"
 	"github.com/vrischmann/go-metrics-influxdb"
 )

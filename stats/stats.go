@@ -3,7 +3,7 @@ package stats
 import (
 	"fmt"
 
-	"github.com/prebid/prebid-cache/constant"
+	"github.com/PubMatic-OpenWrap/prebid-cache/constant"
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
 	"git.pubmatic.com/PubMatic/go-common.git/stats"

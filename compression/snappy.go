@@ -6,8 +6,8 @@ import (
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
 
+	"github.com/PubMatic-OpenWrap/prebid-cache/backends"
 	"github.com/golang/snappy"
-	"github.com/prebid/prebid-cache/backends"
 )
 
 // SnappyCompress runs snappy compression on data before saving it in the backend.
