@@ -48,7 +48,7 @@ func newBaseBackend(cfg config.Backend, appMetrics *metrics.CacheMetricsEngines)
 	case config.BackendAzure:
 		return backends.NewAzureBackend(cfg.Azure.Account, cfg.Azure.Key)
 	case config.BackendAerospike:
-		return backends.NewAerospikeBackend(cfg.Aerospike, appMetrics.Influx.ExtraTTLSeconds)
+		return backends.NewAerospikeBackend(cfg.Aerospike, appMetrics)
 	case config.BackendRedis:
 		return backends.NewRedisBackend(cfg.Redis)
 	default:

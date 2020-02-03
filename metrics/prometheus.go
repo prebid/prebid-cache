@@ -12,21 +12,135 @@ import (
 /**************************************************
  *	Object definition
  **************************************************/
-
 type PrometheusMetrics struct {
-	Registry                *prometheus.Registry
-	RequestDurationMetrics  *prometheus.HistogramVec // {"puts.current_url.request_duration", "gets.current_url.request_duration", "puts.backend.request_duration", "gets.backend.request_duration"}
-	MethodToEndpointMetrics *prometheus.CounterVec   //{"puts.current_url.error_count", "puts.current_url.bad_request_count", "puts.current_url.request_count", "gets.current_url.error_count", "gets.current_url.bad_request_count", "gets.current_url.request_count", "puts.backend.error_count", "puts.backend.bad_request_count", "puts.backend.json_request_count", "puts.backend.xml_request_count","puts.backend.defines_ttl", "puts.backend.unknown_request_count", "gets.backend.error_count", "gets.backend.bad_request_count", "gets.backend.request_count"}
-	RequestSyzeBytes        *prometheus.HistogramVec //{ "puts.backend.request_size_bytes" }
-	ConnectionErrorMetrics  *prometheus.CounterVec   // {"connections.accept_errors", "connections.close_errors"}
-	ActiveConnections       prometheus.Gauge         // {"connections.active_incoming"}
-	ExtraTTLSeconds         prometheus.Histogram     //{"extra_ttl_seconds"}
+	Registry        *prometheus.Registry
+	Puts            *PrometheusRequestStatusMetric
+	Gets            *PrometheusRequestStatusMetric
+	PutsBackend     *PrometheusRequestStatusMetricByFormat
+	GetsBackend     *PrometheusRequestStatusMetric
+	Connections     *PrometheusConnectionMetrics
+	ExtraTTLSeconds *PrometheusExtraTTLMetrics
+}
+
+type PrometheusRequestStatusMetric struct {
+	Duration      prometheus.Histogram   //Non vector
+	RequestStatus *prometheus.CounterVec // CounterVec "status": "ok", "error", or "bad_request"
+}
+
+type PrometheusRequestStatusMetricByFormat struct {
+	RequestLength      metrics.Histogram      //Non vector
+	PutBackendRequests *prometheus.CounterVec // CounterVec "format": "json" or  "xml","status": "ok", "error", or "bad_request","definesTimeToLive": "TTL_present", or "TTL_missing"
+	RequestLength      metrics.Histogram      //Non vector
+}
+
+type PrometheusConnectionMetrics struct {
+	ConnectionsErrors *prometheus.CounterVec // the "Connection_error" label will hold the values "accept" or "close"
+}
+
+type PrometheusExtraTTLMetrics struct {
+	ExtraTTLSeconds *prometheus.Histogram
 }
 
 /**************************************************
  *	Init functions
  **************************************************/
+func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
+	cacheWriteTimeBuckts := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1}
+	requestSizeBuckts := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1} // TODO: tweak
+	registry := prometheus.NewRegistry()
+	promMetrics := &PrometheusMetrics{
+		//Registry        *prometheus.Registry
+		Registry: registry,
+		//Puts            *PrometheusMetricsEntry
+		Puts: &PrometheusMetricsEntry{
+			Duration: newHistogram(cfg, registry,
+				"puts.current_url.request_duration", //modify according to InfluxDB name
+				"Duration in seconds Prebid Cache takes to process put requests.",
+				cacheWriteTimeBuckts,
+			), // {"gets.current_url.request_duration", "puts.backend.request_duration", "gets.backend.request_duration"}
+			RequestStatus: newCounterVecWithLabels(cfg, registry,
+				"puts.current_url",
+				"Count of total requests to Prebid Server labeled by status.",
+				[]string{"status"}, // CounterVec labels --> "status": "ok", "error", or "bad_request"
+			), //{"puts.current_url.error_count", "puts.current_url.bad_request_count", "puts.current_url.request_count", "gets.current_url.error_count", "gets.current_url.bad_request_count", "gets.current_url.request_count", "puts.backend.error_count", "puts.backend.bad_request_count", "puts.backend.json_request_count", "puts.backend.xml_request_count","puts.backend.defines_ttl", "puts.backend.unknown_request_count", "gets.backend.error_count", "gets.backend.bad_request_count", "gets.backend.request_count"}
+		},
+		//Gets            *PrometheusMetricsEntry
+		Gets: &PrometheusMetricsEntry{
+			Duration: newHistogram(cfg, registry,
+				"gets.current_url.request_duration",
+				"Duration in seconds Prebid Cache takes to process get requests.",
+				cacheWriteTimeBuckts,
+			),
+			RequestStatus: newCounterVecWithLabels(cfg, registry,
+				"gets.current_url",
+				"Count of total get requests to Prebid Server labeled by status.",
+				[]string{"status"}, // CounterVec labels --> "status": "ok", "error", or "bad_request"
+			), //{"gets.current_url.error_count", "gets.current_url.bad_request_count", "gets.current_url.request_count"}
+		},
+		//PutsBackend     *PrometheusMetricsEntryByFormat
+		PutsBackend: &PrometheusMetricsEntryByFormat{
+			Duration: newHistogram(cfg, registry,
+				"puts.backend.request_duration",
+				"Duration in seconds Prebid Cache takes to process backend put requests.",
+				cacheWriteTimeBuckts,
+			),
+			//PutBackendRequests *prometheus.CounterVec
+			PutBackendRequests: newCounterVecWithLabels(cfg, registry,
+				"puts.backend",
+				"Count of total requests to Prebid Cache labeled by format, status and whether or not it comes with TTL",
+				[]string{"format", "status", "definesTimeToLive"},
+			), // CounterVec "format": "json" or  "xml","status": "ok", "error", or "bad_request","definesTimeToLive": "TTL_present", or "TTL_missing"
+			//{"puts.backend.error_count", "puts.backend.bad_request_count", "puts.backend.json_request_count", "puts.backend.xml_request_count","puts.backend.defines_ttl", "puts.backend.unknown_request_count"}
+			RequestLength: newHistogram(cfg, registry,
+				"puts.backend.request_size_bytes",
+				"Size in bytes of a backend put request.",
+				requestSizeBuckts,
+			),
+		},
+		//GetsBackend     *PrometheusMetricsEntry
+		GetsBackend: &PrometheusMetricsEntry{
+			Duration: newHistogram(cfg, registry,
+				"gets.backend.request_duration",
+				"Duration in seconds Prebid Cache takes to process backend get requests.",
+				cacheWriteTimeBuckts,
+			),
+			RequestStatus: newCounterVecWithLabels(cfg, registry,
+				"gets.backend",
+				"Count of total backend get requests to Prebid Server labeled by status.",
+				[]string{"status"}, // CounterVec labels --> "status": "ok", "error", or "bad_request"
+			), //{"gets.backend.error_count", "gets.backend.bad_request_count", "gets.backend.request_count"}
 
+		},
+		//Connections     *PrometheusConnectionMetrics
+		Connections: &PrometheusConnectionMetrics{
+			ConnectionsOpened: newSingleCounter(cfg, registry,
+				"connections",
+				"Count of total number of connectionsbackend get requests to Prebid Server labeled by status.",
+			),
+			ConnectionsErrors: newCounterVecWithLabels(cfg, registry,
+				"connection_error",
+				"Count the number of connection accept errors or connection close errors",
+				[]string{"connection_error"},
+			), // "connection_error" = {"accept", "close"}
+		},
+
+		//ExtraTTLSeconds *prometheus.HistogramVec
+		ExtraTTLSeconds: &PrometheusExtraTTLMetrics{
+			newHistogram(cfg, registry,
+				"extra_ttl_seconds",
+				"Extra time to live in seconds specified",
+				cacheWriteTimeBuckts,
+			),
+		},
+	}
+	promMetrics.ExtraTTLSeconds.Observe(5000.00)
+
+	return promMetrics
+}
+
+/**************************************************
+ *	Helper Init functions
+ **************************************************/
 func newCounterVecWithLabels(cfg config.PrometheusMetrics, registry *prometheus.Registry, name string, help string, labels []string) *prometheus.CounterVec {
 	opts := prometheus.CounterOpts{
 		Namespace: cfg.Namespace,
@@ -37,6 +151,31 @@ func newCounterVecWithLabels(cfg config.PrometheusMetrics, registry *prometheus.
 	counterVec := prometheus.NewCounterVec(opts, labels)
 	registry.MustRegister(counterVec)
 	return counterVec
+}
+
+func newSingleCounter(cfg config.PrometheusMetrics, registry *prometheus.Registry, name string, help string) *prometheus.Counter {
+	opts := prometheus.CounterOpts{
+		Namespace: cfg.Namespace,
+		Subsystem: cfg.Subsystem,
+		Name:      name,
+		Help:      help,
+	}
+	counter := prometheus.NewCounter(opts)
+	registry.MustRegister(counter)
+	return counter
+}
+
+func newHistogram(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string, buckets []float64) *prometheus.HistogramVec {
+	opts := prometheus.HistogramOpts{
+		Namespace: cfg.Namespace,
+		Subsystem: cfg.Subsystem,
+		Name:      name,
+		Help:      help,
+		Buckets:   buckets,
+	}
+	histogram := prometheus.NewHistogram(opts)
+	registry.MustRegister(histogram)
+	return histogram
 }
 
 func newGaugeMetric(cfg config.PrometheusMetrics, registry *prometheus.Registry, name string, help string) prometheus.Gauge {
@@ -65,7 +204,7 @@ func newHistogramVector(cfg config.PrometheusMetrics, registry *prometheus.Regis
 }
 
 /**************************************************
- *	Functions to record metrics
+ *	DEPECRATED Functions to record metrics
  **************************************************/
 // Export begins sending metrics to the configured database.
 // This method blocks indefinitely, so it should probably be run in a goroutine.

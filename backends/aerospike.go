@@ -7,19 +7,20 @@ import (
 	log "github.com/Sirupsen/logrus"
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/prebid/prebid-cache/config"
-	metrics "github.com/rcrowley/go-metrics"
+	//metrics "github.com/rcrowley/go-metrics"
+	"github.com/prebid/prebid-cache/metrics"
 )
 
 const setName = "uuid"
 const binValue = "value"
 
 type Aerospike struct {
-	cfg          config.Aerospike
-	client       *as.Client
-	ttlHistogram metrics.Histogram
+	cfg           config.Aerospike
+	client        *as.Client
+	metricEngines *metrics.CacheMetricsEngines
 }
 
-func NewAerospikeBackend(cfg config.Aerospike, ttlHistogram metrics.Histogram) *Aerospike {
+func NewAerospikeBackend(cfg config.Aerospike, metricEngines *metrics.CacheMetricsEngines) *Aerospike {
 	client, err := as.NewClient(cfg.Host, cfg.Port)
 	if err != nil {
 		log.Fatalf("Error creating Aerospike backend: %v", err)
@@ -28,9 +29,9 @@ func NewAerospikeBackend(cfg config.Aerospike, ttlHistogram metrics.Histogram) *
 	log.Infof("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
 
 	return &Aerospike{
-		cfg:          cfg,
-		client:       client,
-		ttlHistogram: ttlHistogram,
+		cfg:           cfg,
+		client:        client,
+		metricEngines: metricEngines,
 	}
 }
 
@@ -46,7 +47,8 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 	if rec == nil {
 		return "", errors.New("client.Get returned a nil record. Is aerospike configured properly?")
 	}
-	a.ttlHistogram.Update(int64(rec.Expiration))
+	//a.ttlHistogram.Update(int64(rec.Expiration))    TODO
+	a.Add("", nil, int64(rec.Expiration))
 	return rec.Bins[binValue].(string), nil
 }
 
