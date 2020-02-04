@@ -146,8 +146,8 @@ func (cfg *Metrics) validateAndLog() {
 		log.Infof("config.metrics.type: %s", metricsType)
 		mtype := MetricsType(metricsType)
 		switch mtype {
-		case MetricsPrometheus:
-			cfg.Prometheus.validateAndLog()
+		//case MetricsPrometheus:
+		//cfg.Prometheus.validateAndLog()
 		case MetricsNone:
 		case MetricsInflux:
 			cfg.Influx.validateAndLog()

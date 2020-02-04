@@ -17,10 +17,10 @@ const binValue = "value"
 type Aerospike struct {
 	cfg           config.Aerospike
 	client        *as.Client
-	metricEngines *metrics.CacheMetricsEngines
+	metricEngines *metrics.Metrics
 }
 
-func NewAerospikeBackend(cfg config.Aerospike, metricEngines *metrics.CacheMetricsEngines) *Aerospike {
+func NewAerospikeBackend(cfg config.Aerospike, metricEngines *metrics.Metrics) *Aerospike {
 	client, err := as.NewClient(cfg.Host, cfg.Port)
 	if err != nil {
 		log.Fatalf("Error creating Aerospike backend: %v", err)
@@ -48,7 +48,7 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 		return "", errors.New("client.Get returned a nil record. Is aerospike configured properly?")
 	}
 	//a.ttlHistogram.Update(int64(rec.Expiration))    TODO
-	a.Add("", nil, int64(rec.Expiration))
+	a.metricEngines.RecordExtraTTLSeconds(rec.Expiration)
 	return rec.Bins[binValue].(string), nil
 }
 

@@ -29,10 +29,16 @@ func (w *writerWithStatus) Header() http.Header {
 	return w.delegate.Header()
 }
 
-func MonitorHttp(handler httprouter.Handle, me *metrics.CacheMetricsEngines, method string) httprouter.Handle {
+func MonitorHttp(handler httprouter.Handle, me *metrics.Metrics, method string) httprouter.Handle {
 	return httprouter.Handle(func(resp http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		//entry.Request.Mark(1)
-		me.Add(fmt.Sprintf("%s.current_url.request_count", method), nil, "")
+		//me.Add(fmt.Sprintf("%s.current_url.request_count", method), nil, "")
+		switch method {
+		case "puts":
+			me.RecordPutRequest("add", nil)
+		case "gets":
+			me.RecordGetRequest("add", nil)
+		}
 		wrapper := writerWithStatus{
 			delegate: resp,
 		}
