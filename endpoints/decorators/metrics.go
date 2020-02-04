@@ -1,7 +1,6 @@
 package decorators
 
 import (
-	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/metrics"
 	"net/http"

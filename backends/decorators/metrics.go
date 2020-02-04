@@ -64,7 +64,7 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 	}
 	//b.puts.RequestLength.Update(int64(len(value)))
 	//b.metricsEngines.Add("puts.backend.request_size_bytes", nil, value)
-	b.metricsEngines.RecPutBackendRequest("", nil, value)
+	b.metricsEngines.RecPutBackendRequest("", nil, float64(len(value)))
 	return err
 }
 

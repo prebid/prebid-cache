@@ -14,13 +14,13 @@ import (
  *	Object definition
  **************************************************/
 type InfluxMetrics struct {
-	Registry        metrics.Registry
-	Puts            *MetricsEntry
-	Gets            *MetricsEntry
-	PutsBackend     *MetricsEntryByFormat
-	GetsBackend     *MetricsEntry
-	Connections     *ConnectionMetrics
-	ExtraTTLSeconds metrics.Histogram
+	Registry    metrics.Registry
+	Puts        *InfluxMetricsEntry
+	Gets        *InfluxMetricsEntry
+	PutsBackend *InfluxMetricsEntryByFormat
+	GetsBackend *InfluxMetricsEntry
+	Connections *InfluxConnectionMetrics
+	ExtraTTL    *InfluxExtraTTL
 }
 
 type InfluxMetricsEntry struct {
@@ -45,6 +45,9 @@ type InfluxConnectionMetrics struct {
 	ActiveConnections      metrics.Counter
 	ConnectionCloseErrors  metrics.Meter
 	ConnectionAcceptErrors metrics.Meter
+}
+type InfluxExtraTTL struct {
+	ExtraTTLSeconds metrics.Histogram
 }
 
 func NewInfluxMetricsEntry(name string, r metrics.Registry) *InfluxMetricsEntry {
@@ -81,13 +84,13 @@ func CreateInfluxMetrics() *InfluxMetrics {
 	flushTime := time.Second * 10
 	r := metrics.NewPrefixedRegistry("prebidcache.")
 	m := &InfluxMetrics{
-		Registry:        r,
-		Puts:            NewInfluxMetricsEntry("puts.current_url", r),
-		Gets:            NewInfluxMetricsEntry("gets.current_url", r),
-		PutsBackend:     NewInfluxMetricsEntryBackendPuts("puts.backend", r),
-		GetsBackend:     NewInfluxMetricsEntry("gets.backend", r),
-		Connections:     NewInfluxConnectionMetrics(r),
-		ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000)),
+		Registry:    r,
+		Puts:        NewInfluxMetricsEntry("puts.current_url", r),
+		Gets:        NewInfluxMetricsEntry("gets.current_url", r),
+		PutsBackend: NewInfluxMetricsEntryBackendPuts("puts.backend", r),
+		GetsBackend: NewInfluxMetricsEntry("gets.backend", r),
+		Connections: NewInfluxConnectionMetrics(r),
+		ExtraTTL:    &InfluxExtraTTL{ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000))},
 	}
 
 	metrics.RegisterDebugGCStats(m.Registry)
@@ -229,8 +232,8 @@ func (m *InfluxMetrics) RecordPutBackendRequest(status string, duration *time.Ti
 	case "invalid_format":
 		m.PutsBackend.InvalidRequest.Mark(1)
 	}
-	if value > 0 {
-		m.PutsBackend.RequestLength.Update(int64(len(value)))
+	if sizeInBytes > 0 {
+		m.PutsBackend.RequestLength.Update(int64(sizeInBytes))
 	}
 }
 
@@ -265,5 +268,5 @@ func (m *InfluxMetrics) RecordConnectionMetrics(label string) {
 func (m *InfluxMetrics) RecordExtraTTLSeconds(value float64) {
 	//ExtraTTLSeconds *prometheus.HistogramVec
 	//m.GetsBackend.Duration.UpdateSince(*start)
-	m.PrometheusExtraTTLMetrics.Observe(value)
+	m.ExtraTTL.ExtraTTLSeconds.Update(int64(value))
 }

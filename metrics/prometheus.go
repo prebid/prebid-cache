@@ -1,11 +1,8 @@
 package metrics
 
 import (
-	"fmt"
-	"github.com/Sirupsen/logrus"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prometheus/client_golang/prometheus"
-	"strings"
 	"time"
 )
 
@@ -28,18 +25,18 @@ type PrometheusRequestStatusMetric struct {
 }
 
 type PrometheusRequestStatusMetricByFormat struct {
-	Duration           metrics.Histogram      //Non vector
+	Duration           prometheus.Histogram   //Non vector
 	PutBackendRequests *prometheus.CounterVec // CounterVec "format": "json" or  "xml","status": "add", "error", or "bad_request","definesTimeToLive": "TTL_present", or "TTL_missing"
-	RequestLength      metrics.Histogram      //Non vector
+	RequestLength      prometheus.Histogram   //Non vector
 }
 
 type PrometheusConnectionMetrics struct {
-	ConnectionsOpened metrics.Gauge
+	ConnectionsOpened prometheus.Gauge
 	ConnectionsErrors *prometheus.CounterVec // the "Connection_error" label will hold the values "accept" or "close"
 }
 
 type PrometheusExtraTTLMetrics struct {
-	ExtraTTLSeconds *prometheus.Histogram
+	ExtraTTLSeconds prometheus.Histogram
 }
 
 /**************************************************
@@ -52,8 +49,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	promMetrics := &PrometheusMetrics{
 		//Registry        *prometheus.Registry
 		Registry: registry,
-		//Puts            *PrometheusMetricsEntry
-		Puts: &PrometheusMetricsEntry{
+		//Puts            *PrometheusRequestStatusMetric
+		Puts: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
 				"puts.current_url.request_duration", //modify according to InfluxDB name
 				"Duration in seconds Prebid Cache takes to process put requests.",
@@ -65,8 +62,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				[]string{"status"}, // CounterVec labels --> "status": "add", "error", or "bad_request"
 			), //{"puts.current_url.error_count", "puts.current_url.bad_request_count", "puts.current_url.request_count", "gets.current_url.error_count", "gets.current_url.bad_request_count", "gets.current_url.request_count", "puts.backend.error_count", "puts.backend.bad_request_count", "puts.backend.json_request_count", "puts.backend.xml_request_count","puts.backend.defines_ttl", "puts.backend.unknown_request_count", "gets.backend.error_count", "gets.backend.bad_request_count", "gets.backend.request_count"}
 		},
-		//Gets            *PrometheusMetricsEntry
-		Gets: &PrometheusMetricsEntry{
+		//Gets            *PrometheusRequestStatusMetric
+		Gets: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
 				"gets.current_url.request_duration",
 				"Duration in seconds Prebid Cache takes to process get requests.",
@@ -78,8 +75,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				[]string{"status"}, // CounterVec labels --> "status": "add", "error", or "bad_request"
 			), //{"gets.current_url.error_count", "gets.current_url.bad_request_count", "gets.current_url.request_count"}
 		},
-		//PutsBackend     *PrometheusMetricsEntryByFormat
-		PutsBackend: &PrometheusMetricsEntryByFormat{
+		//PutsBackend     *PrometheusRequestStatusMetricByFormat
+		PutsBackend: &PrometheusRequestStatusMetricByFormat{
 			Duration: newHistogram(cfg, registry,
 				"puts.backend.request_duration",
 				"Duration in seconds Prebid Cache takes to process backend put requests.",
@@ -98,8 +95,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				requestSizeBuckts,
 			),
 		},
-		//GetsBackend     *PrometheusMetricsEntry
-		GetsBackend: &PrometheusMetricsEntry{
+		//GetsBackend     *PrometheusRequestStatusMetric
+		GetsBackend: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
 				"gets.backend.request_duration",
 				"Duration in seconds Prebid Cache takes to process backend get requests.",
@@ -154,7 +151,7 @@ func newCounterVecWithLabels(cfg config.PrometheusMetrics, registry *prometheus.
 	return counterVec
 }
 
-func newSingleCounter(cfg config.PrometheusMetrics, registry *prometheus.Registry, name string, help string) *prometheus.Counter {
+func newSingleCounter(cfg config.PrometheusMetrics, registry *prometheus.Registry, name string, help string) prometheus.Counter {
 	opts := prometheus.CounterOpts{
 		Namespace: cfg.Namespace,
 		Subsystem: cfg.Subsystem,
@@ -166,7 +163,7 @@ func newSingleCounter(cfg config.PrometheusMetrics, registry *prometheus.Registr
 	return counter
 }
 
-func newHistogram(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string, buckets []float64) *prometheus.HistogramVec {
+func newHistogram(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string, buckets []float64) prometheus.Histogram {
 	opts := prometheus.HistogramOpts{
 		Namespace: cfg.Namespace,
 		Subsystem: cfg.Subsystem,
@@ -278,14 +275,14 @@ func (m *PrometheusMetrics) RecordGetRequest(status string, duration *time.Time)
 }
 
 func (m *PrometheusMetrics) RecordPutBackendRequest(status string, duration *time.Time, sizeInBytes float64) {
-	incDuration(m.PutsBackend.RequestStatus, Duration)
-	incCounterInVector(m.PutsBackend.RequestStatus, "format", status, []string{"json", "xml", "invalid_format", "defines_ttl", "error"})
+	incDuration(m.PutsBackend.Duration, duration)
+	incCounterInVector(m.PutsBackend.PutBackendRequests, "format", status, []string{"json", "xml", "invalid_format", "defines_ttl", "error"})
 	incSize(m.PutsBackend.RequestLength, sizeInBytes)
 }
 
 func (m *PrometheusMetrics) RecordGetBackendRequest(status string, duration *time.Time) {
 	incCounterInVector(m.GetsBackend.RequestStatus, "status", status, []string{"add", "error", "bad_request"})
-	incDuration(m.GetBackend.Duration, duration)
+	incDuration(m.GetsBackend.Duration, duration)
 }
 
 func (m *PrometheusMetrics) RecordConnectionMetrics(label string) {
@@ -305,8 +302,8 @@ func (m *PrometheusMetrics) RecordExtraTTLSeconds(value float64) {
  *	NEW Auxiliary functions to record metrics
  **************************************************/
 func incCounterInVector(counter *prometheus.CounterVec, label string, status string, labels []string) {
-	for keyword := range labels {
-		if status == keyword {
+	for _, label := range labels {
+		if status == label {
 			counter.With(prometheus.Labels{
 				"status": status,
 			}).Inc()
@@ -316,12 +313,12 @@ func incCounterInVector(counter *prometheus.CounterVec, label string, status str
 
 func incDuration(histogram prometheus.Histogram, duration *time.Time) {
 	if duration != nil {
-		histogram.Observe(duration.Seconds())
+		histogram.Observe(time.Since(*duration).Seconds())
 	}
 }
 
-func incSize(m metrics.Histogram, sizeInBytes float64) {
+func incSize(m prometheus.Histogram, sizeInBytes float64) {
 	if sizeInBytes > 0 {
-		m.Observe(float64(len(value)))
+		m.Observe(sizeInBytes)
 	}
 }

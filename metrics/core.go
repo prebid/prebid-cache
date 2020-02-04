@@ -14,46 +14,40 @@ type Metrics struct {
 
 /* Methods so the metrics object executes the methods of the `CacheMetrics` interface    */
 func (m Metrics) RecPutRequest(status string, duration *time.Time) {
-	for me := range m.MetricEngines {
+	for _, me := range m.MetricEngines {
 		me.RecordPutRequest(status, duration)
 	}
 }
 func (m Metrics) RecGetRequest(status string, duration *time.Time) {
-	for me := range m.MetricEngines {
+	for _, me := range m.MetricEngines {
 		me.RecordGetRequest(status, duration)
 	}
 }
 func (m Metrics) RecPutBackendRequest(status string, duration *time.Time, sizeInBytes float64) {
-	for me := range m.MetricEngines {
+	for _, me := range m.MetricEngines {
 		me.RecordPutBackendRequest(status, duration, sizeInBytes)
 	}
 }
 func (m Metrics) RecGetBackendRequest(status string, duration *time.Time) {
-	for me := range m.MetricEngines {
+	for _, me := range m.MetricEngines {
 		me.RecordGetBackendRequest(status, duration)
 	}
 }
 func (m Metrics) RecConnectionMetrics(status string) {
-	for me := range m.MetricEngines {
+	for _, me := range m.MetricEngines {
 		me.RecordConnectionMetrics(status)
 	}
 }
 func (m Metrics) RecExtraTTLSeconds(value float64) {
-	for me := range m.MetricEngines {
+	for _, me := range m.MetricEngines {
 		me.RecordExtraTTLSeconds(value)
 	}
 }
 
 func (m Metrics) Export(cfg config.Configuration) {
-	for me := range m.MetricEngines {
+	for _, me := range m.MetricEngines {
 		me.Export(cfg.Metrics)
 	}
-	//if cfg.Metrics.Influx.Host != "" {
-	//	me.Influx.Export(cfg.Metrics)
-	//}
-	//if cfg.Metrics.Prometheus.Port != 0 {
-	//	me.Prometheus.Export(cfg.Metrics)
-	//}
 }
 
 /* Interface definition                */
@@ -67,8 +61,8 @@ type CacheMetrics interface {
 	Export(cfg config.Metrics)
 }
 
-func CreateMetrics(cfg config.Configuration) []CacheMetricsEngines {
-	engineList := make(CacheMetrics, 0, 2)
+func CreateMetrics(cfg config.Configuration) *Metrics {
+	engineList := make([]CacheMetrics, 0, 2)
 
 	if cfg.Metrics.Influx.Host != "" {
 		//returnEngines.Influx = CreateInfluxMetrics()
