@@ -15,7 +15,7 @@ import (
 	"github.com/rs/cors"
 )
 
-func NewHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.CacheMetricsEngines) http.Handler {
+func NewHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics) http.Handler {
 	router := httprouter.New()
 	router.GET("/", endpoints.Index)        //Default route handler
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.

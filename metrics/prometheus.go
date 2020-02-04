@@ -30,10 +30,11 @@ type PrometheusRequestStatusMetric struct {
 type PrometheusRequestStatusMetricByFormat struct {
 	Duration           metrics.Histogram      //Non vector
 	PutBackendRequests *prometheus.CounterVec // CounterVec "format": "json" or  "xml","status": "add", "error", or "bad_request","definesTimeToLive": "TTL_present", or "TTL_missing"
-	RequestLength      metrics.Gauge          //Non vector
+	RequestLength      metrics.Histogram      //Non vector
 }
 
 type PrometheusConnectionMetrics struct {
+	ConnectionsOpened metrics.Gauge
 	ConnectionsErrors *prometheus.CounterVec // the "Connection_error" label will hold the values "accept" or "close"
 }
 
@@ -113,7 +114,7 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 		},
 		//Connections     *PrometheusConnectionMetrics
 		Connections: &PrometheusConnectionMetrics{
-			ConnectionsOpened: newSingleCounter(cfg, registry,
+			ConnectionsOpened: newGaugeMetric(cfg, registry,
 				"connections",
 				"Count of total number of connectionsbackend get requests to Prebid Server labeled by status.",
 			),
@@ -319,7 +320,7 @@ func incDuration(histogram prometheus.Histogram, duration *time.Time) {
 	}
 }
 
-func incSize(m metrics.Gauge, sizeInBytes float64) {
+func incSize(m metrics.Histogram, sizeInBytes float64) {
 	if sizeInBytes > 0 {
 		m.Observe(float64(len(value)))
 	}

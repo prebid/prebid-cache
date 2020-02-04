@@ -33,12 +33,7 @@ func MonitorHttp(handler httprouter.Handle, me *metrics.Metrics, method string) 
 	return httprouter.Handle(func(resp http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		//entry.Request.Mark(1)
 		//me.Add(fmt.Sprintf("%s.current_url.request_count", method), nil, "")
-		switch method {
-		case "puts":
-			me.RecordPutRequest("add", nil)
-		case "gets":
-			me.RecordGetRequest("add", nil)
-		}
+		logMetrics(me, method, "add", nil)
 		wrapper := writerWithStatus{
 			delegate: resp,
 		}
@@ -49,13 +44,24 @@ func MonitorHttp(handler httprouter.Handle, me *metrics.Metrics, method string) 
 		// If the calling function never calls WriterHeader explicitly, Go auto-fills it with a 200
 		if respCode == 0 || respCode >= 200 && respCode < 300 {
 			//entry.Duration.UpdateSince(start)
-			me.Add(fmt.Sprintf("%s.current_url.request_duration", method), &start, "")
+			//me.Add(fmt.Sprintf("%s.current_url.request_duration", method), &start, "")
+			logMetrics(me, method, "", &start)
 		} else if respCode >= 400 && respCode < 500 {
 			//entry.BadRequest.Mark(1)
-			me.Add(fmt.Sprintf("%s.current_url.bad_request_count", method), nil, "")
+			//me.Add(fmt.Sprintf("%s.current_url.bad_request_count", method), nil, "")
+			logMetrics(me, method, "bad_request", nil)
 		} else {
 			//entry.Errors.Mark(1)
-			me.Add(fmt.Sprintf("%s.current_url.error_count", method), nil, "")
+			//me.Add(fmt.Sprintf("%s.current_url.error_count", method), nil, "")
+			logMetrics(me, method, "error", nil)
 		}
 	})
+}
+
+func logMetrics(me *metrics.Metrics, method string, status string, duration *time.Time) {
+	if method == "puts" {
+		me.RecordPutRequest(status, duration)
+	} else if method == "gets" {
+		me.RecordGetRequest(status, duration)
+	}
 }
