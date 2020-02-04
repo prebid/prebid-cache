@@ -136,49 +136,49 @@ const (
 )
 
 type Metrics struct {
-	Types      []string          `mapstructure:"type"`   //Is this needed? What if we copy
-	Influx     Influx            `mapstructure:"influx"` //prebid-server where this is not needed?
+	Influx     Influx            `mapstructure:"influx"`
 	Prometheus PrometheusMetrics `mapstructure:"prometheus"`
 }
 
 func (cfg *Metrics) validateAndLog() {
-	for metricsType := range cfg.Types {
-		log.Infof("config.metrics.type: %s", metricsType)
-		mtype := MetricsType(metricsType)
-		switch mtype {
-		//case MetricsPrometheus:
-		//cfg.Prometheus.validateAndLog()
-		case MetricsNone:
-		case MetricsInflux:
-			cfg.Influx.validateAndLog()
-		default:
-			log.Fatalf(`invalid config.metrics.type: %s. It must be "none" or "influx"`, metricsType)
-		}
+	var metricsEnabled bool = false
+	if cfg.Influx.Enabled {
+		metricsEnabled = cfg.Influx.validateAndLogMetricsData()
 	}
-	if len(cfg.Types) == 0 {
-		log.Fatalf(`No metrics specified in configuration file`)
+	if cfg.Prometheus.Enabled {
+		metricsEnabled = cfg.Prometheus.validateAndLogMetricsData()
+	}
+	if !metricsEnabled {
+		log.Fatalf(`No metrics correctly specified in configuration file`)
 	}
 }
 
-type MetricsType string
-
-const (
-	MetricsNone       MetricsType = "none"
-	MetricsInflux     MetricsType = "influx"
-	MetricsPrometheus MetricsType = "prometheus"
-)
+type MetricsConfig interface {
+	validateAndLogMetricsData() bool
+}
 
 type Influx struct {
 	Host     string `mapstructure:"host"`
 	Database string `mapstructure:"database"`
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
+	Enabled  bool   `mapstructure:"enabled"`
 }
 
-func (cfg *Influx) validateAndLog() {
-	log.Infof("config.metrics.influx.host: %s", cfg.Host)
-	log.Infof("config.metrics.influx.database: %s", cfg.Database)
-	// This intentionally skips username and password for security reasons.
+func (influxMetricsConfig *Influx) validateAndLogMetricsData() bool {
+	if influxMetricsConfig.Host != "" {
+		influxMetricsConfig.Enabled = false
+		log.Fatalf(`Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`)
+	}
+	if influxMetricsConfig.Database != "" {
+		influxMetricsConfig.Enabled = false
+		log.Fatalf(`Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`)
+	}
+	if influxMetricsConfig.Enabled {
+		log.Infof("config.metrics.influx.host: %s", influxMetricsConfig.Host)
+		log.Infof("config.metrics.influx.database: %s", influxMetricsConfig.Database)
+	}
+	return influxMetricsConfig.Enabled
 }
 
 type PrometheusMetrics struct {
@@ -186,10 +186,25 @@ type PrometheusMetrics struct {
 	Namespace        string `mapstructure:"namespace"`
 	Subsystem        string `mapstructure:"subsystem"`
 	TimeoutMillisRaw int    `mapstructure:"timeout_ms"`
+	Enabled          bool   `mapstructure:"enabled"`
 }
 
-func (cfg *PrometheusMetrics) validateAndLog() {
-	log.Infof("config.metrics.prometheus.namespace: %s", cfg.Namespace)
-	log.Infof("config.metrics.prometheus.subsystem: %s", cfg.Subsystem)
-	// This intentionally skips username and password for security reasons.
+func (promMetricsConfig *PrometheusMetrics) validateAndLogMetricsData() bool {
+	if promMetricsConfig.Port == 0 {
+		promMetricsConfig.Enabled = false
+		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty port number: config.metrics.prometheus.port = 0`)
+	}
+	if promMetricsConfig.Namespace != "" {
+		promMetricsConfig.Enabled = false
+		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty name space: config.metrics.prometheus.namespace = \"\".`)
+	}
+	if promMetricsConfig.Subsystem != "" {
+		promMetricsConfig.Enabled = false
+		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty subsystem value: config.metrics.prometheus.subsystem = \"\".`)
+	}
+	if promMetricsConfig.Enabled {
+		log.Infof("config.metrics.prometheus.namespace: %s", promMetricsConfig.Namespace)
+		log.Infof("config.metrics.prometheus.subsystem: %s", promMetricsConfig.Subsystem)
+	}
+	return promMetricsConfig.Enabled
 }
