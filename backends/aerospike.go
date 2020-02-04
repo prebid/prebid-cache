@@ -48,7 +48,7 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 		return "", errors.New("client.Get returned a nil record. Is aerospike configured properly?")
 	}
 	//a.ttlHistogram.Update(int64(rec.Expiration))    TODO
-	a.metricEngines.RecordExtraTTLSeconds(rec.Expiration)
+	a.metricEngines.RecExtraTTLSeconds(rec.Expiration)
 	return rec.Bins[binValue].(string), nil
 }
 
