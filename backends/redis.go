@@ -25,13 +25,13 @@ func NewRedisBackend(cfg config.Redis) *Redis {
 		DB:       cfg.Db,
 	}
 
-	if cfg.Tls.Enabled {
+	if cfg.TLS.Enabled {
 		options = &redis.Options{
 			Addr:     constr,
 			Password: cfg.Password,
 			DB:       cfg.Db,
 			TLSConfig: &tls.Config{
-				InsecureSkipVerify: cfg.Tls.InsecureSkipVerify,
+				InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
 			},
 		}
 	}
