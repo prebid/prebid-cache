@@ -86,16 +86,16 @@ func (cfg *Memcache) validateAndLog() {
 }
 
 type Redis struct {
-	Host       string `mapstructure:"host"`
-	Port       int    `mapstructure:"port"`
-	Password   string `mapstructure:"password"`
-	Db         int    `mapstructure:"db"`
-	Expiration int    `mapstructure:"expiration"`
+	Host       string   `mapstructure:"host"`
+	Port       int      `mapstructure:"port"`
+	Password   string   `mapstructure:"password"`
+	Db         int      `mapstructure:"db"`
+	Expiration int      `mapstructure:"expiration"`
 	Tls        RedisTLS `mapstructure:"tls"`
 }
 
 type RedisTLS struct {
-	Enabled bool `mapstructure:"enabled"`
+	Enabled            bool `mapstructure:"enabled"`
 	InsecureSkipVerify bool `mapstructure:"insecure_skip_verify"`
 }
 
