@@ -2,6 +2,7 @@ package backends
 
 import (
 	"context"
+	"crypto/tls"
 	"strconv"
 	"time"
 
@@ -17,11 +18,25 @@ type Redis struct {
 
 func NewRedisBackend(cfg config.Redis) *Redis {
 	constr := cfg.Host + ":" + strconv.Itoa(cfg.Port)
-	client := redis.NewClient(&redis.Options{
+
+	options := &redis.Options{
 		Addr:     constr,
 		Password: cfg.Password,
 		DB:       cfg.Db,
-	})
+	}
+
+	if cfg.Tls.Enabled {
+		options = &redis.Options{
+			Addr:     constr,
+			Password: cfg.Password,
+			DB:       cfg.Db,
+			TLSConfig: &tls.Config{
+				InsecureSkipVerify: cfg.Tls.InsecureSkipVerify,
+			},
+		}
+	}
+
+	client := redis.NewClient(options)
 
 	_, err := client.Ping().Result()
 

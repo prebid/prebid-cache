@@ -91,6 +91,12 @@ type Redis struct {
 	Password   string `mapstructure:"password"`
 	Db         int    `mapstructure:"db"`
 	Expiration int    `mapstructure:"expiration"`
+	Tls        RedisTLS `mapstructure:"tls"`
+}
+
+type RedisTLS struct {
+	Enabled bool `mapstructure:"enabled"`
+	InsecureSkipVerify bool `mapstructure:"insecure_skip_verify"`
 }
 
 func (cfg *Redis) validateAndLog() {
@@ -98,4 +104,6 @@ func (cfg *Redis) validateAndLog() {
 	log.Infof("config.backend.redis.port: %d", cfg.Port)
 	log.Infof("config.backend.redis.db: %d", cfg.Db)
 	log.Infof("config.backend.redis.expiration: %d", cfg.Expiration)
+	log.Infof("config.backend.redis.tls.enabled: %t", cfg.Tls.Enabled)
+	log.Infof("config.backend.redis.tls.insecure_skip_verify: %t", cfg.Tls.InsecureSkipVerify)
 }
