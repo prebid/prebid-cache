@@ -12,6 +12,7 @@ import (
 	"github.com/didip/tollbooth"
 	"github.com/didip/tollbooth/limiter"
 	"github.com/julienschmidt/httprouter"
+	"github.com/rs/cors"
 )
 
 func NewHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics) http.Handler {
@@ -27,21 +28,10 @@ func NewHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics
 }
 
 func handleCors(handler http.Handler) http.Handler {
-	return corsHandler(handler)
-}
-
-func corsHandler(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if len(origin) == 0 {
-			origin = "*"
-		} else {
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-		}
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-
-		h.ServeHTTP(w, r)
-	})
+	coresCfg := cors.New(cors.Options{AllowCredentials: true, AllowOriginFunc: func(origin string) bool {
+		return true
+	}})
+	return coresCfg.Handler(handler)
 }
 
 func handleRateLimiting(next http.Handler, cfg config.RateLimiting) http.Handler {
