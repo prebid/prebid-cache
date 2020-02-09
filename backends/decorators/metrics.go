@@ -17,17 +17,17 @@ type backendWithMetrics struct {
 func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error) {
 	//b.gets.Request.Mark(1)
 	//b.metricsEngines.Add("gets.current_url.request_count", nil, "")
-	b.metricsEngines.RecGetRequest("add", nil)
+	b.metricsEngines.RecGetBackendRequest("add", nil)
 	start := time.Now()
 	val, err := b.delegate.Get(ctx, key)
 	if err == nil {
 		//b.gets.Duration.UpdateSince(start)
 		//b.metricsEngines.Add("gets.backend.request_duration", &start, "")
-		b.metricsEngines.RecGetRequest("", &start)
+		b.metricsEngines.RecGetBackendRequest("", &start)
 	} else {
 		//b.gets.Errors.Mark(1)
 		//b.metricsEngines.Add("gets.backend.error_count", nil, "")
-		b.metricsEngines.RecGetRequest("error", nil)
+		b.metricsEngines.RecGetBackendRequest("error", nil)
 	}
 	return val, err
 }

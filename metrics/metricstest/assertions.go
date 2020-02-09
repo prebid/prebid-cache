@@ -1,5 +1,6 @@
 package metricstest
 
+/*
 import (
 	"github.com/prebid/prebid-cache/metrics"
 	"testing"
@@ -7,7 +8,6 @@ import (
 
 // metricstest contains utilities for testing metrics. These should only be imported into *_test.go files, and
 // should not be used by live code.
-
 func AssertSuccessMetricsExist(t *testing.T, entry *metrics.MetricsEntry) {
 	t.Helper()
 	if entry.Request.Count() != 1 {
@@ -39,3 +39,4 @@ func AssertErrorMetricsExist(t *testing.T, entry *metrics.MetricsEntry) {
 		t.Errorf("An Error should have been counted.")
 	}
 }
+*/

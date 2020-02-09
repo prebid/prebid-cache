@@ -26,7 +26,7 @@ type PrometheusRequestStatusMetric struct {
 
 type PrometheusRequestStatusMetricByFormat struct {
 	Duration           prometheus.Histogram   //Non vector
-	PutBackendRequests *prometheus.CounterVec // CounterVec "format": "json" or  "xml","status": "add", "error", or "bad_request","definesTimeToLive": "TTL_present", or "TTL_missing"
+	PutBackendRequests *prometheus.CounterVec // CounterVec "label": "json" or  "xml","status": "add", "error", or "bad_request","definesTimeToLive": "TTL_present", or "TTL_missing"
 	RequestLength      prometheus.Histogram   //Non vector
 }
 
@@ -86,8 +86,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 			PutBackendRequests: newCounterVecWithLabels(cfg, registry,
 				"puts.backend",
 				"Count of total requests to Prebid Cache labeled by format, status and whether or not it comes with TTL",
-				[]string{"format"},
-			), // CounterVec "format": "json" or  "xml","status": "add", "error", or "bad_request","definesTimeToLive": "TTL_present", or "TTL_missing"
+				[]string{"label"},
+			), // CounterVec "label": "json" or  "xml","status": "add", "error", or "bad_request","definesTimeToLive": "TTL_present", or "TTL_missing"
 			//{"puts.backend.error_count", "puts.backend.bad_request_count", "puts.backend.json_request_count", "puts.backend.xml_request_count","puts.backend.defines_ttl", "puts.backend.unknown_request_count"}
 			RequestLength: newHistogram(cfg, registry,
 				"puts.backend.request_size_bytes",
@@ -276,7 +276,7 @@ func (m *PrometheusMetrics) RecordGetRequest(status string, duration *time.Time)
 
 func (m *PrometheusMetrics) RecordPutBackendRequest(status string, duration *time.Time, sizeInBytes float64) {
 	incDuration(m.PutsBackend.Duration, duration)
-	incCounterInVector(m.PutsBackend.PutBackendRequests, "format", status, []string{"json", "xml", "invalid_format", "defines_ttl", "error"})
+	incCounterInVector(m.PutsBackend.PutBackendRequests, "label", status, []string{"add", "json", "xml", "invalid_format", "defines_ttl", "error"})
 	incSize(m.PutsBackend.RequestLength, sizeInBytes)
 }
 
@@ -302,10 +302,10 @@ func (m *PrometheusMetrics) RecordExtraTTLSeconds(value float64) {
  *	NEW Auxiliary functions to record metrics
  **************************************************/
 func incCounterInVector(counter *prometheus.CounterVec, label string, status string, labels []string) {
-	for _, label := range labels {
-		if status == label {
+	for _, aLabel := range labels {
+		if status == aLabel {
 			counter.With(prometheus.Labels{
-				"status": status,
+				label: status,
 			}).Inc()
 		}
 	}

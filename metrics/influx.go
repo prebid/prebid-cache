@@ -32,6 +32,7 @@ type InfluxMetricsEntry struct {
 
 type InfluxMetricsEntryByFormat struct {
 	Duration       metrics.Timer
+	Request        metrics.Meter
 	Errors         metrics.Meter
 	BadRequest     metrics.Meter
 	JsonRequest    metrics.Meter
@@ -219,6 +220,8 @@ func (m *InfluxMetrics) RecordPutBackendRequest(status string, duration *time.Ti
 		m.PutsBackend.Duration.UpdateSince(*duration)
 	}
 	switch status {
+	case "add":
+		m.PutsBackend.Request.Mark(1)
 	case "error":
 		m.PutsBackend.Errors.Mark(1)
 	case "bad_request":
