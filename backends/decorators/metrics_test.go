@@ -55,25 +55,24 @@ func TestPutSuccessMetrics(t *testing.T) {
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
 
 	//assertSuccessMetricsExist(t, m.PutsBackend)
-	actualRequestDuration, _ := HT1["puts.backend.duration"]
-	actualRequestCount, _ := HT2["puts.backends.request.total"]
+	actualRequestDuration, _ := HT1["puts.backends.request_duration"]
 	actualXMLRequestCount, _ := HT2["puts.backends.xml"]
 	actualTTLRequestCount, _ := HT2["puts.backends.defines_ttl"]
 
-	assert.Equal(t, int64(1), actualRequestCount, "Successful put backend request should have been accounted in the request totals")
 	assert.Greater(t, actualRequestDuration, 0.00, "Successful put request duration should be greater than zero")
 	assert.Equal(t, int64(1), actualXMLRequestCount, "An xml request should have been logged.")
 	assert.Equal(t, int64(0), actualTTLRequestCount, "An event for TTL defined shouldn't be logged if the TTL was 0")
 }
 
-/*
 func TestTTLDefinedMetrics(t *testing.T) {
 	m := CreateMockMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 1)
-	if m.PutsBackend.DefinesTTL.Count() != 1 {
-		t.Errorf("An event for TTL defined should be logged if the TTL is not 0")
-	}
+	//if m.PutsBackend.DefinesTTL.Count() != 1 {
+	//	t.Errorf("An event for TTL defined should be logged if the TTL is not 0")
+	//}
+	actualTTLRequestCount, _ := HT2["puts.backends.defines_ttl"]
+	assert.Equal(t, int64(1), actualTTLRequestCount, "An event for TTL defined shouldn't be logged if the TTL was 0")
 }
 
 func TestPutErrorMetrics(t *testing.T) {
@@ -81,10 +80,14 @@ func TestPutErrorMetrics(t *testing.T) {
 	backend := LogMetrics(&failedBackend{}, m)
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
 
-	assertErrorMetricsExist(t, m.PutsBackend)
-	if m.PutsBackend.XmlRequest.Count() != 1 {
-		t.Errorf("The request should have been counted.")
-	}
+	//assertErrorMetricsExist(t, m.PutsBackend)
+	//if m.PutsBackend.XmlRequest.Count() != 1 {
+	//	t.Errorf("The request should have been counted.")
+	//}
+	actualXMLRequestCount, _ := HT2["puts.backends.xml"]
+	assert.Equal(t, int64(1), actualXMLRequestCount, "An xml request should have been logged.")
+	actualErrorCount, _ := HT2["puts.backends.request.error"]
+	assert.Equal(t, int64(1), actualErrorCount, "Failed get backend request should have been accounted under the error label")
 }
 
 func TestJsonPayloadMetrics(t *testing.T) {
@@ -93,9 +96,11 @@ func TestJsonPayloadMetrics(t *testing.T) {
 	backend.Put(context.Background(), "foo", "json{\"key\":\"value\"", 0)
 	backend.Get(context.Background(), "foo")
 
-	if m.PutsBackend.JsonRequest.Count() != 1 {
-		t.Errorf("A json Put should have been logged.")
-	}
+	//if m.PutsBackend.JsonRequest.Count() != 1 {
+	//	t.Errorf("A json Put should have been logged.")
+	//}
+	actualJSONRequestCount, _ := HT2["puts.backends.json"]
+	assert.Equal(t, int64(1), actualJSONRequestCount, "A json request should have been logged.")
 }
 
 func TestPutSizeSampling(t *testing.T) {
@@ -104,9 +109,11 @@ func TestPutSizeSampling(t *testing.T) {
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", payload, 0)
 
-	if m.PutsBackend.RequestLength.Count() != 1 {
-		t.Errorf("A request size sample should have been logged.")
-	}
+	//if m.PutsBackend.RequestLength.Count() != 1 {
+	//	t.Errorf("A request size sample should have been logged.")
+	//}
+	actualRequestSyze, _ := HT1["puts.backends.request_size_bytes"]
+	assert.Greater(t, actualRequestSyze, 0.00, "Successful put request size should be greater than zero")
 }
 
 func TestInvalidPayloadMetrics(t *testing.T) {
@@ -115,37 +122,13 @@ func TestInvalidPayloadMetrics(t *testing.T) {
 	backend.Put(context.Background(), "foo", "bar", 0)
 	backend.Get(context.Background(), "foo")
 
-	if m.PutsBackend.InvalidRequest.Count() != 1 {
-		t.Errorf("A Put request of invalid format should have been logged.")
-	}
+	//if m.PutsBackend.InvalidRequest.Count() != 1 {
+	//	t.Errorf("A Put request of invalid format should have been logged.")
+	//}
+	actualInvalidRequests, _ := HT2["puts.backends.invalid_format"]
+	assert.Equal(t, int64(1), actualInvalidRequests, "A Put request of invalid format should have been logged.")
 }
 
-func assertSuccessMetricsExist(t *testing.T, entry *metrics.MetricsEntryByFormat) {
-	t.Helper()
-	if entry.Duration.Count() != 1 {
-		t.Errorf("The request duration should have been counted.")
-	}
-	if entry.BadRequest.Count() != 0 {
-		t.Errorf("No Bad requests should have been counted.")
-	}
-	if entry.Errors.Count() != 0 {
-		t.Errorf("No Errors should have been counted.")
-	}
-}
-
-func assertErrorMetricsExist(t *testing.T, entry *metrics.MetricsEntryByFormat) {
-	t.Helper()
-	if entry.Duration.Count() != 0 {
-		t.Errorf("The request duration should not have been counted.")
-	}
-	if entry.BadRequest.Count() != 0 {
-		t.Errorf("No Bad requests should have been counted.")
-	}
-	if entry.Errors.Count() != 1 {
-		t.Errorf("An Error should have been counted.")
-	}
-}
-*/
 /*Define Mock metrics        */
 var HT1 map[string]float64
 
