@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/rcrowley/go-metrics"
+	"github.com/sirupsen/logrus"
 	"github.com/vrischmann/go-metrics-influxdb"
 )
 

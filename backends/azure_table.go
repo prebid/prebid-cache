@@ -13,7 +13,7 @@ import (
 	"context"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 )
 

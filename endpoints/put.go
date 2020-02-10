@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	uuid "github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"

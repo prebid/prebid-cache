@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  digest = "1:8011d6367a04c40f1a9f50274e5e22b1cd5c05104d87cd8cf21d5a56c0cc3bd8"
-  name = "github.com/Sirupsen/logrus"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "ba1b36c82c5e05c4f912a88eab0dcd91a171688f"
-  version = "v0.11.5"
-
-[[projects]]
   digest = "1:5be37132e3fa76bc1dd26b6299fe4db381bd6965f7fc24d5df542ac973b9f0ee"
   name = "github.com/aerospike/aerospike-client-go"
   packages = [
@@ -220,6 +212,14 @@
   version = "v1.4.0"
 
 [[projects]]
+  digest = "1:8011d6367a04c40f1a9f50274e5e22b1cd5c05104d87cd8cf21d5a56c0cc3bd8"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ba1b36c82c5e05c4f912a88eab0dcd91a171688f"
+  version = "v0.11.5"
+
+[[projects]]
   digest = "1:bd1ae00087d17c5a748660b8e89e1043e1e5479d0fea743352cda2f8dd8c4f84"
   name = "github.com/spf13/afero"
   packages = [
@@ -353,7 +353,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/Sirupsen/logrus",
     "github.com/aerospike/aerospike-client-go",
     "github.com/bradfitz/gomemcache/memcache",
     "github.com/didip/tollbooth",
@@ -365,6 +364,7 @@
     "github.com/julienschmidt/httprouter",
     "github.com/rcrowley/go-metrics",
     "github.com/rs/cors",
+    "github.com/sirupsen/logrus",
     "github.com/spf13/viper",
     "github.com/valyala/fasthttp",
     "github.com/vrischmann/go-metrics-influxdb",

@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/go-redis/redis"
 	"github.com/prebid/prebid-cache/config"
+	log "github.com/sirupsen/logrus"
 )
 
 type Redis struct {
