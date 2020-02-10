@@ -7,7 +7,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/prebid/prebid-cache/config"
-	//metrics "github.com/rcrowley/go-metrics"
 	"github.com/prebid/prebid-cache/metrics"
 )
 
@@ -47,7 +46,6 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 	if rec == nil {
 		return "", errors.New("client.Get returned a nil record. Is aerospike configured properly?")
 	}
-	//a.ttlHistogram.Update(int64(rec.Expiration))    TODO
 	a.metricEngines.RecExtraTTLSeconds(float64(rec.Expiration))
 	return rec.Bins[binValue].(string), nil
 }

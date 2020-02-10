@@ -120,71 +120,6 @@ func (m InfluxMetrics) Export(cfg config.Metrics) {
 	return
 }
 
-//func (m InfluxMetrics) Increment(metricName string, start *time.Time, value string) {
-//	switch metricName {
-//	case "puts.current_url.request_duration":
-//		m.Puts.Duration.UpdateSince(*start)
-//	case "puts.current_url.error_count":
-//		m.Puts.Errors.Mark(1)
-//	case "puts.current_url.bad_request_count":
-//		m.Puts.BadRequest.Mark(1)
-//	case "puts.current_url.request_count":
-//		m.Puts.Request.Mark(1)
-//	case "gets.current_url.request_duration":
-//		m.Gets.Duration.UpdateSince(*start)
-//	case "gets.current_url.error_count":
-//		m.Gets.Errors.Mark(1)
-//	case "gets.current_url.bad_request_count":
-//		m.Gets.BadRequest.Mark(1)
-//	case "gets.current_url.request_count":
-//		m.Gets.Request.Mark(1)
-//	case "puts.backend.request_duration":
-//		m.PutsBackend.Duration.UpdateSince(*start)
-//	case "puts.backend.error_count":
-//		m.PutsBackend.Errors.Mark(1)
-//	case "puts.backend.bad_request_count":
-//		m.PutsBackend.BadRequest.Mark(1)
-//	case "puts.backend.json_request_count":
-//		m.PutsBackend.JsonRequest.Mark(1)
-//	case "puts.backend.xml_request_count":
-//		m.PutsBackend.XmlRequest.Mark(1)
-//	case "puts.backend.defines_ttl":
-//		m.PutsBackend.DefinesTTL.Mark(1)
-//	case "puts.backend.unknown_request_count":
-//		m.PutsBackend.InvalidRequest.Mark(1)
-//	case "puts.backend.request_size_bytes":
-//		m.PutsBackend.RequestLength.Update(int64(len(value)))
-//	case "gets.backend.request_duration":
-//		m.GetsBackend.Duration.UpdateSince(*start)
-//	case "gets.backend.error_count":
-//		m.GetsBackend.Errors.Mark(1)
-//	case "gets.backend.bad_request_count":
-//		m.GetsBackend.BadRequest.Mark(1)
-//	case "gets.backend.request_count":
-//		m.GetsBackend.Request.Mark(1)
-//	case "connections.active_incoming":
-//		m.Connections.ActiveConnections.Inc(1)
-//	case "connections.close_errors":
-//		m.Connections.ConnectionCloseErrors.Mark(1)
-//	case "connections.accept_errors":
-//		m.Connections.ConnectionAcceptErrors.Mark(1)
-//	default:
-//		//error
-//	}
-//}
-//
-//func (m InfluxMetrics) Decrement(metricName string) {
-//	switch metricName {
-//	case "connections.active_incoming":
-//		m.Connections.ActiveConnections.Dec(1)
-//	default:
-//		//error
-//	}
-//}
-
-/**************************************************
- *	NEW Functions to record metrics
- **************************************************/
 func (m *InfluxMetrics) RecordPutRequest(status string, duration *time.Time) {
 	if status != "" {
 		switch status {
@@ -269,7 +204,5 @@ func (m *InfluxMetrics) RecordConnectionMetrics(label string) {
 }
 
 func (m *InfluxMetrics) RecordExtraTTLSeconds(value float64) {
-	//ExtraTTLSeconds *prometheus.HistogramVec
-	//m.GetsBackend.Duration.UpdateSince(*start)
 	m.ExtraTTL.ExtraTTLSeconds.Update(int64(value))
 }

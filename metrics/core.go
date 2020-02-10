@@ -2,8 +2,6 @@ package metrics
 
 import (
 	"github.com/prebid/prebid-cache/config"
-	//"github.com/prometheus/client_golang/prometheus"
-	//"github.com/rcrowley/go-metrics"
 	"time"
 )
 
@@ -65,30 +63,10 @@ func CreateMetrics(cfg config.Configuration) *Metrics {
 	engineList := make([]CacheMetrics, 0, 2)
 
 	if cfg.Metrics.Influx.Host != "" {
-		//returnEngines.Influx = CreateInfluxMetrics()
 		engineList = append(engineList, CreateInfluxMetrics())
 	}
 	if cfg.Metrics.Prometheus.Port != 0 {
-		//returnEngines.Prometheus = CreatePrometheusMetrics(cfg.Metrics.Prometheus)
 		engineList = append(engineList, CreatePrometheusMetrics(cfg.Metrics.Prometheus))
 	}
 	return &Metrics{MetricEngines: engineList}
 }
-
-//func (cacheMetrics CacheMetricsEngines) Add(metricName string, start *time.Time, value string) {
-//	if cacheMetrics.Influx != nil {
-//		cacheMetrics.Influx.Increment(metricName, start, value)
-//	}
-//	if cacheMetrics.Prometheus != nil {
-//		cacheMetrics.Prometheus.Increment(metricName, start, value)
-//	}
-//}
-//
-//func (cacheMetrics CacheMetricsEngines) Substract(metricName string) {
-//	if cacheMetrics.Influx != nil {
-//		cacheMetrics.Influx.Decrement(metricName)
-//	}
-//	if cacheMetrics.Prometheus != nil {
-//		cacheMetrics.Prometheus.Decrement(metricName)
-//	}
-//}

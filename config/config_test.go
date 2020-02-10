@@ -121,13 +121,13 @@ metrics:
     database: "default-metrics-database"
     username: "metrics-username"
     password: "metrics-password"
-	enabled: true
+    enabled: true
   prometheus:
     port: 8080
-	namespace: "default-prometheus-namespace"
-	subsystem: default-prometheus-subsystem"
-	timeout_ms: 100
-	enabled: true
+    namespace: "default-prometheus-namespace"
+    subsystem: "default-prometheus-subsystem"
+    timeout_ms: 100
+    enabled: true
 `
 
 func assertBoolsEqual(t *testing.T, path string, actual bool, expected bool) {
