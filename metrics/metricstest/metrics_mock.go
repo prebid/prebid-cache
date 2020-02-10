@@ -1,7 +1,8 @@
-package metrics
+package metricstest
 
 import (
 	"github.com/prebid/prebid-cache/config"
+	"github.com/prebid/prebid-cache/metrics"
 	"time"
 )
 
@@ -9,7 +10,7 @@ import (
 var HT1 map[string]float64
 var HT2 map[string]int64
 
-func CreateMockMetrics() *Metrics {
+func CreateMockMetrics() *metrics.Metrics {
 	HT1 = make(map[string]float64, 6)
 	HT1["puts.current_url.duration"] = 0.00
 	HT1["gets.current_url.duration"] = 0.00
@@ -38,7 +39,7 @@ func CreateMockMetrics() *Metrics {
 	HT2["connections.connection_error.accept"] = 0
 	HT2["connections.connection_error.close"] = 0
 
-	return &Metrics{MetricEngines: []CacheMetrics{&MockMetrics{}}}
+	return &metrics.Metrics{MetricEngines: []metrics.CacheMetrics{&MockMetrics{}}}
 }
 
 type MockMetrics struct{}
