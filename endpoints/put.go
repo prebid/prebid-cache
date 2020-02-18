@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	uuid "github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/prebid/prebid-cache/utils"
 )
 
 // PutHandler serves "POST /cache" requests.
@@ -87,11 +87,11 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			}
 
 			logrus.Debugf("Storing value: %s", toCache)
-			u2, err := uuid.NewV4()
-			if err != nil {
+			var uuidGenError error
+			resps.Responses[i].UUID, uuidGenError = utils.GenerateUUIDString()
+			if uuidGenError != nil {
 				http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
 			}
-			resps.Responses[i].UUID = u2.String()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()

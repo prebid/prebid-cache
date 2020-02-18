@@ -50,9 +50,9 @@ func MonitorHttp(handler httprouter.Handle, me *metrics.Metrics, method string) 
 }
 
 func logMetrics(me *metrics.Metrics, method string, status string, duration *time.Time) {
-	if method == "puts" {
+	if method == "POST" {
 		me.RecPutRequest(status, duration)
-	} else if method == "gets" {
+	} else if method == "GET" {
 		me.RecGetRequest(status, duration)
 	}
 }

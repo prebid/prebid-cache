@@ -1,21 +1,19 @@
 package backends
 
 import (
-	"github.com/gofrs/uuid"
+	"github.com/prebid/prebid-cache/utils"
 	"testing"
 )
 
 func TestPartitionKey(t *testing.T) {
 	azureTable := NewAzureBackend("abc", "def")
 
-	u2, err := uuid.NewV4()
+	id, err := utils.GenerateUUIDString()
 	if err != nil {
 		t.Errorf("Error generating version 4 UUID")
 	}
-	id := u2.String()
 
 	expected := id[0:4]
-
 	got := azureTable.makePartitionKey(id)
 
 	if got != expected {
@@ -48,11 +46,10 @@ func TestEmptyPartitionKey(t *testing.T) {
 func TestPartitionKeyHeader(t *testing.T) {
 	azureTable := NewAzureBackend("abc", "def")
 
-	u2, err := uuid.NewV4()
+	id, err := utils.GenerateUUIDString()
 	if err != nil {
 		t.Errorf("Error generating version 4 UUID")
 	}
-	id := u2.String()
 
 	expected := "[\"" + id[0:4] + "\"]"
 

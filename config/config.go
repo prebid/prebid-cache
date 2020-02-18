@@ -136,7 +136,7 @@ const (
 )
 
 type Metrics struct {
-	Influx     Influx            `mapstructure:"influx"`
+	Influx     InfluxMetrics     `mapstructure:"influx"`
 	Prometheus PrometheusMetrics `mapstructure:"prometheus"`
 }
 
@@ -146,7 +146,7 @@ func (cfg *Metrics) validateAndLog() {
 		metricsEnabled = cfg.Influx.validateAndLogMetricsData()
 	}
 	if cfg.Prometheus.Enabled {
-		metricsEnabled = cfg.Prometheus.validateAndLogMetricsData()
+		metricsEnabled = cfg.Prometheus.validateAndLogMetricsData() || metricsEnabled
 	}
 	if !metricsEnabled {
 		log.Fatalf(`No metrics correctly specified in configuration file`)
@@ -157,7 +157,7 @@ type MetricsConfig interface {
 	validateAndLogMetricsData() bool
 }
 
-type Influx struct {
+type InfluxMetrics struct {
 	Host     string `mapstructure:"host"`
 	Database string `mapstructure:"database"`
 	Username string `mapstructure:"username"`
@@ -165,7 +165,7 @@ type Influx struct {
 	Enabled  bool   `mapstructure:"enabled"`
 }
 
-func (influxMetricsConfig *Influx) validateAndLogMetricsData() bool {
+func (influxMetricsConfig *InfluxMetrics) validateAndLogMetricsData() bool {
 	if influxMetricsConfig.Host != "" {
 		influxMetricsConfig.Enabled = false
 		log.Fatalf(`Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`)

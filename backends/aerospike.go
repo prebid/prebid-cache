@@ -14,9 +14,9 @@ const setName = "uuid"
 const binValue = "value"
 
 type Aerospike struct {
-	cfg           config.Aerospike
-	client        *as.Client
-	metricEngines *metrics.Metrics
+	cfg     config.Aerospike
+	client  *as.Client
+	metrics *metrics.Metrics
 }
 
 func NewAerospikeBackend(cfg config.Aerospike, metricEngines *metrics.Metrics) *Aerospike {
@@ -28,9 +28,9 @@ func NewAerospikeBackend(cfg config.Aerospike, metricEngines *metrics.Metrics) *
 	log.Infof("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
 
 	return &Aerospike{
-		cfg:           cfg,
-		client:        client,
-		metricEngines: metricEngines,
+		cfg:     cfg,
+		client:  client,
+		metrics: metricEngines,
 	}
 }
 
@@ -46,7 +46,7 @@ func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
 	if rec == nil {
 		return "", errors.New("client.Get returned a nil record. Is aerospike configured properly?")
 	}
-	a.metricEngines.RecExtraTTLSeconds(float64(rec.Expiration))
+	a.metrics.RecExtraTTLSeconds(float64(rec.Expiration))
 	return rec.Bins[binValue].(string), nil
 }
 

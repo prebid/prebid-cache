@@ -2,6 +2,8 @@ package metrics
 
 import (
 	"github.com/prebid/prebid-cache/config"
+	influx "github.com/prebid/prebid-cache/metrics/influx"
+	prometheus "github.com/prebid/prebid-cache/metrics/prometheus"
 	"time"
 )
 
@@ -63,10 +65,10 @@ func CreateMetrics(cfg config.Configuration) *Metrics {
 	engineList := make([]CacheMetrics, 0, 2)
 
 	if cfg.Metrics.Influx.Host != "" {
-		engineList = append(engineList, CreateInfluxMetrics())
+		engineList = append(engineList, influx.CreateInfluxMetrics())
 	}
 	if cfg.Metrics.Prometheus.Port != 0 {
-		engineList = append(engineList, CreatePrometheusMetrics(cfg.Metrics.Prometheus))
+		engineList = append(engineList, prometheus.CreatePrometheusMetrics(cfg.Metrics.Prometheus))
 	}
 	return &Metrics{MetricEngines: engineList}
 }

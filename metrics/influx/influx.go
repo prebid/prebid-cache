@@ -11,6 +11,21 @@ import (
 )
 
 /**************************************************
+ * Constants and global variables
+ **************************************************/
+var TenSeconds time.Duration = time.Second * 10
+var AddLabel string = "add"
+var ErrorLabel string = "error"
+var BadRequestLabel string = "bad_request"
+var JsonLabel string = "json"
+var XmlLabel string = "xml"
+var DefinesTTLLabel string = "defines_ttl"
+var InvFormatLabel string = "invalid_format"
+var SubstractLabel string = "substract"
+var CloseLabel string = "close"
+var AcceptLabel string = "accept"
+
+/**************************************************
  *	Object definition
  **************************************************/
 type InfluxMetrics struct {
@@ -109,12 +124,12 @@ func (m InfluxMetrics) Export(cfg config.Metrics) {
 	if cfg.Influx.Host != "" {
 		logrus.Infof("Metrics will be exported to Influx with host=%s, db=%s, username=%s", cfg.Influx.Host, cfg.Influx.Database, cfg.Influx.Username)
 		influxdb.InfluxDB(
-			m.Registry,          // metrics registry
-			time.Second*10,      // interval
-			cfg.Influx.Host,     // the InfluxDB url
-			cfg.Influx.Database, // your InfluxDB database
-			cfg.Influx.Username, // your InfluxDB user
-			cfg.Influx.Password, // your InfluxDB password
+			m.Registry,
+			TenSeconds,
+			cfg.Influx.Host,
+			cfg.Influx.Database,
+			cfg.Influx.Username,
+			cfg.Influx.Password,
 		)
 	}
 	return
@@ -123,11 +138,11 @@ func (m InfluxMetrics) Export(cfg config.Metrics) {
 func (m *InfluxMetrics) RecordPutRequest(status string, duration *time.Time) {
 	if status != "" {
 		switch status {
-		case "error":
+		case ErrorLabel:
 			m.Puts.Errors.Mark(1)
-		case "bad_request":
+		case BadRequestLabel:
 			m.Puts.BadRequest.Mark(1)
-		case "add":
+		case AddLabel:
 			m.Puts.Request.Mark(1)
 		}
 	} else if duration != nil {
@@ -138,11 +153,11 @@ func (m *InfluxMetrics) RecordPutRequest(status string, duration *time.Time) {
 func (m *InfluxMetrics) RecordGetRequest(status string, duration *time.Time) {
 	if status != "" {
 		switch status {
-		case "error":
+		case ErrorLabel:
 			m.Gets.Errors.Mark(1)
-		case "bad_request":
+		case BadRequestLabel:
 			m.Gets.BadRequest.Mark(1)
-		case "add":
+		case AddLabel:
 			m.Gets.Request.Mark(1)
 		}
 	} else if duration != nil {
@@ -155,19 +170,19 @@ func (m *InfluxMetrics) RecordPutBackendRequest(status string, duration *time.Ti
 		m.PutsBackend.Duration.UpdateSince(*duration)
 	}
 	switch status {
-	case "add":
+	case AddLabel:
 		m.PutsBackend.Request.Mark(1)
-	case "error":
+	case ErrorLabel:
 		m.PutsBackend.Errors.Mark(1)
-	case "bad_request":
+	case BadRequestLabel:
 		m.PutsBackend.BadRequest.Mark(1)
-	case "json":
+	case JsonLabel:
 		m.PutsBackend.JsonRequest.Mark(1)
-	case "xml":
+	case XmlLabel:
 		m.PutsBackend.XmlRequest.Mark(1)
-	case "defines_ttl":
+	case DefinesTTLLabel:
 		m.PutsBackend.DefinesTTL.Mark(1)
-	case "invalid_format":
+	case InvFormatLabel:
 		m.PutsBackend.InvalidRequest.Mark(1)
 	}
 	if sizeInBytes > 0 {
@@ -178,11 +193,11 @@ func (m *InfluxMetrics) RecordPutBackendRequest(status string, duration *time.Ti
 func (m *InfluxMetrics) RecordGetBackendRequest(status string, duration *time.Time) {
 	if status != "" {
 		switch status {
-		case "error":
+		case ErrorLabel:
 			m.GetsBackend.Errors.Mark(1)
-		case "bad_request":
+		case BadRequestLabel:
 			m.GetsBackend.BadRequest.Mark(1)
-		case "add":
+		case AddLabel:
 			m.GetsBackend.Request.Mark(1)
 		}
 	} else if duration != nil {
@@ -192,13 +207,13 @@ func (m *InfluxMetrics) RecordGetBackendRequest(status string, duration *time.Ti
 
 func (m *InfluxMetrics) RecordConnectionMetrics(label string) {
 	switch label {
-	case "add":
+	case AddLabel:
 		m.Connections.ActiveConnections.Inc(1)
-	case "substract":
+	case SubstractLabel:
 		m.Connections.ActiveConnections.Dec(1)
-	case "close":
+	case CloseLabel:
 		m.Connections.ConnectionCloseErrors.Mark(1)
-	case "accept":
+	case AcceptLabel:
 		m.Connections.ConnectionAcceptErrors.Mark(1)
 	}
 }

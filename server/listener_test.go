@@ -36,26 +36,26 @@ func doTest(t *testing.T, allowAccept bool, allowClose bool) {
 		if err == nil {
 			t.Error("The listener.Accept() error should propagate from the underlying listener.")
 		}
-		assert.Equal(t, metricstest.HT1["connections.connections_opened"], 0.00, "Should not log any connections")
-		assert.Equal(t, int64(1), metricstest.HT2["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
-		assert.Equal(t, int64(0), metricstest.HT2["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
+		assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 0.00, "Should not log any connections")
+		assert.Equal(t, int64(1), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
+		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
 		return
 	}
-	assert.Equal(t, int64(0), metricstest.HT2["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
-	assert.Equal(t, metricstest.HT1["connections.connections_opened"], 1.00, "Should not log any connections")
+	assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
+	assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 1.00, "Should not log any connections")
 
 	err = conn.Close()
 	if allowClose {
-		assert.Equal(t, metricstest.HT1["connections.connections_opened"], 0.00, "Should not log any connections")
-		assert.Equal(t, int64(0), metricstest.HT2["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
-		assert.Equal(t, int64(0), metricstest.HT2["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
+		assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 0.00, "Should not log any connections")
+		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
+		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
 	} else {
 		if err == nil {
 			t.Error("The connection.Close() error should propagate from the underlying listener.")
 		}
-		assert.Equal(t, metricstest.HT1["connections.connections_opened"], 1.00, "Should not log any connections")
-		assert.Equal(t, int64(0), metricstest.HT2["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
-		assert.Equal(t, int64(1), metricstest.HT2["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
+		assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 1.00, "Should not log any connections")
+		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
+		assert.Equal(t, int64(1), metricstest.MockCounters["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
 	}
 }
 
