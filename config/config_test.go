@@ -38,17 +38,14 @@ func TestSampleConfig(t *testing.T) {
 	assertIntsEqual(t, "backend.redis.db", cfg.Backend.Redis.Db, 1)
 	assertStringsEqual(t, "backend.redis.host", cfg.Backend.Redis.Host, "127.0.0.1")
 	assertStringsEqual(t, "backend.redis.password", cfg.Backend.Redis.Password, "")
+	assertBoolsEqual(t, "backend.redis.tls.enabled", cfg.Backend.Redis.TLS.Enabled, false)
+	assertBoolsEqual(t, "backend.redis.tls.insecure_skip_verify", cfg.Backend.Redis.TLS.InsecureSkipVerify, false)
 	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "snappy")
+	assertStringsEqual(t, "metrics.type", string(cfg.Metrics.Type), "none")
 	assertStringsEqual(t, "metrics.influx.host", cfg.Metrics.Influx.Host, "default-metrics-host")
 	assertStringsEqual(t, "metrics.influx.database", cfg.Metrics.Influx.Database, "default-metrics-database")
 	assertStringsEqual(t, "metrics.influx.username", cfg.Metrics.Influx.Username, "metrics-username")
 	assertStringsEqual(t, "metrics.influx.password", cfg.Metrics.Influx.Password, "metrics-password")
-	assertBoolsEqual(t, "metrics.influx.enabled", cfg.Metrics.Influx.Enabled, true)
-	assertIntsEqual(t, "metrics.prometheus.port", cfg.Metrics.Prometheus.Port, 8080)
-	assertStringsEqual(t, "metrics.prometheus.namespace", cfg.Metrics.Prometheus.Namespace, "default-prometheus-namespace")
-	assertStringsEqual(t, "metrics.prometheus.subsystem", cfg.Metrics.Prometheus.Subsystem, "default-prometheus-subsystem")
-	assertIntsEqual(t, "metrics.prometheus.timeout_ms", cfg.Metrics.Prometheus.TimeoutMillisRaw, 100)
-	assertBoolsEqual(t, "metrics.prometheus.enabled", cfg.Metrics.Prometheus.Enabled, true)
 }
 
 func TestEnvConfig(t *testing.T) {
@@ -113,21 +110,18 @@ backend:
     port: 6379
     password: ""
     db: 1
+    tls:
+      enabled: false
+      insecure_skip_verify: false
 compression:
   type: "snappy"
 metrics:
+  type: "none"
   influx:
     host: "default-metrics-host"
     database: "default-metrics-database"
     username: "metrics-username"
     password: "metrics-password"
-    enabled: true
-  prometheus:
-    port: 8080
-    namespace: "default-prometheus-namespace"
-    subsystem: "default-prometheus-subsystem"
-    timeout_ms: 100
-    enabled: true
 `
 
 func assertBoolsEqual(t *testing.T, path string, actual bool, expected bool) {

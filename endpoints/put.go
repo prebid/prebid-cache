@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
 	"github.com/prebid/prebid-cache/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // PutHandler serves "POST /cache" requests.
@@ -21,13 +21,13 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 	// TODO(future PR): Break this giant function apart
 	putAnyRequestPool := sync.Pool{
 		New: func() interface{} {
-			return PutRequest{}
+			return &PutRequest{}
 		},
 	}
 
 	putResponsePool := sync.Pool{
 		New: func() interface{} {
-			return PutResponse{}
+			return &PutResponse{}
 		},
 	}
 
@@ -39,10 +39,10 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 		}
 		defer r.Body.Close()
 
-		put := putAnyRequestPool.Get().(PutRequest)
+		put := putAnyRequestPool.Get().(*PutRequest)
 		defer putAnyRequestPool.Put(put)
 
-		err = json.Unmarshal(body, &put)
+		err = json.Unmarshal(body, put)
 		if err != nil {
 			http.Error(w, "Request body "+string(body)+" is not valid JSON.", http.StatusBadRequest)
 			return
@@ -53,7 +53,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			return
 		}
 
-		resps := putResponsePool.Get().(PutResponse)
+		resps := putResponsePool.Get().(*PutResponse)
 		resps.Responses = make([]PutResponseObject, len(put.Puts))
 		defer putResponsePool.Put(resps)
 
@@ -130,7 +130,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 
 		}
 
-		bytes, err := json.Marshal(&resps)
+		bytes, err := json.Marshal(resps)
 		if err != nil {
 			http.Error(w, "Failed to serialize UUIDs into JSON.", http.StatusInternalServerError)
 			return

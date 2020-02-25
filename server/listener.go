@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/prebid/prebid-cache/metrics"
+	log "github.com/sirupsen/logrus"
 )
 
 // monitorableListener tracks any opened connections in the metrics.

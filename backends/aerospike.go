@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	log "github.com/Sirupsen/logrus"
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/prebid/prebid-cache/config"
-	"github.com/prebid/prebid-cache/metrics"
+	metrics "github.com/rcrowley/go-metrics"
+	log "github.com/sirupsen/logrus"
 )
 
 const setName = "uuid"
