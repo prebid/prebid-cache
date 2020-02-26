@@ -141,14 +141,10 @@ type Metrics struct {
 }
 
 func (cfg *Metrics) validateAndLog() {
-	var metricsEnabled bool = false
-	if cfg.Influx.Enabled {
-		metricsEnabled = cfg.Influx.validateAndLogMetricsData()
-	}
-	if cfg.Prometheus.Enabled {
-		metricsEnabled = cfg.Prometheus.validateAndLogMetricsData() || metricsEnabled
-	}
-	if !metricsEnabled {
+	influxEnabled := cfg.Influx.Enabled && cfg.Influx.validateAndLogMetricsData()
+	prometheusEnabled := cfg.Prometheus.Enabled && cfg.Prometheus.validateAndLogMetricsData()
+
+	if !influxEnabled && !prometheusEnabled {
 		log.Fatalf(`No metrics correctly specified in configuration file`)
 	}
 }

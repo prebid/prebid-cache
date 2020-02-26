@@ -7,12 +7,12 @@ import (
 	"time"
 )
 
-/* Object to access metric engines     */
+// Object to access metric engines
 type Metrics struct {
 	MetricEngines []CacheMetrics
 }
 
-/* Methods so the metrics object executes the methods of the `CacheMetrics` interface    */
+// Methods so the metrics object executes the methods of the `CacheMetrics` interface
 func (m Metrics) RecPutRequest(status string, duration *time.Time) {
 	for _, me := range m.MetricEngines {
 		me.RecordPutRequest(status, duration)
@@ -50,7 +50,7 @@ func (m Metrics) Export(cfg config.Configuration) {
 	}
 }
 
-/* Interface definition                */
+// Interface definition
 type CacheMetrics interface {
 	RecordPutRequest(status string, duration *time.Time)
 	RecordGetRequest(status string, duration *time.Time)

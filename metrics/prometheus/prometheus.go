@@ -6,9 +6,7 @@ import (
 	"time"
 )
 
-/**************************************************
- * Constants and global variables
- **************************************************/
+// Constants and global variables
 var TenSeconds time.Duration = time.Second * 10
 var AddLabel string = "add"
 var ErrorLabel string = "error"
@@ -21,9 +19,7 @@ var SubstractLabel string = "substract"
 var CloseLabel string = "close"
 var AcceptLabel string = "accept"
 
-/**************************************************
- *	Object definition
- **************************************************/
+//	Object definition
 type PrometheusMetrics struct {
 	Registry    *prometheus.Registry
 	Puts        *PrometheusRequestStatusMetric
@@ -54,9 +50,7 @@ type PrometheusExtraTTLMetrics struct {
 	ExtraTTLSeconds prometheus.Histogram
 }
 
-/**************************************************
- *	Init functions
- **************************************************/
+//	Init functions
 func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	cacheWriteTimeBuckets := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1}
 	requestSizeBuckets := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1} // TODO: tweak
@@ -142,9 +136,7 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	return promMetrics
 }
 
-/**************************************************
- *	Helper Init functions
- **************************************************/
+//	Helper Init functions
 func newCounterVecWithLabels(cfg config.PrometheusMetrics, registry *prometheus.Registry, name string, help string, labels []string) *prometheus.CounterVec {
 	opts := prometheus.CounterOpts{
 		Namespace: cfg.Namespace,
@@ -207,15 +199,11 @@ func newHistogramVector(cfg config.PrometheusMetrics, registry *prometheus.Regis
 	return histogram
 }
 
-/**************************************************
- *	Functions to record metrics
- **************************************************/
+//	Functions to record metrics
 func (m PrometheusMetrics) Export(cfg config.Metrics) {
 }
 
-/**************************************************
- *	NEW Functions to record metrics
- **************************************************/
+//NEW Functions to record metrics
 func (m *PrometheusMetrics) RecordPutRequest(status string, duration *time.Time) {
 	incCounterInVector(m.Puts.RequestStatus, "status", status, map[string]bool{AddLabel: true, ErrorLabel: true, BadRequestLabel: true})
 	incDuration(m.Puts.Duration, duration)
@@ -224,17 +212,40 @@ func (m *PrometheusMetrics) RecordPutRequest(status string, duration *time.Time)
 func (m *PrometheusMetrics) RecordGetRequest(status string, duration *time.Time) {
 	incCounterInVector(m.Gets.RequestStatus, "status", status, map[string]bool{AddLabel: true, ErrorLabel: true, BadRequestLabel: true})
 	incDuration(m.Gets.Duration, duration)
+	/*
+		b.metrics.RecPutBackendRequest("error", nil, 0); m.Gets.Errors.Mark(1)
+		b.metrics.RecGetBackendRequest("bad_request", nil); m.Gets.BadRequest.Mark(1)
+		b.metrics.RecGetBackendRequest("add", nil); m.Gets.Request.Mark(1)
+		b.metrics.RecPutBackendRequest("", &start, 0); m.Gets.Duration.UpdateSince(*duration)
+	*/
 }
 
 func (m *PrometheusMetrics) RecordPutBackendRequest(status string, duration *time.Time, sizeInBytes float64) {
 	incDuration(m.PutsBackend.Duration, duration)
 	incCounterInVector(m.PutsBackend.PutBackendRequests, "label", status, map[string]bool{AddLabel: true, JsonLabel: true, XmlLabel: true, InvFormatLabel: true, DefinesTTLLabel: true, ErrorLabel: true})
 	incSize(m.PutsBackend.RequestLength, sizeInBytes)
+	/*
+		m.PutsBackend.Request.Mark(1); b.metrics.RecPutBackendRequest("add", nil, 0)
+		m.PutsBackend.XmlRequest.Mark(1); b.metrics.RecPutBackendRequest("xml", nil, 0)
+		m.PutsBackend.JsonRequest.Mark(1); b.metrics.RecPutBackendRequest("json", nil, 0)
+		m.PutsBackend.InvalidRequest.Mark(1);b.metrics.RecPutBackendRequest("invalid_format", nil, 0)
+		m.PutsBackend.DefinesTTL.Mark(1); b.metrics.RecPutBackendRequest("defines_ttl", nil, 0)
+		m.PutsBackend.Duration.UpdateSince(*duration); b.metrics.RecPutBackendRequest("", &start, 0)
+		m.PutsBackend.Errors.Mark(1);b.metrics.RecPutBackendRequest("error", nil, 0)
+		m.PutsBackend.RequestLength.Update(int64(sizeInBytes)); b.metrics.RecPutBackendRequest("", nil, float64(len(value)))
+		m.PutsBackend.BadRequest.Mark(1); b.metrics.RecPutBackendRequest("bad_request", nil, 0)
+	*/
 }
 
 func (m *PrometheusMetrics) RecordGetBackendRequest(status string, duration *time.Time) {
 	incCounterInVector(m.GetsBackend.RequestStatus, "status", status, map[string]bool{AddLabel: true, ErrorLabel: true, BadRequestLabel: true})
 	incDuration(m.GetsBackend.Duration, duration)
+	/*
+		m.GetsBackend.Request.Mark(1); b.metrics.RecGetBackendRequest("add", nil)
+		m.GetsBackend.Duration.UpdateSince(*duration); b.metrics.RecGetBackendRequest("", &start)
+		m.GetsBackend.Errors.Mark(1); b.metrics.RecGetBackendRequest("error", nil)
+			m.GetsBackend.BadRequest.Mark(1)
+	*/
 }
 
 func (m *PrometheusMetrics) RecordConnectionMetrics(label string) {
@@ -250,9 +261,7 @@ func (m *PrometheusMetrics) RecordExtraTTLSeconds(value float64) {
 	m.ExtraTTL.ExtraTTLSeconds.Observe(value)
 }
 
-/**************************************************
- *	Auxiliary functions to record metrics
- **************************************************/
+//	Auxiliary functions to record metrics
 func incCounterInVector(counter *prometheus.CounterVec, label string, status string, labelMap map[string]bool) {
 	if labelMap[status] {
 		counter.With(prometheus.Labels{label: status}).Inc()

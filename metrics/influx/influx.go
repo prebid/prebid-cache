@@ -4,30 +4,26 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/rcrowley/go-metrics"
+	"github.com/sirupsen/logrus"
 	"github.com/vrischmann/go-metrics-influxdb"
 )
 
-/**************************************************
- * Constants and global variables
- **************************************************/
-var TenSeconds time.Duration = time.Second * 10
-var AddLabel string = "add"
-var ErrorLabel string = "error"
-var BadRequestLabel string = "bad_request"
-var JsonLabel string = "json"
-var XmlLabel string = "xml"
-var DefinesTTLLabel string = "defines_ttl"
-var InvFormatLabel string = "invalid_format"
-var SubstractLabel string = "substract"
-var CloseLabel string = "close"
-var AcceptLabel string = "accept"
+// Constants and global variables
+const TenSeconds time.Duration = time.Second * 10
+const AddLabel string = "add"
+const ErrorLabel string = "error"
+const BadRequestLabel string = "bad_request"
+const JsonLabel string = "json"
+const XmlLabel string = "xml"
+const DefinesTTLLabel string = "defines_ttl"
+const InvFormatLabel string = "invalid_format"
+const SubstractLabel string = "substract"
+const CloseLabel string = "close"
+const AcceptLabel string = "accept"
 
-/**************************************************
- *	Object definition
- **************************************************/
+//	Object definition
 type InfluxMetrics struct {
 	Registry    metrics.Registry
 	Puts        *InfluxMetricsEntry

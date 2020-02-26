@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-/*Define Mock metrics        */
+// Define Mock metrics
 var MockHistograms map[string]float64
 var MockCounters map[string]int64
 

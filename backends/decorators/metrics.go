@@ -10,47 +10,47 @@ import (
 )
 
 type backendWithMetrics struct {
-	delegate       backends.Backend
-	metricsEngines *metrics.Metrics
+	delegate backends.Backend
+	metrics  *metrics.Metrics
 }
 
 func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error) {
-	b.metricsEngines.RecGetBackendRequest("add", nil)
+	b.metrics.RecGetBackendRequest("add", nil)
 	start := time.Now()
 	val, err := b.delegate.Get(ctx, key)
 	if err == nil {
-		b.metricsEngines.RecGetBackendRequest("", &start)
+		b.metrics.RecGetBackendRequest("", &start)
 	} else {
-		b.metricsEngines.RecGetBackendRequest("error", nil)
+		b.metrics.RecGetBackendRequest("error", nil)
 	}
 	return val, err
 }
 
 func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	if strings.HasPrefix(value, backends.XML_PREFIX) {
-		b.metricsEngines.RecPutBackendRequest("xml", nil, 0)
+		b.metrics.RecPutBackendRequest("xml", nil, 0)
 	} else if strings.HasPrefix(value, backends.JSON_PREFIX) {
-		b.metricsEngines.RecPutBackendRequest("json", nil, 0)
+		b.metrics.RecPutBackendRequest("json", nil, 0)
 	} else {
-		b.metricsEngines.RecPutBackendRequest("invalid_format", nil, 0)
+		b.metrics.RecPutBackendRequest("invalid_format", nil, 0)
 	}
 	if ttlSeconds != 0 {
-		b.metricsEngines.RecPutBackendRequest("defines_ttl", nil, 0)
+		b.metrics.RecPutBackendRequest("defines_ttl", nil, 0)
 	}
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)
 	if err == nil {
-		b.metricsEngines.RecPutBackendRequest("", &start, 0)
+		b.metrics.RecPutBackendRequest("", &start, 0)
 	} else {
-		b.metricsEngines.RecPutBackendRequest("error", nil, 0)
+		b.metrics.RecPutBackendRequest("error", nil, 0)
 	}
-	b.metricsEngines.RecPutBackendRequest("", nil, float64(len(value)))
+	b.metrics.RecPutBackendRequest("", nil, float64(len(value)))
 	return err
 }
 
 func LogMetrics(backend backends.Backend, m *metrics.Metrics) backends.Backend {
 	return &backendWithMetrics{
-		delegate:       backend,
-		metricsEngines: m,
+		delegate: backend,
+		metrics:  m,
 	}
 }

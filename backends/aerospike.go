@@ -6,7 +6,7 @@ import (
 
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/prebid/prebid-cache/config"
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/prebid/prebid-cache/metrics"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -19,7 +19,7 @@ type Aerospike struct {
 	metrics *metrics.Metrics
 }
 
-func NewAerospikeBackend(cfg config.Aerospike, metricEngines *metrics.Metrics) *Aerospike {
+func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerospike {
 	client, err := as.NewClient(cfg.Host, cfg.Port)
 	if err != nil {
 		log.Fatalf("Error creating Aerospike backend: %v", err)
@@ -30,7 +30,7 @@ func NewAerospikeBackend(cfg config.Aerospike, metricEngines *metrics.Metrics) *
 	return &Aerospike{
 		cfg:     cfg,
 		client:  client,
-		metrics: metricEngines,
+		metrics: metrics,
 	}
 }
 
