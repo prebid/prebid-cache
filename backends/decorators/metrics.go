@@ -15,36 +15,36 @@ type backendWithMetrics struct {
 }
 
 func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error) {
-	b.metrics.RecGetBackendRequest("add", nil)
+	b.metrics.RecordGetBackendTotal()
 	start := time.Now()
 	val, err := b.delegate.Get(ctx, key)
 	if err == nil {
-		b.metrics.RecGetBackendRequest("", &start)
+		b.metrics.RecordGetBackendDuration(&start)
 	} else {
-		b.metrics.RecGetBackendRequest("error", nil)
+		b.metrics.RecordGetBackendError()
 	}
 	return val, err
 }
 
 func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	if strings.HasPrefix(value, backends.XML_PREFIX) {
-		b.metrics.RecPutBackendRequest("xml", nil, 0)
+		b.metrics.RecordPutBackendXml()
 	} else if strings.HasPrefix(value, backends.JSON_PREFIX) {
-		b.metrics.RecPutBackendRequest("json", nil, 0)
+		b.metrics.RecordPutBackendJson()
 	} else {
-		b.metrics.RecPutBackendRequest("invalid_format", nil, 0)
+		b.metrics.RecordPutBackendInvalid()
 	}
 	if ttlSeconds != 0 {
-		b.metrics.RecPutBackendRequest("defines_ttl", nil, 0)
+		b.metrics.RecordPutBackendDefTTL()
 	}
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)
 	if err == nil {
-		b.metrics.RecPutBackendRequest("", &start, 0)
+		b.metrics.RecordPutBackendDuration(&start)
 	} else {
-		b.metrics.RecPutBackendRequest("error", nil, 0)
+		b.metrics.RecordPutBackendError()
 	}
-	b.metrics.RecPutBackendRequest("", nil, float64(len(value)))
+	b.metrics.RecordPutBackendSize(float64(len(value)))
 	return err
 }
 

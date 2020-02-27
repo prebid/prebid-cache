@@ -23,10 +23,10 @@ type monitorableConnection struct {
 func (l *monitorableConnection) Close() error {
 	err := l.Conn.Close()
 	if err == nil {
-		l.metrics.RecConnectionMetrics("substract")
+		l.metrics.DecreaseOpenConnections()
 	} else {
 		log.Errorf("Error closing connection: %v", err)
-		l.metrics.RecConnectionMetrics("close")
+		l.metrics.RecordCloseConnectionErrors()
 	}
 	return err
 }
@@ -35,10 +35,10 @@ func (ln *monitorableListener) Accept() (c net.Conn, err error) {
 	tc, err := ln.Listener.Accept()
 	if err != nil {
 		log.Errorf("Error accepting connection: %v", err)
-		ln.metrics.RecConnectionMetrics("accept")
+		ln.metrics.RecordAcceptConnectionErrors()
 		return tc, err
 	}
-	ln.metrics.RecConnectionMetrics("add")
+	ln.metrics.IncreaseOpenConnections()
 	return &monitorableConnection{
 		tc,
 		ln.metrics,

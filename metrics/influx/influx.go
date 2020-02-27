@@ -131,87 +131,92 @@ func (m InfluxMetrics) Export(cfg config.Metrics) {
 	return
 }
 
-func (m *InfluxMetrics) RecordPutRequest(status string, duration *time.Time) {
-	if status != "" {
-		switch status {
-		case ErrorLabel:
-			m.Puts.Errors.Mark(1)
-		case BadRequestLabel:
-			m.Puts.BadRequest.Mark(1)
-		case AddLabel:
-			m.Puts.Request.Mark(1)
-		}
-	} else if duration != nil {
-		m.Puts.Duration.UpdateSince(*duration)
-	}
+func (m *InfluxMetrics) RecordPutError() {
+	m.Puts.Errors.Mark(1)
 }
 
-func (m *InfluxMetrics) RecordGetRequest(status string, duration *time.Time) {
-	if status != "" {
-		switch status {
-		case ErrorLabel:
-			m.Gets.Errors.Mark(1)
-		case BadRequestLabel:
-			m.Gets.BadRequest.Mark(1)
-		case AddLabel:
-			m.Gets.Request.Mark(1)
-		}
-	} else if duration != nil {
-		m.Gets.Duration.UpdateSince(*duration)
-	}
+func (m *InfluxMetrics) RecordPutBadRequest() {
+	m.Puts.BadRequest.Mark(1)
 }
 
-func (m *InfluxMetrics) RecordPutBackendRequest(status string, duration *time.Time, sizeInBytes float64) {
-	if duration != nil {
-		m.PutsBackend.Duration.UpdateSince(*duration)
-	}
-	switch status {
-	case AddLabel:
-		m.PutsBackend.Request.Mark(1)
-	case ErrorLabel:
-		m.PutsBackend.Errors.Mark(1)
-	case BadRequestLabel:
-		m.PutsBackend.BadRequest.Mark(1)
-	case JsonLabel:
-		m.PutsBackend.JsonRequest.Mark(1)
-	case XmlLabel:
-		m.PutsBackend.XmlRequest.Mark(1)
-	case DefinesTTLLabel:
-		m.PutsBackend.DefinesTTL.Mark(1)
-	case InvFormatLabel:
-		m.PutsBackend.InvalidRequest.Mark(1)
-	}
-	if sizeInBytes > 0 {
-		m.PutsBackend.RequestLength.Update(int64(sizeInBytes))
-	}
+func (m *InfluxMetrics) RecordPutTotal() {
+	m.Puts.Request.Mark(1)
 }
 
-func (m *InfluxMetrics) RecordGetBackendRequest(status string, duration *time.Time) {
-	if status != "" {
-		switch status {
-		case ErrorLabel:
-			m.GetsBackend.Errors.Mark(1)
-		case BadRequestLabel:
-			m.GetsBackend.BadRequest.Mark(1)
-		case AddLabel:
-			m.GetsBackend.Request.Mark(1)
-		}
-	} else if duration != nil {
-		m.GetsBackend.Duration.UpdateSince(*duration)
-	}
+func (m *InfluxMetrics) RecordPutDuration(duration *time.Time) {
+	m.Puts.Duration.UpdateSince(*duration)
 }
 
-func (m *InfluxMetrics) RecordConnectionMetrics(label string) {
-	switch label {
-	case AddLabel:
-		m.Connections.ActiveConnections.Inc(1)
-	case SubstractLabel:
-		m.Connections.ActiveConnections.Dec(1)
-	case CloseLabel:
-		m.Connections.ConnectionCloseErrors.Mark(1)
-	case AcceptLabel:
-		m.Connections.ConnectionAcceptErrors.Mark(1)
-	}
+func (m *InfluxMetrics) RecordGetError() {
+	m.Gets.Errors.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordGetBadRequest() {
+	m.Gets.BadRequest.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordGetTotal() {
+	m.Gets.Request.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordGetDuration(duration *time.Time) {
+	m.Gets.Duration.UpdateSince(*duration)
+}
+
+func (m *InfluxMetrics) RecordPutBackendXml() {
+	m.PutsBackend.XmlRequest.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordPutBackendJson() {
+	m.PutsBackend.JsonRequest.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordPutBackendInvalid() {
+	m.PutsBackend.InvalidRequest.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordPutBackendDefTTL() {
+	m.PutsBackend.DefinesTTL.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordPutBackendDuration(duration *time.Time) {
+	m.PutsBackend.Duration.UpdateSince(*duration)
+}
+
+func (m *InfluxMetrics) RecordPutBackendError() {
+	m.PutsBackend.Errors.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordGetBackendTotal() {
+	m.GetsBackend.Request.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordPutBackendSize(sizeInBytes float64) {
+	m.PutsBackend.RequestLength.Update(int64(sizeInBytes))
+}
+
+func (m *InfluxMetrics) RecordGetBackendDuration(duration *time.Time) {
+	m.GetsBackend.Duration.UpdateSince(*duration)
+}
+
+func (m *InfluxMetrics) RecordGetBackendError() {
+	m.GetsBackend.Errors.Mark(1)
+}
+
+func (m *InfluxMetrics) IncreaseOpenConnections() {
+	m.Connections.ActiveConnections.Inc(1)
+}
+
+func (m *InfluxMetrics) DecreaseOpenConnections() {
+	m.Connections.ActiveConnections.Dec(1)
+}
+
+func (m *InfluxMetrics) RecordCloseConnectionErrors() {
+	m.Connections.ConnectionCloseErrors.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordAcceptConnectionErrors() {
+	m.Connections.ConnectionAcceptErrors.Mark(1)
 }
 
 func (m *InfluxMetrics) RecordExtraTTLSeconds(value float64) {

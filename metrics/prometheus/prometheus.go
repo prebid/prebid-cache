@@ -203,79 +203,94 @@ func newHistogramVector(cfg config.PrometheusMetrics, registry *prometheus.Regis
 func (m PrometheusMetrics) Export(cfg config.Metrics) {
 }
 
-//NEW Functions to record metrics
-func (m *PrometheusMetrics) RecordPutRequest(status string, duration *time.Time) {
-	incCounterInVector(m.Puts.RequestStatus, "status", status, map[string]bool{AddLabel: true, ErrorLabel: true, BadRequestLabel: true})
-	incDuration(m.Puts.Duration, duration)
+func (m *PrometheusMetrics) RecordPutError() {
+	m.Puts.RequestStatus.With(prometheus.Labels{"status": "error"}).Inc()
 }
 
-func (m *PrometheusMetrics) RecordGetRequest(status string, duration *time.Time) {
-	incCounterInVector(m.Gets.RequestStatus, "status", status, map[string]bool{AddLabel: true, ErrorLabel: true, BadRequestLabel: true})
-	incDuration(m.Gets.Duration, duration)
-	/*
-		b.metrics.RecPutBackendRequest("error", nil, 0); m.Gets.Errors.Mark(1)
-		b.metrics.RecGetBackendRequest("bad_request", nil); m.Gets.BadRequest.Mark(1)
-		b.metrics.RecGetBackendRequest("add", nil); m.Gets.Request.Mark(1)
-		b.metrics.RecPutBackendRequest("", &start, 0); m.Gets.Duration.UpdateSince(*duration)
-	*/
+func (m *PrometheusMetrics) RecordPutBadRequest() {
+	m.Puts.RequestStatus.With(prometheus.Labels{"status": "bad_request"}).Inc()
 }
 
-func (m *PrometheusMetrics) RecordPutBackendRequest(status string, duration *time.Time, sizeInBytes float64) {
-	incDuration(m.PutsBackend.Duration, duration)
-	incCounterInVector(m.PutsBackend.PutBackendRequests, "label", status, map[string]bool{AddLabel: true, JsonLabel: true, XmlLabel: true, InvFormatLabel: true, DefinesTTLLabel: true, ErrorLabel: true})
-	incSize(m.PutsBackend.RequestLength, sizeInBytes)
-	/*
-		m.PutsBackend.Request.Mark(1); b.metrics.RecPutBackendRequest("add", nil, 0)
-		m.PutsBackend.XmlRequest.Mark(1); b.metrics.RecPutBackendRequest("xml", nil, 0)
-		m.PutsBackend.JsonRequest.Mark(1); b.metrics.RecPutBackendRequest("json", nil, 0)
-		m.PutsBackend.InvalidRequest.Mark(1);b.metrics.RecPutBackendRequest("invalid_format", nil, 0)
-		m.PutsBackend.DefinesTTL.Mark(1); b.metrics.RecPutBackendRequest("defines_ttl", nil, 0)
-		m.PutsBackend.Duration.UpdateSince(*duration); b.metrics.RecPutBackendRequest("", &start, 0)
-		m.PutsBackend.Errors.Mark(1);b.metrics.RecPutBackendRequest("error", nil, 0)
-		m.PutsBackend.RequestLength.Update(int64(sizeInBytes)); b.metrics.RecPutBackendRequest("", nil, float64(len(value)))
-		m.PutsBackend.BadRequest.Mark(1); b.metrics.RecPutBackendRequest("bad_request", nil, 0)
-	*/
+func (m *PrometheusMetrics) RecordPutTotal() {
+	m.Puts.RequestStatus.With(prometheus.Labels{"status": "add"}).Inc()
 }
 
-func (m *PrometheusMetrics) RecordGetBackendRequest(status string, duration *time.Time) {
-	incCounterInVector(m.GetsBackend.RequestStatus, "status", status, map[string]bool{AddLabel: true, ErrorLabel: true, BadRequestLabel: true})
-	incDuration(m.GetsBackend.Duration, duration)
-	/*
-		m.GetsBackend.Request.Mark(1); b.metrics.RecGetBackendRequest("add", nil)
-		m.GetsBackend.Duration.UpdateSince(*duration); b.metrics.RecGetBackendRequest("", &start)
-		m.GetsBackend.Errors.Mark(1); b.metrics.RecGetBackendRequest("error", nil)
-			m.GetsBackend.BadRequest.Mark(1)
-	*/
+func (m *PrometheusMetrics) RecordPutDuration(duration *time.Time) {
+	m.Puts.Duration.Observe(time.Since(*duration).Seconds())
 }
 
-func (m *PrometheusMetrics) RecordConnectionMetrics(label string) {
-	if label == AddLabel {
-		m.Connections.ConnectionsOpened.Inc()
-	} else if label == SubstractLabel {
-		m.Connections.ConnectionsOpened.Dec()
-	}
-	incCounterInVector(m.Connections.ConnectionsErrors, "connection_error", label, map[string]bool{AcceptLabel: true, CloseLabel: true})
+func (m *PrometheusMetrics) RecordGetError() {
+	m.Gets.RequestStatus.With(prometheus.Labels{"status": "error"}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordGetBadRequest() {
+	m.Gets.RequestStatus.With(prometheus.Labels{"status": "bad_request"}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordGetTotal() {
+	m.Gets.RequestStatus.With(prometheus.Labels{"status": "add"}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordGetDuration(duration *time.Time) {
+	m.Gets.Duration.Observe(time.Since(*duration).Seconds())
+}
+
+func (m *PrometheusMetrics) RecordPutBackendXml() {
+	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{"label": "xml"}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordPutBackendJson() {
+	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{"label": "json"}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordPutBackendInvalid() {
+	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{"label": "invalid_format"}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordPutBackendDefTTL() {
+	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{"label": "defines_ttl"}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordPutBackendDuration(duration *time.Time) {
+	m.PutsBackend.Duration.Observe(time.Since(*duration).Seconds())
+}
+
+func (m *PrometheusMetrics) RecordPutBackendError() {
+	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{"label": "error"}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordPutBackendSize(sizeInBytes float64) {
+	m.PutsBackend.RequestLength.Observe(sizeInBytes)
+}
+
+func (m *PrometheusMetrics) RecordGetBackendTotal() {
+	m.GetsBackend.RequestStatus.With(prometheus.Labels{"label": "add"}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordGetBackendDuration(duration *time.Time) {
+	m.GetsBackend.Duration.Observe(time.Since(*duration).Seconds())
+}
+
+func (m *PrometheusMetrics) RecordGetBackendError() {
+	m.GetsBackend.RequestStatus.With(prometheus.Labels{"status": "error"}).Inc()
+}
+
+func (m *PrometheusMetrics) IncreaseOpenConnections() {
+	m.Connections.ConnectionsOpened.Inc()
+}
+
+func (m *PrometheusMetrics) DecreaseOpenConnections() {
+	m.Connections.ConnectionsOpened.Dec()
+}
+
+func (m *PrometheusMetrics) RecordCloseConnectionErrors() {
+	m.Connections.ConnectionsErrors.With(prometheus.Labels{"connection_error": "close"}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordAcceptConnectionErrors() {
+	m.Connections.ConnectionsErrors.With(prometheus.Labels{"connection_error": "accept"}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordExtraTTLSeconds(value float64) {
 	m.ExtraTTL.ExtraTTLSeconds.Observe(value)
-}
-
-//	Auxiliary functions to record metrics
-func incCounterInVector(counter *prometheus.CounterVec, label string, status string, labelMap map[string]bool) {
-	if labelMap[status] {
-		counter.With(prometheus.Labels{label: status}).Inc()
-	}
-}
-
-func incDuration(histogram prometheus.Histogram, duration *time.Time) {
-	if duration != nil {
-		histogram.Observe(time.Since(*duration).Seconds())
-	}
-}
-
-func incSize(m prometheus.Histogram, sizeInBytes float64) {
-	if sizeInBytes > 0 {
-		m.Observe(sizeInBytes)
-	}
 }

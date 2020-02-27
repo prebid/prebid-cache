@@ -13,32 +13,139 @@ type Metrics struct {
 }
 
 // Methods so the metrics object executes the methods of the `CacheMetrics` interface
-func (m Metrics) RecPutRequest(status string, duration *time.Time) {
+func (m Metrics) RecordPutError() {
 	for _, me := range m.MetricEngines {
-		me.RecordPutRequest(status, duration)
+		me.RecordPutError()
 	}
 }
-func (m Metrics) RecGetRequest(status string, duration *time.Time) {
+
+func (m Metrics) RecordPutBadRequest() {
 	for _, me := range m.MetricEngines {
-		me.RecordGetRequest(status, duration)
+		me.RecordPutBadRequest()
 	}
 }
-func (m Metrics) RecPutBackendRequest(status string, duration *time.Time, sizeInBytes float64) {
+
+func (m Metrics) RecordPutTotal() {
 	for _, me := range m.MetricEngines {
-		me.RecordPutBackendRequest(status, duration, sizeInBytes)
+		me.RecordPutTotal()
 	}
 }
-func (m Metrics) RecGetBackendRequest(status string, duration *time.Time) {
+
+func (m Metrics) RecordPutDuration(duration *time.Time) {
 	for _, me := range m.MetricEngines {
-		me.RecordGetBackendRequest(status, duration)
+		me.RecordPutDuration(duration)
 	}
 }
-func (m Metrics) RecConnectionMetrics(status string) {
+
+func (m Metrics) RecordGetError() {
 	for _, me := range m.MetricEngines {
-		me.RecordConnectionMetrics(status)
+		me.RecordGetError()
 	}
 }
-func (m Metrics) RecExtraTTLSeconds(value float64) {
+
+func (m Metrics) RecordGetBadRequest() {
+	for _, me := range m.MetricEngines {
+		me.RecordGetBadRequest()
+	}
+}
+
+func (m Metrics) RecordGetTotal() {
+	for _, me := range m.MetricEngines {
+		me.RecordGetTotal()
+	}
+}
+
+func (m Metrics) RecordGetDuration(duration *time.Time) {
+	for _, me := range m.MetricEngines {
+		me.RecordGetDuration(duration)
+	}
+}
+
+func (m Metrics) RecordPutBackendXml() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendXml()
+	}
+}
+
+func (m Metrics) RecordPutBackendJson() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendJson()
+	}
+}
+
+func (m Metrics) RecordPutBackendInvalid() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendInvalid()
+	}
+}
+
+func (m Metrics) RecordPutBackendDefTTL() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendDefTTL()
+	}
+}
+
+func (m Metrics) RecordPutBackendDuration(duration *time.Time) {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendDuration(duration)
+	}
+}
+
+func (m Metrics) RecordPutBackendError() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendError()
+	}
+}
+
+func (m Metrics) RecordPutBackendSize(sizeInBytes float64) {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendSize(sizeInBytes)
+	}
+}
+
+func (m Metrics) RecordGetBackendDuration(duration *time.Time) {
+	for _, me := range m.MetricEngines {
+		me.RecordGetBackendDuration(duration)
+	}
+}
+
+func (m Metrics) RecordGetBackendTotal() {
+	for _, me := range m.MetricEngines {
+		me.RecordGetBackendTotal()
+	}
+}
+
+func (m Metrics) RecordGetBackendError() {
+	for _, me := range m.MetricEngines {
+		me.RecordGetBackendError()
+	}
+}
+
+func (m Metrics) IncreaseOpenConnections() {
+	for _, me := range m.MetricEngines {
+		me.IncreaseOpenConnections()
+	}
+}
+
+func (m Metrics) DecreaseOpenConnections() {
+	for _, me := range m.MetricEngines {
+		me.DecreaseOpenConnections()
+	}
+}
+
+func (m Metrics) RecordCloseConnectionErrors() {
+	for _, me := range m.MetricEngines {
+		me.RecordCloseConnectionErrors()
+	}
+}
+
+func (m Metrics) RecordAcceptConnectionErrors() {
+	for _, me := range m.MetricEngines {
+		me.RecordAcceptConnectionErrors()
+	}
+}
+
+func (m Metrics) RecordExtraTTLSeconds(value float64) {
 	for _, me := range m.MetricEngines {
 		me.RecordExtraTTLSeconds(value)
 	}
@@ -50,15 +157,32 @@ func (m Metrics) Export(cfg config.Configuration) {
 	}
 }
 
-// Interface definition
+// CacheMetrics Interface
 type CacheMetrics interface {
-	RecordPutRequest(status string, duration *time.Time)
-	RecordGetRequest(status string, duration *time.Time)
-	RecordPutBackendRequest(status string, duration *time.Time, sizeInBytes float64)
-	RecordGetBackendRequest(status string, duration *time.Time)
-	RecordConnectionMetrics(label string)
-	RecordExtraTTLSeconds(aVar float64)
 	Export(cfg config.Metrics)
+	RecordPutError()
+	RecordPutBadRequest()
+	RecordPutTotal()
+	RecordPutDuration(duration *time.Time)
+	RecordGetError()
+	RecordGetBadRequest()
+	RecordGetTotal()
+	RecordGetDuration(duration *time.Time)
+	RecordPutBackendXml()
+	RecordPutBackendJson()
+	RecordPutBackendInvalid()
+	RecordPutBackendDefTTL()
+	RecordPutBackendDuration(duration *time.Time)
+	RecordPutBackendError()
+	RecordPutBackendSize(sizeInBytes float64)
+	RecordGetBackendTotal()
+	RecordGetBackendDuration(duration *time.Time)
+	RecordGetBackendError()
+	IncreaseOpenConnections()
+	DecreaseOpenConnections()
+	RecordCloseConnectionErrors()
+	RecordAcceptConnectionErrors()
+	RecordExtraTTLSeconds(value float64)
 }
 
 func CreateMetrics(cfg config.Configuration) *Metrics {
