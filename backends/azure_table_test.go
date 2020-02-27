@@ -8,7 +8,7 @@ import (
 func TestPartitionKey(t *testing.T) {
 	azureTable := NewAzureBackend("abc", "def")
 
-	id, err := utils.GenerateUUIDString()
+	id, err := utils.GenerateRandomId()
 	if err != nil {
 		t.Errorf("Error generating version 4 UUID")
 	}
@@ -46,7 +46,7 @@ func TestEmptyPartitionKey(t *testing.T) {
 func TestPartitionKeyHeader(t *testing.T) {
 	azureTable := NewAzureBackend("abc", "def")
 
-	id, err := utils.GenerateUUIDString()
+	id, err := utils.GenerateRandomId()
 	if err != nil {
 		t.Errorf("Error generating version 4 UUID")
 	}

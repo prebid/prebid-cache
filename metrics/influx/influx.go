@@ -10,18 +10,7 @@ import (
 	"github.com/vrischmann/go-metrics-influxdb"
 )
 
-// Constants and global variables
-const TenSeconds time.Duration = time.Second * 10
-const AddLabel string = "add"
-const ErrorLabel string = "error"
-const BadRequestLabel string = "bad_request"
-const JsonLabel string = "json"
-const XmlLabel string = "xml"
-const DefinesTTLLabel string = "defines_ttl"
-const InvFormatLabel string = "invalid_format"
-const SubstractLabel string = "substract"
-const CloseLabel string = "close"
-const AcceptLabel string = "accept"
+var TenSeconds time.Duration = time.Second * 10
 
 //	Object definition
 type InfluxMetrics struct {
@@ -93,7 +82,7 @@ func NewInfluxConnectionMetrics(r metrics.Registry) *InfluxConnectionMetrics {
 }
 
 func CreateInfluxMetrics() *InfluxMetrics {
-	flushTime := time.Second * 10
+	flushTime := TenSeconds
 	r := metrics.NewPrefixedRegistry("prebidcache.")
 	m := &InfluxMetrics{
 		Registry:    r,

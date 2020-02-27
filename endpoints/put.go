@@ -88,7 +88,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 
 			logrus.Debugf("Storing value: %s", toCache)
 			var uuidGenError error
-			resps.Responses[i].UUID, uuidGenError = utils.GenerateUUIDString()
+			resps.Responses[i].UUID, uuidGenError = utils.GenerateRandomId()
 			if uuidGenError != nil {
 				http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
 			}

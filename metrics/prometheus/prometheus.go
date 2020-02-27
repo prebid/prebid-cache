@@ -7,17 +7,21 @@ import (
 )
 
 // Constants and global variables
-var TenSeconds time.Duration = time.Second * 10
-var AddLabel string = "add"
-var ErrorLabel string = "error"
-var BadRequestLabel string = "bad_request"
-var JsonLabel string = "json"
-var XmlLabel string = "xml"
-var DefinesTTLLabel string = "defines_ttl"
-var InvFormatLabel string = "invalid_format"
-var SubstractLabel string = "substract"
-var CloseLabel string = "close"
-var AcceptLabel string = "accept"
+const (
+	StatusKey    string = "status"
+	FormatKey    string = "format"
+	ConnErrorKey string = "connection_error"
+
+	TotalsVal     string = "total"
+	ErrorVal      string = "error"
+	BadRequestVal string = "bad_request"
+	JsonVal       string = "json"
+	XmlVal        string = "xml"
+	DefinesTTLVal string = "defines_ttl"
+	InvFormatVal  string = "invalid_format"
+	CloseVal      string = "close"
+	AcceptVal     string = "accept"
+)
 
 //	Object definition
 type PrometheusMetrics struct {
@@ -31,19 +35,19 @@ type PrometheusMetrics struct {
 }
 
 type PrometheusRequestStatusMetric struct {
-	Duration      prometheus.Histogram   //Non vector
-	RequestStatus *prometheus.CounterVec // CounterVec "status": "add", "error", or "bad_request"
+	Duration      prometheus.Histogram
+	RequestStatus *prometheus.CounterVec
 }
 
 type PrometheusRequestStatusMetricByFormat struct {
-	Duration           prometheus.Histogram   //Non vector
-	PutBackendRequests *prometheus.CounterVec // CounterVec "label": "json" or  "xml","status": "add", "error", or "bad_request","definesTimeToLive": "TTL_present", or "TTL_missing"
-	RequestLength      prometheus.Histogram   //Non vector
+	Duration           prometheus.Histogram
+	PutBackendRequests *prometheus.CounterVec
+	RequestLength      prometheus.Histogram
 }
 
 type PrometheusConnectionMetrics struct {
 	ConnectionsOpened prometheus.Gauge
-	ConnectionsErrors *prometheus.CounterVec // the "Connection_error" label will hold the values "accept" or "close"
+	ConnectionsErrors *prometheus.CounterVec
 }
 
 type PrometheusExtraTTLMetrics struct {
@@ -59,15 +63,15 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 		Registry: registry,
 		Puts: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
-				"puts.current_url.request_duration", //modify according to InfluxDB name
+				"puts.current_url.request_duration",
 				"Duration in seconds Prebid Cache takes to process put requests.",
 				cacheWriteTimeBuckets,
-			), // {"gets.current_url.request_duration", "puts.backend.request_duration", "gets.backend.request_duration"}
+			),
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
 				"puts.current_url",
 				"Count of total requests to Prebid Server labeled by status.",
-				[]string{"status"}, // CounterVec labels --> "status": "add", "error", or "bad_request"
-			), //{"puts.current_url.error_count", "puts.current_url.bad_request_count", "puts.current_url.request_count", "gets.current_url.error_count", "gets.current_url.bad_request_count", "gets.current_url.request_count", "puts.backend.error_count", "puts.backend.bad_request_count", "puts.backend.json_request_count", "puts.backend.xml_request_count","puts.backend.defines_ttl", "puts.backend.unknown_request_count", "gets.backend.error_count", "gets.backend.bad_request_count", "gets.backend.request_count"}
+				[]string{StatusKey},
+			),
 		},
 		Gets: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
@@ -78,8 +82,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
 				"gets.current_url",
 				"Count of total get requests to Prebid Server labeled by status.",
-				[]string{"status"}, // CounterVec labels --> "status": "add", "error", or "bad_request"
-			), //{"gets.current_url.error_count", "gets.current_url.bad_request_count", "gets.current_url.request_count"}
+				[]string{StatusKey},
+			),
 		},
 		PutsBackend: &PrometheusRequestStatusMetricByFormat{
 			Duration: newHistogram(cfg, registry,
@@ -90,9 +94,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 			PutBackendRequests: newCounterVecWithLabels(cfg, registry,
 				"puts.backend",
 				"Count of total requests to Prebid Cache labeled by format, status and whether or not it comes with TTL",
-				[]string{"label"},
-			), // CounterVec "label": "json" or  "xml","status": "add", "error", or "bad_request","definesTimeToLive": "TTL_present", or "TTL_missing"
-			//{"puts.backend.error_count", "puts.backend.bad_request_count", "puts.backend.json_request_count", "puts.backend.xml_request_count","puts.backend.defines_ttl", "puts.backend.unknown_request_count"}
+				[]string{FormatKey},
+			),
 			RequestLength: newHistogram(cfg, registry,
 				"puts.backend.request_size_bytes",
 				"Size in bytes of a backend put request.",
@@ -108,9 +111,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
 				"gets.backend",
 				"Count of total backend get requests to Prebid Server labeled by status.",
-				[]string{"status"}, // CounterVec labels --> "status": "add", "error", or "bad_request"
-			), //{"gets.backend.error_count", "gets.backend.bad_request_count", "gets.backend.request_count"}
-
+				[]string{StatusKey},
+			),
 		},
 		Connections: &PrometheusConnectionMetrics{
 			ConnectionsOpened: newGaugeMetric(cfg, registry,
@@ -118,10 +120,10 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				"Count of total number of connectionsbackend get requests to Prebid Server labeled by status.",
 			),
 			ConnectionsErrors: newCounterVecWithLabels(cfg, registry,
-				"connection_error",
+				ConnErrorKey,
 				"Count the number of connection accept errors or connection close errors",
-				[]string{"connection_error"},
-			), // "connection_error" = {"accept", "close"}
+				[]string{ConnErrorKey},
+			),
 		},
 		ExtraTTL: &PrometheusExtraTTLMetrics{
 			ExtraTTLSeconds: newHistogram(cfg, registry,
@@ -199,20 +201,20 @@ func newHistogramVector(cfg config.PrometheusMetrics, registry *prometheus.Regis
 	return histogram
 }
 
-//	Functions to record metrics
+//	`CacheMetrics` interface implementation
 func (m PrometheusMetrics) Export(cfg config.Metrics) {
 }
 
 func (m *PrometheusMetrics) RecordPutError() {
-	m.Puts.RequestStatus.With(prometheus.Labels{"status": "error"}).Inc()
+	m.Puts.RequestStatus.With(prometheus.Labels{StatusKey: ErrorVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordPutBadRequest() {
-	m.Puts.RequestStatus.With(prometheus.Labels{"status": "bad_request"}).Inc()
+	m.Puts.RequestStatus.With(prometheus.Labels{StatusKey: BadRequestVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordPutTotal() {
-	m.Puts.RequestStatus.With(prometheus.Labels{"status": "add"}).Inc()
+	m.Puts.RequestStatus.With(prometheus.Labels{StatusKey: TotalsVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordPutDuration(duration *time.Time) {
@@ -220,15 +222,15 @@ func (m *PrometheusMetrics) RecordPutDuration(duration *time.Time) {
 }
 
 func (m *PrometheusMetrics) RecordGetError() {
-	m.Gets.RequestStatus.With(prometheus.Labels{"status": "error"}).Inc()
+	m.Gets.RequestStatus.With(prometheus.Labels{StatusKey: ErrorVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordGetBadRequest() {
-	m.Gets.RequestStatus.With(prometheus.Labels{"status": "bad_request"}).Inc()
+	m.Gets.RequestStatus.With(prometheus.Labels{StatusKey: BadRequestVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordGetTotal() {
-	m.Gets.RequestStatus.With(prometheus.Labels{"status": "add"}).Inc()
+	m.Gets.RequestStatus.With(prometheus.Labels{StatusKey: TotalsVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordGetDuration(duration *time.Time) {
@@ -236,19 +238,19 @@ func (m *PrometheusMetrics) RecordGetDuration(duration *time.Time) {
 }
 
 func (m *PrometheusMetrics) RecordPutBackendXml() {
-	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{"label": "xml"}).Inc()
+	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{FormatKey: XmlVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordPutBackendJson() {
-	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{"label": "json"}).Inc()
+	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{FormatKey: JsonVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordPutBackendInvalid() {
-	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{"label": "invalid_format"}).Inc()
+	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{FormatKey: InvFormatVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordPutBackendDefTTL() {
-	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{"label": "defines_ttl"}).Inc()
+	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{FormatKey: DefinesTTLVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordPutBackendDuration(duration *time.Time) {
@@ -256,7 +258,7 @@ func (m *PrometheusMetrics) RecordPutBackendDuration(duration *time.Time) {
 }
 
 func (m *PrometheusMetrics) RecordPutBackendError() {
-	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{"label": "error"}).Inc()
+	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{FormatKey: ErrorVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordPutBackendSize(sizeInBytes float64) {
@@ -264,7 +266,7 @@ func (m *PrometheusMetrics) RecordPutBackendSize(sizeInBytes float64) {
 }
 
 func (m *PrometheusMetrics) RecordGetBackendTotal() {
-	m.GetsBackend.RequestStatus.With(prometheus.Labels{"label": "add"}).Inc()
+	m.GetsBackend.RequestStatus.With(prometheus.Labels{FormatKey: TotalsVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordGetBackendDuration(duration *time.Time) {
@@ -272,7 +274,7 @@ func (m *PrometheusMetrics) RecordGetBackendDuration(duration *time.Time) {
 }
 
 func (m *PrometheusMetrics) RecordGetBackendError() {
-	m.GetsBackend.RequestStatus.With(prometheus.Labels{"status": "error"}).Inc()
+	m.GetsBackend.RequestStatus.With(prometheus.Labels{StatusKey: ErrorVal}).Inc()
 }
 
 func (m *PrometheusMetrics) IncreaseOpenConnections() {
@@ -284,11 +286,11 @@ func (m *PrometheusMetrics) DecreaseOpenConnections() {
 }
 
 func (m *PrometheusMetrics) RecordCloseConnectionErrors() {
-	m.Connections.ConnectionsErrors.With(prometheus.Labels{"connection_error": "close"}).Inc()
+	m.Connections.ConnectionsErrors.With(prometheus.Labels{ConnErrorKey: CloseVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordAcceptConnectionErrors() {
-	m.Connections.ConnectionsErrors.With(prometheus.Labels{"connection_error": "accept"}).Inc()
+	m.Connections.ConnectionsErrors.With(prometheus.Labels{ConnErrorKey: AcceptVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordExtraTTLSeconds(value float64) {

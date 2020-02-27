@@ -4,7 +4,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func GenerateUUIDString() (string, error) {
+func GenerateRandomId() (string, error) {
 	u2, err := uuid.NewV4()
 	return u2.String(), err
 }
