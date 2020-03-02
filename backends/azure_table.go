@@ -13,7 +13,7 @@ import (
 	"context"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 )
 
@@ -54,7 +54,7 @@ func NewAzureBackend(account string, key string) *AzureTableBackend {
 				buffer[1] = '"'
 				buffer[6] = '"'
 				buffer[7] = ']'
-				return buffer
+				return &buffer
 			},
 		},
 	}
@@ -194,8 +194,8 @@ func (c *AzureTableBackend) makePartitionKey(objectKey string) string {
 }
 
 func (c *AzureTableBackend) wrapForHeader(partitionKey string) string {
-	buffer := c.partitionKeyPool.Get().([8]byte)
+	buffer := c.partitionKeyPool.Get().(*[8]byte)
 	defer c.partitionKeyPool.Put(buffer)
-	copy(buffer[2:6], partitionKey)
-	return string(buffer[:])
+	copy((*buffer)[2:6], partitionKey)
+	return string((*buffer)[:])
 }
