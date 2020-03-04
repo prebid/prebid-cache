@@ -38,6 +38,6 @@ compression:
 metrics:
   type: "graphite" # Can also be "influx"
   graphite:
-    host: localhost:2003
+    host: stunnel:2003
     prefix: scrungus.pippins
     interval_sec: 10
