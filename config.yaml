@@ -37,11 +37,6 @@ compression:
   type: "snappy" # Can also be "none"
 metrics:
   type: "graphite" # Can also be "influx"
-  influx:
-    host: "http://influx.prebid.com"
-    database: "some-database"
-    username: "influx-username"
-    password: "influx-password"
   graphite:
     host: localhost:2003
     prefix: scrungus.pippins
