@@ -149,10 +149,6 @@ func (cfg *Metrics) validateAndLog() {
 	}
 }
 
-type MetricsConfig interface {
-	validateAndLogMetricsData() bool
-}
-
 type InfluxMetrics struct {
 	Host     string `mapstructure:"host"`
 	Database string `mapstructure:"database"`

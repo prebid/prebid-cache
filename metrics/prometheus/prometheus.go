@@ -63,53 +63,53 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 		Registry: registry,
 		Puts: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
-				"puts.current_url.request_duration",
+				"puts_current_url_duration",
 				"Duration in seconds Prebid Cache takes to process put requests.",
 				cacheWriteTimeBuckets,
 			),
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
-				"puts.current_url",
+				"puts_current_url",
 				"Count of total requests to Prebid Server labeled by status.",
 				[]string{StatusKey},
 			),
 		},
 		Gets: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
-				"gets.current_url.request_duration",
+				"gets_current_url_duration",
 				"Duration in seconds Prebid Cache takes to process get requests.",
 				cacheWriteTimeBuckets,
 			),
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
-				"gets.current_url",
+				"gets_current_url",
 				"Count of total get requests to Prebid Server labeled by status.",
 				[]string{StatusKey},
 			),
 		},
 		PutsBackend: &PrometheusRequestStatusMetricByFormat{
 			Duration: newHistogram(cfg, registry,
-				"puts.backend.request_duration",
+				"puts_backend_duration",
 				"Duration in seconds Prebid Cache takes to process backend put requests.",
 				cacheWriteTimeBuckets,
 			),
 			PutBackendRequests: newCounterVecWithLabels(cfg, registry,
-				"puts.backend",
+				"puts_backend",
 				"Count of total requests to Prebid Cache labeled by format, status and whether or not it comes with TTL",
 				[]string{FormatKey},
 			),
 			RequestLength: newHistogram(cfg, registry,
-				"puts.backend.request_size_bytes",
+				"puts_backend_request_size_bytes",
 				"Size in bytes of a backend put request.",
 				requestSizeBuckets,
 			),
 		},
 		GetsBackend: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
-				"gets.backend.request_duration",
+				"gets_backend_duration",
 				"Duration in seconds Prebid Cache takes to process backend get requests.",
 				cacheWriteTimeBuckets,
 			),
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
-				"gets.backend",
+				"gets_backend",
 				"Count of total backend get requests to Prebid Server labeled by status.",
 				[]string{StatusKey},
 			),
@@ -266,7 +266,7 @@ func (m *PrometheusMetrics) RecordPutBackendSize(sizeInBytes float64) {
 }
 
 func (m *PrometheusMetrics) RecordGetBackendTotal() {
-	m.GetsBackend.RequestStatus.With(prometheus.Labels{FormatKey: TotalsVal}).Inc()
+	m.GetsBackend.RequestStatus.With(prometheus.Labels{StatusKey: TotalsVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordGetBackendDuration(duration *time.Time) {
@@ -275,6 +275,10 @@ func (m *PrometheusMetrics) RecordGetBackendDuration(duration *time.Time) {
 
 func (m *PrometheusMetrics) RecordGetBackendError() {
 	m.GetsBackend.RequestStatus.With(prometheus.Labels{StatusKey: ErrorVal}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordGetBackendBadRequest() {
+	m.GetsBackend.RequestStatus.With(prometheus.Labels{StatusKey: BadRequestVal}).Inc()
 }
 
 func (m *PrometheusMetrics) IncreaseOpenConnections() {
