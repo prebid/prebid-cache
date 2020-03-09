@@ -19,4 +19,8 @@ COPY --from=builder /go/src/github.com/prebid/prebid-cache/prebid-cache /app/pre
 ADD ./config.yaml /app/
 
 WORKDIR /app
+
+EXPOSE 2525/tcp
+EXPOSE 2424/tcp
+
 CMD ["./prebid-cache"]
