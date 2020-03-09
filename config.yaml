@@ -36,8 +36,8 @@ backend:
 compression:
   type: "snappy" # Can also be "none"
 metrics:
-  type: "graphite" # Can also be "influx"
-  graphite:
-    host: stunnel:2003
-    prefix: scrungus.pippins
-    interval_sec: 10
+  type: "none" # Can also be "influx"
+  # graphite:
+  #   host: stunnel:2003
+  #   prefix: scrungus.pippins
+  #   interval_sec: 10
