@@ -1,3 +1,4 @@
+FROM 993930779011.dkr.ecr.us-east-1.amazonaws.com/sortable/loadconfig:0.1.3 as loadconfig
 FROM golang as builder
 RUN mkdir -p /go/src/github.com/prebid/prebid-cache
 WORKDIR /go/src/github.com/prebid/prebid-cache
@@ -16,6 +17,7 @@ RUN apt install -y ca-certificates
 
 RUN mkdir /app
 COPY --from=builder /go/src/github.com/prebid/prebid-cache/prebid-cache /app/prebid-cache
+COPY --from=loadconfig loadconfig /loadconfig
 ADD ./config.yaml /app/
 
 WORKDIR /app
