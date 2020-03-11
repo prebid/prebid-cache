@@ -5,11 +5,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-	graphite "github.com/cyberdelia/go-metrics-graphite"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/rcrowley/go-metrics"
-	influxdb "github.com/vrischmann/go-metrics-influxdb"
+	"github.com/sirupsen/logrus"
+	"github.com/vrischmann/go-metrics-influxdb"
+	graphite "github.com/cyberdelia/go-metrics-graphite"
 )
 
 type MetricsEntry struct {
