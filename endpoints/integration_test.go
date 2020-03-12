@@ -196,3 +196,30 @@ func TestReadinessCheck(t *testing.T) {
 		t.Errorf("/status endpoint should always return a 204. Got %d", requestRecorder.Code)
 	}
 }
+
+func BenchmarkPutHandler(b *testing.B) {
+	b.StopTimer()
+	//Set up a request that should succeed
+	request, _ := http.NewRequest("POST", "/cache", strings.NewReader("{\"puts\":[{\"type\":\"json\",\"value\":\"plain text\"}]}"))
+	/*
+		if err != nil {
+			t.Fatalf("Failed to create a POST request: %v", err)
+		}
+	*/
+
+	//Set up server ready to run
+	router := httprouter.New()
+	backend := backends.NewMemoryBackend()
+
+	router.POST("/cache", NewPutHandler(backend, 10, true))
+	router.GET("/cache", NewGetHandler(backend, true))
+
+	rr := httptest.NewRecorder()
+
+	//for statement to execute handler function
+	for i := 0; i < b.N; i++ {
+		b.StartTimer()
+		router.ServeHTTP(rr, request)
+		b.StopTimer()
+	}
+}
