@@ -50,33 +50,28 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 		resps.toCacheStrings = make([]string, len(put.Puts))
 		defer putResponsePool.Put(resps)
 
-		var errMsg string = ""
-		var status int = http.StatusOK
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+
+		validateIndexChannel := make(chan int)
+		backGetIndexChannel := make(chan int)
+		backPutIndexChannel := make(chan int)
+		exitSignalChannel := make(chan *exitInfo)
+		done := make(chan bool)
+
+		go returnIfError(w, exitSignalChannel, done)
+		go validateAndEncode(put, resps, validateIndexChannel, exitSignalChannel, backGetIndexChannel)
+		go callBackendGet(put, resps, backend, ctx, allowKeys, backGetIndexChannel, backPutIndexChannel)
+		go callBackendPut(backend, put, resps, ctx, backPutIndexChannel, exitSignalChannel)
+
+		// Start adding orders to be processed
 		for i, _ := range put.Puts {
-			//Actions 1 & 2: Validate `p`, create and assign UUID to `resps`, and return toCache
-			validateAndEncode(put, resps, i, errMsg, &status)
-			if status != http.StatusOK {
-				http.Error(w, errMsg, status)
-				return
-			}
+			validateIndexChannel <- i
+		}
+		close(validateIndexChannel)
 
-			//Action 3: Call Get only if `allowKeys` is true
-			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-			defer cancel()
-			// Only allow setting a provided key if configured (and ensure a key is provided).
-			if allowKeys {
-				callBackendGet(put, resps, backend, ctx, i)
-			}
-
-			//Action 4: Call Put
-			// If we have a blank UUID, don't store anything.
-			// Eventually we may want to provide error details, but as of today this is the only non-fatal error
-			// Future error details could go into a second property of the Responses object, such as "errors"
-			callBackendPut(backend, put, resps, ctx, i, errMsg, &status)
-			if status != http.StatusOK {
-				http.Error(w, errMsg, status)
-				return
-			}
+		for i := 0; i < len(put.Puts); i++ {
+			<-done
 		}
 
 		bytes, err := json.Marshal(resps)
@@ -91,28 +86,39 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 	}
 }
 
+//REFACTOR NewPutHandler(...)
 //make this and the next function into one, called `validateAndEncode`, or something. If we go for channels,
 //make this channel communicate with the call channel or the put channel or a `terminate` or `done` channel
 //in case of an error
-func validateAndEncode(p *PutRequest, resp *PutResponse, index int, errmsg string, status *int) { //make this and the next function
+func validateAndEncode(p *PutRequest, resp *PutResponse, indexChan <-chan int, exitChan chan<- *exitInfo, backGetIndex chan<- int) {
+	index := <-indexChan
 	var toCache string
 
 	if len(p.Puts[index].Value) == 0 {
-		errmsg = "Missing value."
-		*status = http.StatusBadRequest
-		//return errors.New("Missing value."), http.StatusBadRequest
+		exit := &exitInfo{
+			errMsg: "Missing value.",
+			status: http.StatusBadRequest,
+		}
+		exitChan <- exit
+		return
 	}
 	if p.Puts[index].TTLSeconds < 0 {
-		//return errors.New(fmt.Sprintf("request.puts[%d].ttlseconds must not be negative.", p.Puts[index].TTLSeconds)), http.StatusBadRequest
-		errmsg = fmt.Sprintf("request.puts[%d].ttlseconds must not be negative.", p.Puts[index].TTLSeconds)
-		*status = http.StatusBadRequest
+		exit := &exitInfo{
+			errMsg: fmt.Sprintf("request.puts[%d].ttlseconds must not be negative.", p.Puts[index].TTLSeconds),
+			status: http.StatusBadRequest,
+		}
+		exitChan <- exit
+		return
 	}
 
 	if p.Puts[index].Type == backends.XML_PREFIX {
 		if p.Puts[index].Value[0] != byte('"') || p.Puts[index].Value[len(p.Puts[index].Value)-1] != byte('"') {
-			//return errors.New(fmt.Sprintf("XML messages must have a String value. Found %v", p.Puts[index].Value)), http.StatusBadRequest
-			errmsg = fmt.Sprintf("XML messages must have a String value. Found %v", p.Puts[index].Value)
-			*status = http.StatusBadRequest
+			exit := &exitInfo{
+				errMsg: fmt.Sprintf("XML messages must have a String value. Found %v", p.Puts[index].Value),
+				status: http.StatusBadRequest,
+			}
+			exitChan <- exit
+			return
 		}
 
 		// Be careful about the the cross-script escaping issues here. JSON requires quotation marks to be escaped,
@@ -123,26 +129,35 @@ func validateAndEncode(p *PutRequest, resp *PutResponse, index int, errmsg strin
 	} else if p.Puts[index].Type == backends.JSON_PREFIX {
 		toCache = p.Puts[index].Type + string(p.Puts[index].Value)
 	} else {
-		//return errors.New(fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Puts[index].Type)), http.StatusBadRequest
-		errmsg = fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Puts[index].Type)
-		*status = http.StatusBadRequest
+		exit := &exitInfo{
+			errMsg: fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Puts[index].Type),
+			status: http.StatusBadRequest,
+		}
+		exitChan <- exit
+		return
 	}
 	logrus.Debugf("Storing value: %s", toCache)
 	u2, err := uuid.NewV4()
 	if err != nil {
-		//return errors.New("Error generating version 4 UUID"), http.StatusInternalServerError
-		errmsg = "Error generating version 4 UUID"
-		*status = http.StatusInternalServerError
+		exit := &exitInfo{
+			errMsg: "Error generating version 4 UUID",
+			status: http.StatusInternalServerError,
+		}
+		exitChan <- exit
+		return
 	}
 	resp.Responses[index].UUID = u2.String()
 	resp.toCacheStrings[index] = toCache
+	backGetIndex <- index
+	return
 }
 
 // Definitely this should be its own function, pull the valid `p` object from the pool, since `resps` is
 // also a pool object, store its resps.Responses[i].UUID value and put them both back into the pool
 // or channel, whichever approach we seem to be the best
-func callBackendGet(p *PutRequest, resp *PutResponse, backend backends.Backend, ctx context.Context, index int) {
-	if len(p.Puts[index].Key) > 0 {
+func callBackendGet(p *PutRequest, resp *PutResponse, backend backends.Backend, ctx context.Context, allowKeys bool, backGetIndex <-chan int, backPutIndex chan<- int) {
+	index := <-backGetIndex
+	if allowKeys && len(p.Puts[index].Key) > 0 {
 		s, err := backend.Get(ctx, p.Puts[index].Key)
 		if err != nil || len(s) == 0 {
 			resp.Responses[index].UUID = p.Puts[index].Key
@@ -150,40 +165,64 @@ func callBackendGet(p *PutRequest, resp *PutResponse, backend backends.Backend, 
 			resp.Responses[index].UUID = ""
 		}
 	}
+	backPutIndex <- index
 }
 
-func callBackendPut(backend backends.Backend, p *PutRequest, resp *PutResponse, ctx context.Context, index int, errmsg string, status *int) {
+func callBackendPut(backend backends.Backend, p *PutRequest, resp *PutResponse, ctx context.Context, backPutIndex <-chan int, exitChan chan<- *exitInfo) {
+	index := <-backPutIndex
 	if len(resp.Responses[index].UUID) > 0 {
 		err := backend.Put(ctx, resp.Responses[index].UUID, resp.toCacheStrings[index], p.Puts[index].TTLSeconds)
 		if err != nil {
 			if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
-				//http.Error(w, fmt.Sprintf("POST /cache element %d exceeded max size: %v", i, err), http.StatusBadRequest)
-				//return errors.New(fmt.Sprintf("POST /cache element exceeded max size: %v", err)), http.StatusBadRequest
-				errmsg = fmt.Sprintf("POST /cache element exceeded max size: %v", err)
-				*status = http.StatusBadRequest
+				exit := &exitInfo{
+					errMsg: fmt.Sprintf("POST /cache element exceeded max size: %v", err),
+					status: http.StatusBadRequest,
+				}
+				exitChan <- exit
+				return
 			}
 
 			logrus.Error("POST /cache Error while writing to the backend: ", err)
 			switch err {
 			case context.DeadlineExceeded:
 				logrus.Error("POST /cache timed out:", err)
-				//http.Error(w, "Timeout writing value to the backend", HttpDependencyTimeout)
-				//return errors.New("Timeout writing value to the backend"), HttpDependencyTimeout
-				errmsg = "Timeout writing value to the backend"
-				*status = HttpDependencyTimeout
+				exit := &exitInfo{
+					errMsg: "Timeout writing value to the backend",
+					status: HttpDependencyTimeout,
+				}
+				exitChan <- exit
+				return
 			default:
 				logrus.Error("POST /cache had an unexpected error:", err)
-				//http.Error(w, err.Error(), http.StatusInternalServerError)
-				//return err, http.StatusInternalServerError
-				errmsg = err.Error()
-				*status = http.StatusInternalServerError
+				exit := &exitInfo{
+					errMsg: err.Error(),
+					status: http.StatusInternalServerError,
+				}
+				exitChan <- exit
+				return
 			}
-			//return are those 3 errors mutually excdlusive?
 		}
 	}
-	//return nil, http.StatusOK
+	exit := &exitInfo{
+		errMsg: "",
+		status: http.StatusOK,
+	}
+	exitChan <- exit
+
+	return
 }
 
+//PARALLELISM
+func returnIfError(w http.ResponseWriter, exitChan <-chan *exitInfo, done chan<- bool) {
+	exit := <-exitChan
+	//fmt.Sprintf(":: returnIfError, exitChan came with: %v \n", exit)
+	if exit.status != http.StatusOK {
+		http.Error(w, exit.errMsg, exit.status)
+	}
+	done <- true
+}
+
+//Other structs
 type PutRequest struct {
 	Puts []PutObject `json:"puts"`
 }
@@ -202,4 +241,9 @@ type PutResponseObject struct {
 type PutResponse struct {
 	Responses      []PutResponseObject `json:"responses"`
 	toCacheStrings []string
+}
+
+type exitInfo struct {
+	errMsg string
+	status int
 }
