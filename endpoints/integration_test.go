@@ -196,16 +196,13 @@ func TestReadinessCheck(t *testing.T) {
 		t.Errorf("/status endpoint should always return a 204. Got %d", requestRecorder.Code)
 	}
 }
-
-func BenchmarkPutHandler(b *testing.B) {
+func benchmarkPutHandler(b *testing.B, testCase string) {
 	b.StopTimer()
 	//Set up a request that should succeed
-	request, _ := http.NewRequest("POST", "/cache", strings.NewReader("{\"puts\":[{\"type\":\"json\",\"value\":\"plain text\"}]}"))
-	/*
-		if err != nil {
-			t.Fatalf("Failed to create a POST request: %v", err)
-		}
-	*/
+	request, err := http.NewRequest("POST", "/cache", strings.NewReader(testCase))
+	if err != nil {
+		b.Errorf("Failed to create a POST request: %v", err)
+	}
 
 	//Set up server ready to run
 	router := httprouter.New()
@@ -222,4 +219,35 @@ func BenchmarkPutHandler(b *testing.B) {
 		router.ServeHTTP(rr, request)
 		b.StopTimer()
 	}
+}
+
+func BenchmarkPutHandlerLen1(b *testing.B) {
+	b.StopTimer()
+
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":\"plain text\"}]}"
+	benchmarkPutHandler(b, input)
+}
+
+func BenchmarkPutHandlerLen2(b *testing.B) {
+	b.StopTimer()
+
+	//Set up a request that should succeed
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"xml\",\"value\":\"plain text\"}]}"
+	benchmarkPutHandler(b, input)
+}
+
+func BenchmarkPutHandlerLen4(b *testing.B) {
+	b.StopTimer()
+
+	//Set up a request that should succeed
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"xml\",\"value\":\"plain text\"},{\"type\":\"xml\",\"value\":5}, {\"type\":\"json\",\"value\":\"esca\\\"ped\"}]}"
+	benchmarkPutHandler(b, input)
+}
+
+func BenchmarkPutHandlerLen8(b *testing.B) {
+	b.StopTimer()
+
+	//Set up a request that should succeed
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"xml\",\"value\":\"plain text\"},{\"type\":\"xml\",\"value\":5}, {\"type\":\"json\",\"value\":\"esca\\\"ped\"}, {\"type\":\"json\",\"value\":{\"custom_key\":\"foo\"}},{\"type\":\"xml\",\"value\":{\"custom_key\":\"foo\"}},{\"type\":\"json\",\"value\":null}, {\"type\":\"xml\",\"value\":\"<tag></tag>\"}]}"
+	benchmarkPutHandler(b, input)
 }
