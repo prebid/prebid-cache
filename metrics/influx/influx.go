@@ -12,7 +12,6 @@ import (
 
 var TenSeconds time.Duration = time.Second * 10
 
-//	Object definition
 type InfluxMetrics struct {
 	Registry    metrics.Registry
 	Puts        *InfluxMetricsEntry
@@ -192,11 +191,11 @@ func (m *InfluxMetrics) RecordGetBackendError() {
 	m.GetsBackend.Errors.Mark(1)
 }
 
-func (m *InfluxMetrics) IncreaseOpenConnections() {
+func (m *InfluxMetrics) RecordConnectionOpen() {
 	m.Connections.ActiveConnections.Inc(1)
 }
 
-func (m *InfluxMetrics) DecreaseOpenConnections() {
+func (m *InfluxMetrics) RecordConnectionClosed() {
 	m.Connections.ActiveConnections.Dec(1)
 }
 

@@ -280,25 +280,28 @@ func TestConnectionMetrics(t *testing.T) {
 	testCases := []struct {
 		description                    string
 		testCase                       func(pm *PrometheusMetrics)
-		expectedOpenConnectionCount    float64
+		expectedOpenedConnectionCount  float64
+		expectedClosedConnectionCount  float64
 		expectedAcceptConnectionErrors float64
 		expectedCloseConnectionErrors  float64
 	}{
 		{
 			description: "Add a connection to the open connection count",
 			testCase: func(pm *PrometheusMetrics) {
-				pm.IncreaseOpenConnections()
+				pm.RecordConnectionOpen()
 			},
-			expectedOpenConnectionCount:    1,
+			expectedOpenedConnectionCount:  1,
+			expectedClosedConnectionCount:  0,
 			expectedAcceptConnectionErrors: 0,
 			expectedCloseConnectionErrors:  0,
 		},
 		{
 			description: "Remove a connection from the open connection count",
 			testCase: func(pm *PrometheusMetrics) {
-				pm.DecreaseOpenConnections()
+				pm.RecordConnectionClosed()
 			},
-			expectedOpenConnectionCount:    0,
+			expectedOpenedConnectionCount:  1,
+			expectedClosedConnectionCount:  1,
 			expectedAcceptConnectionErrors: 0,
 			expectedCloseConnectionErrors:  0,
 		},
@@ -307,7 +310,8 @@ func TestConnectionMetrics(t *testing.T) {
 			testCase: func(pm *PrometheusMetrics) {
 				pm.RecordCloseConnectionErrors()
 			},
-			expectedOpenConnectionCount:    0,
+			expectedOpenedConnectionCount:  1,
+			expectedClosedConnectionCount:  1,
 			expectedAcceptConnectionErrors: 0,
 			expectedCloseConnectionErrors:  1,
 		},
@@ -317,7 +321,8 @@ func TestConnectionMetrics(t *testing.T) {
 				pm.RecordCloseConnectionErrors()
 				pm.RecordAcceptConnectionErrors()
 			},
-			expectedOpenConnectionCount:    0,
+			expectedOpenedConnectionCount:  1,
+			expectedClosedConnectionCount:  1,
 			expectedAcceptConnectionErrors: 1,
 			expectedCloseConnectionErrors:  2,
 		},
@@ -328,7 +333,9 @@ func TestConnectionMetrics(t *testing.T) {
 	for _, test := range testCases {
 		test.testCase(m)
 
-		assertGaugeValue(t, test.description, m.Connections.ConnectionsOpened, test.expectedOpenConnectionCount)
+		assertCounterValue(t, test.description, m.Connections.ConnectionsOpened, test.expectedOpenedConnectionCount)
+		assertCounterValue(t, test.description, m.Connections.ConnectionsClosed, test.expectedClosedConnectionCount)
+
 		assertCounterVecValue(t, test.description, m.Connections.ConnectionsErrors, test.expectedAcceptConnectionErrors, prometheus.Labels{ConnErrorKey: AcceptVal})
 		assertCounterVecValue(t, test.description, m.Connections.ConnectionsErrors, test.expectedCloseConnectionErrors, prometheus.Labels{ConnErrorKey: CloseVal})
 	}
@@ -341,4 +348,26 @@ func TestExtraTTLMetrics(t *testing.T) {
 
 	m.RecordExtraTTLSeconds(5)
 	assertHistogram(t, "Assert the extra time to live in seconds was logged", m.ExtraTTL.ExtraTTLSeconds, 2, 5005.00)
+}
+
+func TestMetricCountGatekeeping(t *testing.T) {
+	m := createPrometheusMetricsForTesting()
+
+	// Gather All Metrics
+	metricFamilies, err := m.Registry.Gather()
+	assert.NoError(t, err, "gather metics")
+
+	// Summarize By Adapter Cardinality
+	// - This requires metrics to be preloaded. We don't preload account metrics, so we can't test those.
+	generalCardinalityCount := 0
+
+	for _, metricFamily := range metricFamilies {
+		generalCardinalityCount += len(metricFamily.GetMetric())
+	}
+
+	// Verify General Cardinality
+	// - This assertion provides a warning for newly added high-cardinality non-adapter specific metrics. The hardcoded limit
+	//   is an arbitrary soft ceiling. Thought should be given as to the value of the new metrics if you find yourself
+	//   needing to increase this number.
+	assert.True(t, generalCardinalityCount <= 24, "General Cardinality")
 }

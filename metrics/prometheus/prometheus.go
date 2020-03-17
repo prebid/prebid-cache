@@ -6,11 +6,13 @@ import (
 	"time"
 )
 
-// Constants and global variables
 const (
 	StatusKey    string = "status"
 	FormatKey    string = "format"
 	ConnErrorKey string = "connection_error"
+
+	ConnOpenedKey string = "connection_opened"
+	ConnClosedKey string = "connection_closed"
 
 	TotalsVal     string = "total"
 	ErrorVal      string = "error"
@@ -23,7 +25,6 @@ const (
 	AcceptVal     string = "accept"
 )
 
-//	Object definition
 type PrometheusMetrics struct {
 	Registry    *prometheus.Registry
 	Puts        *PrometheusRequestStatusMetric
@@ -46,41 +47,41 @@ type PrometheusRequestStatusMetricByFormat struct {
 }
 
 type PrometheusConnectionMetrics struct {
-	ConnectionsOpened prometheus.Gauge
 	ConnectionsErrors *prometheus.CounterVec
+	ConnectionsClosed prometheus.Counter
+	ConnectionsOpened prometheus.Counter
 }
 
 type PrometheusExtraTTLMetrics struct {
 	ExtraTTLSeconds prometheus.Histogram
 }
 
-//	Init functions
 func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
-	cacheWriteTimeBuckets := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1}
-	requestSizeBuckets := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1} // TODO: tweak
+	timeBuckets := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1}
+	requestSizeBuckets := []float64{0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1}
 	registry := prometheus.NewRegistry()
 	promMetrics := &PrometheusMetrics{
 		Registry: registry,
 		Puts: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
-				"puts_current_url_duration",
+				"puts_request_duration",
 				"Duration in seconds Prebid Cache takes to process put requests.",
-				cacheWriteTimeBuckets,
+				timeBuckets,
 			),
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
-				"puts_current_url",
+				"puts_request",
 				"Count of total requests to Prebid Server labeled by status.",
 				[]string{StatusKey},
 			),
 		},
 		Gets: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
-				"gets_current_url_duration",
+				"gets_request_duration",
 				"Duration in seconds Prebid Cache takes to process get requests.",
-				cacheWriteTimeBuckets,
+				timeBuckets,
 			),
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
-				"gets_current_url",
+				"gets_request",
 				"Count of total get requests to Prebid Server labeled by status.",
 				[]string{StatusKey},
 			),
@@ -89,7 +90,7 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 			Duration: newHistogram(cfg, registry,
 				"puts_backend_duration",
 				"Duration in seconds Prebid Cache takes to process backend put requests.",
-				cacheWriteTimeBuckets,
+				timeBuckets,
 			),
 			PutBackendRequests: newCounterVecWithLabels(cfg, registry,
 				"puts_backend",
@@ -106,7 +107,7 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 			Duration: newHistogram(cfg, registry,
 				"gets_backend_duration",
 				"Duration in seconds Prebid Cache takes to process backend get requests.",
-				cacheWriteTimeBuckets,
+				timeBuckets,
 			),
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
 				"gets_backend",
@@ -115,10 +116,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 			),
 		},
 		Connections: &PrometheusConnectionMetrics{
-			ConnectionsOpened: newGaugeMetric(cfg, registry,
-				"connections",
-				"Count of total number of connectionsbackend get requests to Prebid Server labeled by status.",
-			),
+			ConnectionsClosed: newSingleCounter(cfg, registry, ConnOpenedKey, "Count the number of open connections"),
+			ConnectionsOpened: newSingleCounter(cfg, registry, ConnClosedKey, "Count the number of closed connections"),
 			ConnectionsErrors: newCounterVecWithLabels(cfg, registry,
 				ConnErrorKey,
 				"Count the number of connection accept errors or connection close errors",
@@ -129,16 +128,16 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 			ExtraTTLSeconds: newHistogram(cfg, registry,
 				"extra_ttl_seconds",
 				"Extra time to live in seconds specified",
-				cacheWriteTimeBuckets,
+				timeBuckets,
 			),
 		},
 	}
 	promMetrics.ExtraTTL.ExtraTTLSeconds.Observe(5000.00)
 
+	preloadLabelValues(promMetrics)
 	return promMetrics
 }
 
-//	Helper Init functions
 func newCounterVecWithLabels(cfg config.PrometheusMetrics, registry *prometheus.Registry, name string, help string, labels []string) *prometheus.CounterVec {
 	opts := prometheus.CounterOpts{
 		Namespace: cfg.Namespace,
@@ -201,7 +200,6 @@ func newHistogramVector(cfg config.PrometheusMetrics, registry *prometheus.Regis
 	return histogram
 }
 
-//	`CacheMetrics` interface implementation
 func (m PrometheusMetrics) Export(cfg config.Metrics) {
 }
 
@@ -281,12 +279,12 @@ func (m *PrometheusMetrics) RecordGetBackendBadRequest() {
 	m.GetsBackend.RequestStatus.With(prometheus.Labels{StatusKey: BadRequestVal}).Inc()
 }
 
-func (m *PrometheusMetrics) IncreaseOpenConnections() {
+func (m *PrometheusMetrics) RecordConnectionOpen() {
 	m.Connections.ConnectionsOpened.Inc()
 }
 
-func (m *PrometheusMetrics) DecreaseOpenConnections() {
-	m.Connections.ConnectionsOpened.Dec()
+func (m *PrometheusMetrics) RecordConnectionClosed() {
+	m.Connections.ConnectionsClosed.Inc()
 }
 
 func (m *PrometheusMetrics) RecordCloseConnectionErrors() {

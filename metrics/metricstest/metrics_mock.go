@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// Define Mock metrics
 var MockHistograms map[string]float64
 var MockCounters map[string]int64
 
@@ -101,10 +100,10 @@ func (m *MockMetrics) RecordGetBackendTotal() {
 func (m *MockMetrics) RecordGetBackendError() {
 	MockCounters["gets.backends.request.error"] = MockCounters["gets.backends.request.error"] + 1
 }
-func (m *MockMetrics) IncreaseOpenConnections() {
+func (m *MockMetrics) RecordConnectionOpen() {
 	MockHistograms["connections.connections_opened"] = MockHistograms["connections.connections_opened"] + 1
 }
-func (m *MockMetrics) DecreaseOpenConnections() {
+func (m *MockMetrics) RecordConnectionClosed() {
 	MockHistograms["connections.connections_opened"] = MockHistograms["connections.connections_opened"] - 1
 }
 func (m *MockMetrics) RecordCloseConnectionErrors() {

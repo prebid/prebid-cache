@@ -19,8 +19,8 @@ func NewHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics
 	router := httprouter.New()
 	router.GET("/", endpoints.Index)        //Default route handler
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
-	router.POST("/cache", decorators.MonitorHttp(endpoints.NewPutHandler(dataStore, cfg.RequestLimits.MaxNumValues, cfg.RequestLimits.AllowSettingKeys), appMetrics, "puts"))
-	router.GET("/cache", decorators.MonitorHttp(endpoints.NewGetHandler(dataStore, cfg.RequestLimits.AllowSettingKeys), appMetrics, "gets"))
+	router.POST("/cache", decorators.MonitorHttp(endpoints.NewPutHandler(dataStore, cfg.RequestLimits.MaxNumValues, cfg.RequestLimits.AllowSettingKeys), appMetrics, decorators.PostMethod))
+	router.GET("/cache", decorators.MonitorHttp(endpoints.NewGetHandler(dataStore, cfg.RequestLimits.AllowSettingKeys), appMetrics, decorators.GetMethod))
 
 	handler := handleCors(router)
 	handler = handleRateLimiting(handler, cfg.RateLimiting)

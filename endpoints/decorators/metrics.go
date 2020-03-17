@@ -7,6 +7,35 @@ import (
 	"time"
 )
 
+const (
+	PostMethod = 1
+	GetMethod  = 2
+)
+
+type metricsFunctions struct {
+	LogSuccess    func()
+	LogDuration   func(duration *time.Time)
+	LogBadRequest func()
+	LogError      func()
+}
+
+func assignMetricsFunctions(m *metrics.Metrics, method int) *metricsFunctions {
+	metrics := &metricsFunctions{}
+	switch method {
+	case PostMethod:
+		metrics.LogSuccess = m.RecordPutTotal
+		metrics.LogDuration = m.RecordPutDuration
+		metrics.LogBadRequest = m.RecordPutBadRequest
+		metrics.LogError = m.RecordPutError
+	case GetMethod:
+		metrics.LogSuccess = m.RecordGetTotal
+		metrics.LogDuration = m.RecordGetDuration
+		metrics.LogBadRequest = m.RecordGetBadRequest
+		metrics.LogError = m.RecordGetError
+	}
+	return metrics
+}
+
 type writerWithStatus struct {
 	delegate   http.ResponseWriter
 	statusCode int
@@ -28,9 +57,10 @@ func (w *writerWithStatus) Header() http.Header {
 	return w.delegate.Header()
 }
 
-func MonitorHttp(handler httprouter.Handle, me *metrics.Metrics, method string) httprouter.Handle {
+func MonitorHttp(handler httprouter.Handle, m *metrics.Metrics, method int) httprouter.Handle {
 	return httprouter.Handle(func(resp http.ResponseWriter, req *http.Request, params httprouter.Params) {
-		metricsLogSuccess(me, method)
+		mf := assignMetricsFunctions(m, method)
+		mf.LogSuccess()
 		wrapper := writerWithStatus{
 			delegate: resp,
 		}
@@ -40,40 +70,11 @@ func MonitorHttp(handler httprouter.Handle, me *metrics.Metrics, method string) 
 		respCode := wrapper.statusCode
 		// If the calling function never calls WriterHeader explicitly, Go auto-fills it with a 200
 		if respCode == 0 || respCode >= 200 && respCode < 300 {
-			metricsLogDuration(me, method, &start)
+			mf.LogDuration(&start)
 		} else if respCode >= 400 && respCode < 500 {
-			metricsLogBadRequest(me, method)
+			mf.LogBadRequest()
 		} else {
-			metricsLogError(me, method)
+			mf.LogError()
 		}
 	})
-}
-
-func metricsLogDuration(me *metrics.Metrics, method string, duration *time.Time) {
-	if method == "POST" {
-		me.RecordPutDuration(duration)
-	} else if method == "GET" {
-		me.RecordGetDuration(duration)
-	}
-}
-func metricsLogSuccess(me *metrics.Metrics, method string) {
-	if method == "POST" {
-		me.RecordPutTotal()
-	} else if method == "GET" {
-		me.RecordGetTotal()
-	}
-}
-func metricsLogBadRequest(me *metrics.Metrics, method string) {
-	if method == "POST" {
-		me.RecordPutBadRequest()
-	} else if method == "GET" {
-		me.RecordGetBadRequest()
-	}
-}
-func metricsLogError(me *metrics.Metrics, method string) {
-	if method == "POST" {
-		me.RecordPutError()
-	} else if method == "GET" {
-		me.RecordGetError()
-	}
 }

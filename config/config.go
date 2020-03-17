@@ -197,6 +197,7 @@ func (promMetricsConfig *PrometheusMetrics) validateAndLogMetricsData() bool {
 	if promMetricsConfig.Enabled {
 		log.Infof("config.metrics.prometheus.namespace: %s", promMetricsConfig.Namespace)
 		log.Infof("config.metrics.prometheus.subsystem: %s", promMetricsConfig.Subsystem)
+		log.Infof("config.metrics.prometheus.port: %d", promMetricsConfig.Port)
 	}
 	return promMetricsConfig.Enabled
 }

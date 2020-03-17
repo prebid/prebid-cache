@@ -23,7 +23,7 @@ type monitorableConnection struct {
 func (l *monitorableConnection) Close() error {
 	err := l.Conn.Close()
 	if err == nil {
-		l.metrics.DecreaseOpenConnections()
+		l.metrics.RecordConnectionClosed()
 	} else {
 		log.Errorf("Error closing connection: %v", err)
 		l.metrics.RecordCloseConnectionErrors()
@@ -38,7 +38,7 @@ func (ln *monitorableListener) Accept() (c net.Conn, err error) {
 		ln.metrics.RecordAcceptConnectionErrors()
 		return tc, err
 	}
-	ln.metrics.IncreaseOpenConnections()
+	ln.metrics.RecordConnectionOpen()
 	return &monitorableConnection{
 		tc,
 		ln.metrics,

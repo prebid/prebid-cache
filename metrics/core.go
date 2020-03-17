@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Object to access metric engines
+// Metrics provides access to metric engines.
 type Metrics struct {
 	MetricEngines []CacheMetrics
 }
@@ -121,15 +121,15 @@ func (m Metrics) RecordGetBackendError() {
 	}
 }
 
-func (m Metrics) IncreaseOpenConnections() {
+func (m Metrics) RecordConnectionOpen() {
 	for _, me := range m.MetricEngines {
-		me.IncreaseOpenConnections()
+		me.RecordConnectionOpen()
 	}
 }
 
-func (m Metrics) DecreaseOpenConnections() {
+func (m Metrics) RecordConnectionClosed() {
 	for _, me := range m.MetricEngines {
-		me.DecreaseOpenConnections()
+		me.RecordConnectionClosed()
 	}
 }
 
@@ -178,8 +178,8 @@ type CacheMetrics interface {
 	RecordGetBackendTotal()
 	RecordGetBackendDuration(duration *time.Time)
 	RecordGetBackendError()
-	IncreaseOpenConnections()
-	DecreaseOpenConnections()
+	RecordConnectionOpen()
+	RecordConnectionClosed()
 	RecordCloseConnectionErrors()
 	RecordAcceptConnectionErrors()
 	RecordExtraTTLSeconds(value float64)
@@ -188,10 +188,10 @@ type CacheMetrics interface {
 func CreateMetrics(cfg config.Configuration) *Metrics {
 	engineList := make([]CacheMetrics, 0, 2)
 
-	if cfg.Metrics.Influx.Host != "" {
+	if cfg.Metrics.Influx.Enabled {
 		engineList = append(engineList, influx.CreateInfluxMetrics())
 	}
-	if cfg.Metrics.Prometheus.Port != 0 {
+	if cfg.Metrics.Prometheus.Enabled {
 		engineList = append(engineList, prometheus.CreatePrometheusMetrics(cfg.Metrics.Prometheus))
 	}
 	return &Metrics{MetricEngines: engineList}
