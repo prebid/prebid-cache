@@ -3,7 +3,6 @@ package endpoints
 import (
 	"context"
 	"encoding/json"
-	//"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -18,11 +17,11 @@ import (
 )
 
 // PutHandler serves "POST /cache" requests.
-func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(backendClient backends.Backend, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	putAnyRequestPool := sync.Pool{New: func() interface{} { return &PutRequest{} }}
 	putResponsePool := sync.Pool{New: func() interface{} { return &PutResponse{} }}
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		// Unmarshall *http.Request into a putResponsePool object known as `put`
+		// Unmarshall *http.Request into a putResponsePool object
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "Failed to read the request body.", http.StatusBadRequest)
@@ -30,73 +29,79 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 		}
 		defer r.Body.Close()
 
-		put := putAnyRequestPool.Get().(*PutRequest)
-		defer putAnyRequestPool.Put(put)
+		backend := &backendCallObject{client: backendClient}
 
-		err = json.Unmarshal(body, put)
+		backend.put = putAnyRequestPool.Get().(*PutRequest)
+		defer putAnyRequestPool.Put(backend.put)
+
+		err = json.Unmarshal(body, backend.put)
 		if err != nil {
 			http.Error(w, "Request body "+string(body)+" is not valid JSON.", http.StatusBadRequest)
 			return
 		}
 
-		if len(put.Puts) > maxNumValues {
-			http.Error(w, fmt.Sprintf("More keys than allowed: %d", maxNumValues), http.StatusBadRequest)
-			return
-		}
-
 		// Get a response object from the resource pool that we'll fill with processed info
-		resps := putResponsePool.Get().(*PutResponse)
-		resps.Responses = make([]PutResponseObject, len(put.Puts))
-		resps.toCacheStrings = make([]string, len(put.Puts))
-		defer putResponsePool.Put(resps)
+		backend.resp = putResponsePool.Get().(*PutResponse)
+		backend.resp.Responses = make([]PutResponseObject, len(backend.put.Puts))
+		backend.resp.toCacheStrings = make([]string, len(backend.put.Puts))
+		defer putResponsePool.Put(backend.resp)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		var cancel func()
+		backend.ctx, cancel = context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
 
-		getIndexChannel := make(chan int)
-		putIndexChannel := make(chan int)
-		done := make(chan bool)
-		var exitData *exitInfo = &exitInfo{errMsg: "", status: http.StatusOK}
+		exitData := &exitInfo{errMsg: "", status: http.StatusOK}
 
-		// Make sure all of our requests come error free, return error if not
-		validateAndEncode(put, resps, exitData)
-		if exitData.status != http.StatusOK {
-			http.Error(w, exitData.errMsg, exitData.status)
-			return
-		}
+		if len(backend.put.Puts) == 0 {
+			exitData.errMsg = "No keys were sent in backend request"
+			exitData.status = http.StatusBadRequest
+		} else if len(backend.put.Puts) > maxNumValues {
+			exitData.errMsg = fmt.Sprintf("More keys than allowed: %d", maxNumValues)
+			exitData.status = http.StatusBadRequest
+		} else { // 1 <= len(backend.put.Puts) < maxNumValues
+			// Processonly if all requests come error free
+			validateAndEncode(backend.put, backend.resp, exitData)
+			if exitData.status == http.StatusOK {
+				if len(backend.put.Puts) == 1 {
+					callBackendGet(backend, 0)
+					callBackendPut(backend, exitData, 0)
+				} else {
+					// Run process in parallel
+					getIndexChannel := make(chan int)
+					putIndexChannel := make(chan int)
+					done := make(chan bool)
 
-		// For every validated entry in the request, run `backend.Get()` in parallel, if needed
-		if allowKeys {
-			go func() {
-				for i, _ := range put.Puts {
-					getIndexChannel <- i
+					if allowKeys {
+						go func() {
+							for i, _ := range backend.put.Puts {
+								getIndexChannel <- i
+							}
+							close(getIndexChannel)
+						}()
+
+						go callBackendGetInParallel(backend, getIndexChannel, done)
+						<-done
+					}
+
+					go func() {
+						for i, _ := range backend.put.Puts {
+							putIndexChannel <- i
+						}
+						close(putIndexChannel)
+					}()
+
+					go callBackendPutInParallel(backend, exitData, putIndexChannel, done)
+					<-done
 				}
-				close(getIndexChannel)
-			}()
-
-			// Take out the index numbers found in `getIndexChannel` to call the `backend.Get()`
-			go callBackendGet(backend, put, resps, ctx, getIndexChannel, done)
-			<-done
+			}
 		}
 
-		// For every validated entry in the request, run `backend.Put()` in parallel, if needed
-		go func() {
-			for i, _ := range put.Puts {
-				putIndexChannel <- i
-			}
-			close(putIndexChannel)
-		}()
-
-		go callBackendPut(backend, put, resps, ctx, exitData, putIndexChannel, done)
-		<-done
-
-		// If any errors were found in the `backend.Put()` calls, exit and throw the error
 		if exitData.status != http.StatusOK {
 			http.Error(w, exitData.errMsg, exitData.status)
 			return
 		}
 
-		bytes, err := json.Marshal(resps)
+		bytes, err := json.Marshal(backend.resp)
 		if err != nil {
 			http.Error(w, "Failed to serialize UUIDs into JSON.", http.StatusInternalServerError)
 			return
@@ -155,55 +160,72 @@ func validateAndEncode(puts *PutRequest, resp *PutResponse, exit *exitInfo) {
 	return
 }
 
-func callBackendGet(backend backends.Backend, p *PutRequest, resp *PutResponse, ctx context.Context, getIndexChannel <-chan int, done chan<- bool) {
+type backendCallObject struct {
+	client backends.Backend
+	put    *PutRequest
+	resp   *PutResponse
+	ctx    context.Context
+}
+
+func callBackendGetInParallel(backend *backendCallObject, getIndexChannel <-chan int, done chan<- bool) {
 	for index := range getIndexChannel {
-		if len(p.Puts[index].Key) > 0 {
-			s, err := backend.Get(ctx, p.Puts[index].Key)
-			if err != nil || len(s) == 0 {
-				resp.Responses[index].UUID = p.Puts[index].Key
-			} else {
-				resp.Responses[index].UUID = ""
-			}
+		callBackendGet(backend, index)
+	}
+	done <- true
+}
+
+func callBackendGet(backend *backendCallObject, index int) {
+	if len(backend.put.Puts[index].Key) > 0 {
+		s, err := backend.client.Get(backend.ctx, backend.put.Puts[index].Key)
+		if err != nil || len(s) == 0 {
+			backend.resp.Responses[index].UUID = backend.put.Puts[index].Key
+		} else {
+			backend.resp.Responses[index].UUID = ""
+		}
+	}
+}
+
+//func callBackendPut(backend backends.Backend, p *PutRequest, resp *PutResponse, ctx context.Context, exit *exitInfo, putIndexChannel <-chan int, done chan<- bool) {
+func callBackendPutInParallel(backend *backendCallObject, exit *exitInfo, putIndexChannel <-chan int, done chan<- bool) {
+	for index := range putIndexChannel {
+		if exit.status == http.StatusOK {
+			callBackendPut(backend, exit, index)
 		}
 	}
 	done <- true
 }
 
-func callBackendPut(backend backends.Backend, p *PutRequest, resp *PutResponse, ctx context.Context, exit *exitInfo, putIndexChannel <-chan int, done chan<- bool) {
-	var skip bool = false
-	for index := range putIndexChannel {
-		if len(resp.Responses[index].UUID) > 0 && !skip {
-			err := backend.Put(ctx, resp.Responses[index].UUID, resp.toCacheStrings[index], p.Puts[index].TTLSeconds)
-			if err != nil {
-				if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
-					exit = &exitInfo{
-						errMsg: fmt.Sprintf("POST /cache element exceeded max size: %v", err),
-						status: http.StatusBadRequest,
-					}
-					skip = true
+func callBackendPut(backend *backendCallObject, exit *exitInfo, index int) {
+	if len(backend.resp.Responses[index].UUID) > 0 {
+		err := backend.client.Put(backend.ctx, backend.resp.Responses[index].UUID, backend.resp.toCacheStrings[index], backend.put.Puts[index].TTLSeconds)
+		if err != nil {
+			if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
+				exit = &exitInfo{
+					errMsg: fmt.Sprintf("POST /cache element exceeded max size: %v", err),
+					status: http.StatusBadRequest,
 				}
+				return
+			}
 
-				logrus.Error("POST /cache Error while writing to the backend: ", err)
-				switch err {
-				case context.DeadlineExceeded:
-					logrus.Error("POST /cache timed out:", err)
-					exit = &exitInfo{
-						errMsg: "Timeout writing value to the backend",
-						status: HttpDependencyTimeout,
-					}
-					skip = true
-				default:
-					logrus.Error("POST /cache had an unexpected error:", err)
-					exit = &exitInfo{
-						errMsg: err.Error(),
-						status: http.StatusInternalServerError,
-					}
-					skip = true
+			logrus.Error("POST /cache Error while writing to the backend: ", err)
+			switch err {
+			case context.DeadlineExceeded:
+				logrus.Error("POST /cache timed out:", err)
+				exit = &exitInfo{
+					errMsg: "Timeout writing value to the backend",
+					status: HttpDependencyTimeout,
 				}
+				return
+			default:
+				logrus.Error("POST /cache had an unexpected error:", err)
+				exit = &exitInfo{
+					errMsg: err.Error(),
+					status: http.StatusInternalServerError,
+				}
+				return
 			}
 		}
 	}
-	done <- true
 }
 
 type PutRequest struct {
