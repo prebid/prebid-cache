@@ -39,13 +39,28 @@ func CreateMockMetrics() *metrics.Metrics {
 	MockCounters["connections.connection_error.accept"] = 0
 	MockCounters["connections.connection_error.close"] = 0
 
-	return &metrics.Metrics{MetricEngines: []metrics.CacheMetrics{&MockMetrics{}}}
+	return &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&MockMetrics{
+				MetricsName: "Mockmetrics",
+			},
+		},
+	}
 }
 
-type MockMetrics struct{}
+type MockMetrics struct {
+	MetricsName string
+}
 
 func (m *MockMetrics) Export(cfg config.Metrics) {
 }
+func (m *MockMetrics) GetEngineRegistry() interface{} {
+	return nil
+}
+func (m *MockMetrics) GetMetricsEngineName() string {
+	return ""
+}
+
 func (m *MockMetrics) RecordPutError() {
 	MockCounters["puts.current_url.request.error"] = MockCounters["puts.current_url.request.error"] + 1
 }
@@ -55,8 +70,8 @@ func (m *MockMetrics) RecordPutBadRequest() {
 func (m *MockMetrics) RecordPutTotal() {
 	MockCounters["puts.current_url.request.total"] = MockCounters["puts.current_url.request.total"] + 1
 }
-func (m *MockMetrics) RecordPutDuration(duration *time.Time) {
-	MockHistograms["puts.current_url.duration"] = time.Since(*duration).Seconds()
+func (m *MockMetrics) RecordPutDuration(duration time.Duration) {
+	MockHistograms["puts.current_url.duration"] = duration.Seconds()
 }
 func (m *MockMetrics) RecordGetError() {
 	MockCounters["gets.current_url.request.error"] = MockCounters["gets.current_url.request.error"] + 1
@@ -67,8 +82,8 @@ func (m *MockMetrics) RecordGetBadRequest() {
 func (m *MockMetrics) RecordGetTotal() {
 	MockCounters["gets.current_url.request.total"] = MockCounters["gets.current_url.request.total"] + 1
 }
-func (m *MockMetrics) RecordGetDuration(duration *time.Time) {
-	MockHistograms["gets.current_url.duration"] = time.Since(*duration).Seconds()
+func (m *MockMetrics) RecordGetDuration(duration time.Duration) {
+	MockHistograms["gets.current_url.duration"] = duration.Seconds()
 }
 func (m *MockMetrics) RecordPutBackendXml() {
 	MockCounters["puts.backends.xml"] = MockCounters["puts.backends.xml"] + 1
@@ -82,8 +97,8 @@ func (m *MockMetrics) RecordPutBackendInvalid() {
 func (m *MockMetrics) RecordPutBackendDefTTL() {
 	MockCounters["puts.backends.defines_ttl"] = MockCounters["puts.backends.defines_ttl"] + 1
 }
-func (m *MockMetrics) RecordPutBackendDuration(duration *time.Time) {
-	MockHistograms["puts.backends.request_duration"] = time.Since(*duration).Seconds()
+func (m *MockMetrics) RecordPutBackendDuration(duration time.Duration) {
+	MockHistograms["puts.backends.request_duration"] = duration.Seconds()
 }
 func (m *MockMetrics) RecordPutBackendError() {
 	MockCounters["puts.backends.request.error"] = MockCounters["puts.backends.request.error"] + 1
@@ -91,8 +106,8 @@ func (m *MockMetrics) RecordPutBackendError() {
 func (m *MockMetrics) RecordPutBackendSize(sizeInBytes float64) {
 	MockHistograms["puts.backends.request_size_bytes"] = sizeInBytes
 }
-func (m *MockMetrics) RecordGetBackendDuration(duration *time.Time) {
-	MockHistograms["gets.backends.duration"] = time.Since(*duration).Seconds()
+func (m *MockMetrics) RecordGetBackendDuration(duration time.Duration) {
+	MockHistograms["gets.backends.duration"] = duration.Seconds()
 }
 func (m *MockMetrics) RecordGetBackendTotal() {
 	MockCounters["gets.backends.request.total"] = MockCounters["gets.backends.request.total"] + 1

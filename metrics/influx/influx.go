@@ -12,6 +12,8 @@ import (
 
 var TenSeconds time.Duration = time.Second * 10
 
+const MetricsInfluxDB = "InfluxDB"
+
 type InfluxMetrics struct {
 	Registry    metrics.Registry
 	Puts        *InfluxMetricsEntry
@@ -20,6 +22,7 @@ type InfluxMetrics struct {
 	GetsBackend *InfluxMetricsEntry
 	Connections *InfluxConnectionMetrics
 	ExtraTTL    *InfluxExtraTTL
+	MetricsName string
 }
 
 type InfluxMetricsEntry struct {
@@ -91,6 +94,7 @@ func CreateInfluxMetrics() *InfluxMetrics {
 		GetsBackend: NewInfluxMetricsEntry("gets.backend", r),
 		Connections: NewInfluxConnectionMetrics(r),
 		ExtraTTL:    &InfluxExtraTTL{ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000))},
+		MetricsName: MetricsInfluxDB,
 	}
 
 	metrics.RegisterDebugGCStats(m.Registry)
@@ -119,6 +123,14 @@ func (m InfluxMetrics) Export(cfg config.Metrics) {
 	return
 }
 
+func (m *InfluxMetrics) GetEngineRegistry() interface{} {
+	return &m.Registry
+}
+
+func (m *InfluxMetrics) GetMetricsEngineName() string {
+	return m.MetricsName
+}
+
 func (m *InfluxMetrics) RecordPutError() {
 	m.Puts.Errors.Mark(1)
 }
@@ -131,8 +143,8 @@ func (m *InfluxMetrics) RecordPutTotal() {
 	m.Puts.Request.Mark(1)
 }
 
-func (m *InfluxMetrics) RecordPutDuration(duration *time.Time) {
-	m.Puts.Duration.UpdateSince(*duration)
+func (m *InfluxMetrics) RecordPutDuration(duration time.Duration) {
+	m.Puts.Duration.Update(duration)
 }
 
 func (m *InfluxMetrics) RecordGetError() {
@@ -147,8 +159,8 @@ func (m *InfluxMetrics) RecordGetTotal() {
 	m.Gets.Request.Mark(1)
 }
 
-func (m *InfluxMetrics) RecordGetDuration(duration *time.Time) {
-	m.Gets.Duration.UpdateSince(*duration)
+func (m *InfluxMetrics) RecordGetDuration(duration time.Duration) {
+	m.Gets.Duration.Update(duration)
 }
 
 func (m *InfluxMetrics) RecordPutBackendXml() {
@@ -167,8 +179,8 @@ func (m *InfluxMetrics) RecordPutBackendDefTTL() {
 	m.PutsBackend.DefinesTTL.Mark(1)
 }
 
-func (m *InfluxMetrics) RecordPutBackendDuration(duration *time.Time) {
-	m.PutsBackend.Duration.UpdateSince(*duration)
+func (m *InfluxMetrics) RecordPutBackendDuration(duration time.Duration) {
+	m.PutsBackend.Duration.Update(duration)
 }
 
 func (m *InfluxMetrics) RecordPutBackendError() {
@@ -183,8 +195,8 @@ func (m *InfluxMetrics) RecordPutBackendSize(sizeInBytes float64) {
 	m.PutsBackend.RequestLength.Update(int64(sizeInBytes))
 }
 
-func (m *InfluxMetrics) RecordGetBackendDuration(duration *time.Time) {
-	m.GetsBackend.Duration.UpdateSince(*duration)
+func (m *InfluxMetrics) RecordGetBackendDuration(duration time.Duration) {
+	m.GetsBackend.Duration.Update(duration)
 }
 
 func (m *InfluxMetrics) RecordGetBackendError() {

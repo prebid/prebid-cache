@@ -2,6 +2,7 @@ package config
 
 import (
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -200,4 +201,8 @@ func (promMetricsConfig *PrometheusMetrics) validateAndLogMetricsData() bool {
 		log.Infof("config.metrics.prometheus.port: %d", promMetricsConfig.Port)
 	}
 	return promMetricsConfig.Enabled
+}
+
+func (m *PrometheusMetrics) Timeout() time.Duration {
+	return time.Duration(m.TimeoutMillisRaw) * time.Millisecond
 }

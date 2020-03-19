@@ -31,7 +31,7 @@ func (m Metrics) RecordPutTotal() {
 	}
 }
 
-func (m Metrics) RecordPutDuration(duration *time.Time) {
+func (m Metrics) RecordPutDuration(duration time.Duration) {
 	for _, me := range m.MetricEngines {
 		me.RecordPutDuration(duration)
 	}
@@ -55,7 +55,7 @@ func (m Metrics) RecordGetTotal() {
 	}
 }
 
-func (m Metrics) RecordGetDuration(duration *time.Time) {
+func (m Metrics) RecordGetDuration(duration time.Duration) {
 	for _, me := range m.MetricEngines {
 		me.RecordGetDuration(duration)
 	}
@@ -85,7 +85,7 @@ func (m Metrics) RecordPutBackendDefTTL() {
 	}
 }
 
-func (m Metrics) RecordPutBackendDuration(duration *time.Time) {
+func (m Metrics) RecordPutBackendDuration(duration time.Duration) {
 	for _, me := range m.MetricEngines {
 		me.RecordPutBackendDuration(duration)
 	}
@@ -103,7 +103,7 @@ func (m Metrics) RecordPutBackendSize(sizeInBytes float64) {
 	}
 }
 
-func (m Metrics) RecordGetBackendDuration(duration *time.Time) {
+func (m Metrics) RecordGetBackendDuration(duration time.Duration) {
 	for _, me := range m.MetricEngines {
 		me.RecordGetBackendDuration(duration)
 	}
@@ -157,26 +157,39 @@ func (m Metrics) Export(cfg config.Configuration) {
 	}
 }
 
-// CacheMetrics Interface
+func (m Metrics) GetEngineRegistry(name string) interface{} {
+	for _, me := range m.MetricEngines {
+		if name == me.GetMetricsEngineName() {
+			return me.GetEngineRegistry()
+		}
+	}
+	return nil
+}
+
 type CacheMetrics interface {
+	// Auxiliary functions
 	Export(cfg config.Metrics)
+	GetMetricsEngineName() string
+	GetEngineRegistry() interface{}
+
+	// Record, update and log metrics functions
 	RecordPutError()
 	RecordPutBadRequest()
 	RecordPutTotal()
-	RecordPutDuration(duration *time.Time)
+	RecordPutDuration(duration time.Duration)
 	RecordGetError()
 	RecordGetBadRequest()
 	RecordGetTotal()
-	RecordGetDuration(duration *time.Time)
+	RecordGetDuration(duration time.Duration)
 	RecordPutBackendXml()
 	RecordPutBackendJson()
 	RecordPutBackendInvalid()
 	RecordPutBackendDefTTL()
-	RecordPutBackendDuration(duration *time.Time)
+	RecordPutBackendDuration(duration time.Duration)
 	RecordPutBackendError()
 	RecordPutBackendSize(sizeInBytes float64)
 	RecordGetBackendTotal()
-	RecordGetBackendDuration(duration *time.Time)
+	RecordGetBackendDuration(duration time.Duration)
 	RecordGetBackendError()
 	RecordConnectionOpen()
 	RecordConnectionClosed()

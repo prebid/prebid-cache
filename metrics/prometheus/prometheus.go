@@ -23,6 +23,8 @@ const (
 	InvFormatVal  string = "invalid_format"
 	CloseVal      string = "close"
 	AcceptVal     string = "accept"
+
+	MetricsPrometheus = "Prometheus"
 )
 
 type PrometheusMetrics struct {
@@ -33,6 +35,7 @@ type PrometheusMetrics struct {
 	GetsBackend *PrometheusRequestStatusMetric
 	Connections *PrometheusConnectionMetrics
 	ExtraTTL    *PrometheusExtraTTLMetrics
+	MetricsName string
 }
 
 type PrometheusRequestStatusMetric struct {
@@ -131,6 +134,7 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				timeBuckets,
 			),
 		},
+		MetricsName: MetricsPrometheus,
 	}
 	promMetrics.ExtraTTL.ExtraTTLSeconds.Observe(5000.00)
 
@@ -203,6 +207,14 @@ func newHistogramVector(cfg config.PrometheusMetrics, registry *prometheus.Regis
 func (m PrometheusMetrics) Export(cfg config.Metrics) {
 }
 
+func (m *PrometheusMetrics) GetMetricsEngineName() string {
+	return m.MetricsName
+}
+
+func (m *PrometheusMetrics) GetEngineRegistry() interface{} {
+	return m.Registry
+}
+
 func (m *PrometheusMetrics) RecordPutError() {
 	m.Puts.RequestStatus.With(prometheus.Labels{StatusKey: ErrorVal}).Inc()
 }
@@ -215,8 +227,8 @@ func (m *PrometheusMetrics) RecordPutTotal() {
 	m.Puts.RequestStatus.With(prometheus.Labels{StatusKey: TotalsVal}).Inc()
 }
 
-func (m *PrometheusMetrics) RecordPutDuration(duration *time.Time) {
-	m.Puts.Duration.Observe(time.Since(*duration).Seconds())
+func (m *PrometheusMetrics) RecordPutDuration(duration time.Duration) {
+	m.Puts.Duration.Observe(duration.Seconds())
 }
 
 func (m *PrometheusMetrics) RecordGetError() {
@@ -231,8 +243,8 @@ func (m *PrometheusMetrics) RecordGetTotal() {
 	m.Gets.RequestStatus.With(prometheus.Labels{StatusKey: TotalsVal}).Inc()
 }
 
-func (m *PrometheusMetrics) RecordGetDuration(duration *time.Time) {
-	m.Gets.Duration.Observe(time.Since(*duration).Seconds())
+func (m *PrometheusMetrics) RecordGetDuration(duration time.Duration) {
+	m.Gets.Duration.Observe(duration.Seconds())
 }
 
 func (m *PrometheusMetrics) RecordPutBackendXml() {
@@ -251,8 +263,8 @@ func (m *PrometheusMetrics) RecordPutBackendDefTTL() {
 	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{FormatKey: DefinesTTLVal}).Inc()
 }
 
-func (m *PrometheusMetrics) RecordPutBackendDuration(duration *time.Time) {
-	m.PutsBackend.Duration.Observe(time.Since(*duration).Seconds())
+func (m *PrometheusMetrics) RecordPutBackendDuration(duration time.Duration) {
+	m.PutsBackend.Duration.Observe(duration.Seconds())
 }
 
 func (m *PrometheusMetrics) RecordPutBackendError() {
@@ -267,8 +279,8 @@ func (m *PrometheusMetrics) RecordGetBackendTotal() {
 	m.GetsBackend.RequestStatus.With(prometheus.Labels{StatusKey: TotalsVal}).Inc()
 }
 
-func (m *PrometheusMetrics) RecordGetBackendDuration(duration *time.Time) {
-	m.GetsBackend.Duration.Observe(time.Since(*duration).Seconds())
+func (m *PrometheusMetrics) RecordGetBackendDuration(duration time.Duration) {
+	m.GetsBackend.Duration.Observe(duration.Seconds())
 }
 
 func (m *PrometheusMetrics) RecordGetBackendError() {

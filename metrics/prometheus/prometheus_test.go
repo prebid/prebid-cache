@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const TenSeconds time.Duration = time.Second * 10
+
 func createPrometheusMetricsForTesting() *PrometheusMetrics {
 	return CreatePrometheusMetrics(config.PrometheusMetrics{
 		Port:      8080,
@@ -65,32 +67,27 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 			{
 				description: "Log put request duration",
 				testCase: func(pm *PrometheusMetrics) {
-					timeZero := time.Time{}
-					tenSeconds := time.Second * 10
-
-					now := timeZero.Add(tenSeconds)
-
-					pm.RecordPutDuration(&now)
+					pm.RecordPutDuration(TenSeconds)
 				},
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 0, expRequestErrors: 0, expBadRequests: 0,
 			},
 			{
 				description:      "Count put request total",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutTotal() },
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 1, expRequestErrors: 0, expBadRequests: 0,
 			},
 			{
 				description:      "Count put request error",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutError() },
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 0,
 			},
 			{
 				description:      "Count put request bad request",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutBadRequest() },
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1,
 			},
 		},
@@ -98,32 +95,27 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 			{
 				description: "Log get request duration",
 				testCase: func(pm *PrometheusMetrics) {
-					timeZero := time.Time{}
-					tenSeconds := time.Second * 10
-
-					now := timeZero.Add(tenSeconds)
-
-					pm.RecordGetDuration(&now)
+					pm.RecordGetDuration(TenSeconds)
 				},
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 0, expRequestErrors: 0, expBadRequests: 0,
 			},
 			{
 				description:      "Count get request total",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordGetTotal() },
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 1, expRequestErrors: 0, expBadRequests: 0,
 			},
 			{
 				description:      "Count get request error",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordGetError() },
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 0,
 			},
 			{
 				description:      "Count get request bad request",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordGetBadRequest() },
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1,
 			},
 		},
@@ -131,32 +123,27 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 			{
 				description: "Log get backend request duration",
 				testCase: func(pm *PrometheusMetrics) {
-					timeZero := time.Time{}
-					tenSeconds := time.Second * 10
-
-					now := timeZero.Add(tenSeconds)
-
-					pm.RecordGetBackendDuration(&now)
+					pm.RecordGetBackendDuration(TenSeconds)
 				},
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 0, expRequestErrors: 0, expBadRequests: 0,
 			},
 			{
 				description:      "Count get backend request total",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordGetBackendTotal() },
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 1, expRequestErrors: 0, expBadRequests: 0,
 			},
 			{
 				description:      "Count get backend request error",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordGetBackendError() },
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 0,
 			},
 			{
 				description:      "Count get backend request bad request",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordGetBackendBadRequest() },
-				expDuration:      9.223372036854776e+09,
+				expDuration:      10,
 				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1,
 			},
 		},
@@ -198,32 +185,27 @@ func TestPutBackendMetrics(t *testing.T) {
 		{
 			description: "Log put backend request duration",
 			testCase: func(pm *PrometheusMetrics) {
-				timeZero := time.Time{}
-				tenSeconds := time.Second * 10
-
-				now := timeZero.Add(tenSeconds)
-
-				pm.RecordPutBackendDuration(&now)
+				pm.RecordPutBackendDuration(TenSeconds)
 			},
-			expDuration: 9.223372036854776e+09,
+			expDuration: 10,
 		},
 		{
 			description: "Count put backend xml request",
 			testCase:    func(pm *PrometheusMetrics) { pm.RecordPutBackendXml() },
-			expDuration: 9.223372036854776e+09,
+			expDuration: 10,
 			expXmlCount: 1,
 		},
 		{
 			description:  "Count put backend json request",
 			testCase:     func(pm *PrometheusMetrics) { pm.RecordPutBackendJson() },
-			expDuration:  9.223372036854776e+09,
+			expDuration:  10,
 			expXmlCount:  1,
 			expJsonCount: 1,
 		},
 		{
 			description:     "Count put backend invalid request",
 			testCase:        func(pm *PrometheusMetrics) { pm.RecordPutBackendInvalid() },
-			expDuration:     9.223372036854776e+09,
+			expDuration:     10,
 			expXmlCount:     1,
 			expJsonCount:    1,
 			expInvalidCount: 1,
@@ -231,7 +213,7 @@ func TestPutBackendMetrics(t *testing.T) {
 		{
 			description:     "Count put backend of requests that define TTL",
 			testCase:        func(pm *PrometheusMetrics) { pm.RecordPutBackendDefTTL() },
-			expDuration:     9.223372036854776e+09,
+			expDuration:     10,
 			expXmlCount:     1,
 			expJsonCount:    1,
 			expInvalidCount: 1,
@@ -240,7 +222,7 @@ func TestPutBackendMetrics(t *testing.T) {
 		{
 			description:     "Count put backend request errors",
 			testCase:        func(pm *PrometheusMetrics) { pm.RecordPutBackendError() },
-			expDuration:     9.223372036854776e+09,
+			expDuration:     10,
 			expXmlCount:     1,
 			expJsonCount:    1,
 			expInvalidCount: 1,
@@ -252,7 +234,7 @@ func TestPutBackendMetrics(t *testing.T) {
 			testCase: func(pm *PrometheusMetrics) {
 				pm.RecordPutBackendSize(16)
 			},
-			expDuration:      9.223372036854776e+09,
+			expDuration:      10,
 			expXmlCount:      1,
 			expJsonCount:     1,
 			expInvalidCount:  1,

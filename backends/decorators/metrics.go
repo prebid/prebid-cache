@@ -19,7 +19,7 @@ func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error
 	start := time.Now()
 	val, err := b.delegate.Get(ctx, key)
 	if err == nil {
-		b.metrics.RecordGetBackendDuration(&start)
+		b.metrics.RecordGetBackendDuration(time.Since(start))
 	} else {
 		b.metrics.RecordGetBackendError()
 	}
@@ -40,7 +40,7 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)
 	if err == nil {
-		b.metrics.RecordPutBackendDuration(&start)
+		b.metrics.RecordPutBackendDuration(time.Since(start))
 	} else {
 		b.metrics.RecordPutBackendError()
 	}

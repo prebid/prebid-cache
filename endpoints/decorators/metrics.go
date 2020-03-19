@@ -14,7 +14,7 @@ const (
 
 type metricsFunctions struct {
 	LogSuccess    func()
-	LogDuration   func(duration *time.Time)
+	LogDuration   func(duration time.Duration)
 	LogBadRequest func()
 	LogError      func()
 }
@@ -70,7 +70,7 @@ func MonitorHttp(handler httprouter.Handle, m *metrics.Metrics, method int) http
 		respCode := wrapper.statusCode
 		// If the calling function never calls WriterHeader explicitly, Go auto-fills it with a 200
 		if respCode == 0 || respCode >= 200 && respCode < 300 {
-			mf.LogDuration(&start)
+			mf.LogDuration(time.Since(start))
 		} else if respCode >= 400 && respCode < 500 {
 			mf.LogBadRequest()
 		} else {
