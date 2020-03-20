@@ -138,6 +138,14 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	}
 	promMetrics.ExtraTTL.ExtraTTLSeconds.Observe(5000.00)
 
+	// Should be the equivalent of the following influx collectors
+	// go metrics.CaptureRuntimeMemStats(m.Registry, flushTime)
+	// go metrics.CaptureDebugGCStats(m.Registry, flushTime)
+	registry.MustRegister(
+		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{Namespace: cfg.Namespace}),
+		prometheus.NewGoCollector(),
+	)
+
 	preloadLabelValues(promMetrics)
 	return promMetrics
 }
