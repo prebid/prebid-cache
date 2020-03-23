@@ -4,7 +4,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 
 	backendConfig "github.com/prebid/prebid-cache/backends/config"
 	"github.com/prebid/prebid-cache/config"

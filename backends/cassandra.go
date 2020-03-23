@@ -3,9 +3,9 @@ package backends
 import (
 	"context"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gocql/gocql"
 	"github.com/prebid/prebid-cache/config"
-	log "github.com/sirupsen/logrus"
 )
 
 // Cassandra Object use to implement backend interface
