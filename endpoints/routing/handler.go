@@ -28,9 +28,7 @@ func NewHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics
 }
 
 func handleCors(handler http.Handler) http.Handler {
-	coresCfg := cors.New(cors.Options{AllowCredentials: true, AllowOriginFunc: func(origin string) bool {
-		return true
-	}})
+	coresCfg := cors.New(cors.Options{AllowCredentials: true})
 	return coresCfg.Handler(handler)
 }
 
