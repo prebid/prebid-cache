@@ -18,8 +18,18 @@ import (
 
 // PutHandler serves "POST /cache" requests.
 func NewPutHandler(backendClient backends.Backend, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
-	putAnyRequestPool := sync.Pool{New: func() interface{} { return &PutRequest{} }}
-	putResponsePool := sync.Pool{New: func() interface{} { return &PutResponse{} }}
+	putAnyRequestPool := sync.Pool{
+		New: func() interface{} {
+			return &PutRequest{}
+		},
+	}
+
+	putResponsePool := sync.Pool{
+		New: func() interface{} {
+			return &PutResponse{}
+		},
+	}
+
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		// Unmarshall *http.Request into a putResponsePool object
 		body, err := ioutil.ReadAll(r.Body)
@@ -29,7 +39,7 @@ func NewPutHandler(backendClient backends.Backend, maxNumValues int, allowKeys b
 		}
 		defer r.Body.Close()
 
-		backend := &backendCallObject{client: backendClient}
+		backend := &backendCallObject{client: backendClient, allowKeys: allowKeys}
 
 		backend.put = putAnyRequestPool.Get().(*PutRequest)
 		defer putAnyRequestPool.Put(backend.put)
@@ -67,30 +77,17 @@ func NewPutHandler(backendClient backends.Backend, maxNumValues int, allowKeys b
 					callBackendPut(backend, exitData, 0)
 				} else {
 					// Run process in parallel
-					getIndexChannel := make(chan int)
-					putIndexChannel := make(chan int)
+					indexChannel := make(chan int)
 					done := make(chan bool)
-
-					if allowKeys {
-						go func() {
-							for i, _ := range backend.put.Puts {
-								getIndexChannel <- i
-							}
-							close(getIndexChannel)
-						}()
-
-						go callBackendGetInParallel(backend, getIndexChannel, done)
-						<-done
-					}
 
 					go func() {
 						for i, _ := range backend.put.Puts {
-							putIndexChannel <- i
+							indexChannel <- i
 						}
-						close(putIndexChannel)
+						close(indexChannel)
 					}()
 
-					go callBackendPutInParallel(backend, exitData, putIndexChannel, done)
+					go callBackendInParallel(backend, exitData, indexChannel, done)
 					<-done
 				}
 			}
@@ -161,21 +158,23 @@ func validateAndEncode(puts *PutRequest, resp *PutResponse, exit *exitInfo) {
 }
 
 type backendCallObject struct {
-	client backends.Backend
-	put    *PutRequest
-	resp   *PutResponse
-	ctx    context.Context
+	client    backends.Backend
+	put       *PutRequest
+	resp      *PutResponse
+	allowKeys bool
+	ctx       context.Context
 }
 
-func callBackendGetInParallel(backend *backendCallObject, getIndexChannel <-chan int, done chan<- bool) {
-	for index := range getIndexChannel {
+func callBackendInParallel(backend *backendCallObject, exit *exitInfo, indexChannel <-chan int, done chan<- bool) {
+	for index := range indexChannel {
 		callBackendGet(backend, index)
+		callBackendPut(backend, exit, index)
 	}
 	done <- true
 }
 
 func callBackendGet(backend *backendCallObject, index int) {
-	if len(backend.put.Puts[index].Key) > 0 {
+	if backend.allowKeys && len(backend.put.Puts[index].Key) > 0 {
 		s, err := backend.client.Get(backend.ctx, backend.put.Puts[index].Key)
 		if err != nil || len(s) == 0 {
 			backend.resp.Responses[index].UUID = backend.put.Puts[index].Key
@@ -186,14 +185,14 @@ func callBackendGet(backend *backendCallObject, index int) {
 }
 
 //func callBackendPut(backend backends.Backend, p *PutRequest, resp *PutResponse, ctx context.Context, exit *exitInfo, putIndexChannel <-chan int, done chan<- bool) {
-func callBackendPutInParallel(backend *backendCallObject, exit *exitInfo, putIndexChannel <-chan int, done chan<- bool) {
-	for index := range putIndexChannel {
-		if exit.status == http.StatusOK {
-			callBackendPut(backend, exit, index)
-		}
-	}
-	done <- true
-}
+//func callBackendPutInParallel(backend *backendCallObject, exit *exitInfo, putIndexChannel <-chan int, done chan<- bool) {
+//	for index := range putIndexChannel {
+//		if exit.status == http.StatusOK {
+//			callBackendPut(backend, exit, index)
+//		}
+//	}
+//	done <- true
+//}
 
 func callBackendPut(backend *backendCallObject, exit *exitInfo, index int) {
 	if len(backend.resp.Responses[index].UUID) > 0 {
