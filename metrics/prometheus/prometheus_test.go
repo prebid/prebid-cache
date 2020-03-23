@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -351,5 +352,5 @@ func TestMetricCountGatekeeping(t *testing.T) {
 	// - This assertion provides a warning for newly added high-cardinality non-adapter specific metrics. The hardcoded limit
 	//   is an arbitrary soft ceiling. Thought should be given as to the value of the new metrics if you find yourself
 	//   needing to increase this number.
-	assert.True(t, generalCardinalityCount <= 24, "General Cardinality")
+	assert.True(t, generalCardinalityCount <= 52, fmt.Sprintf("General Cardinality. Expected to hace less than 24 metrics, we have: %d \n", generalCardinalityCount))
 }

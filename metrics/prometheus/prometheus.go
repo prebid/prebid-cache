@@ -141,7 +141,7 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	// Should be the equivalent of the following influx collectors
 	// go metrics.CaptureRuntimeMemStats(m.Registry, flushTime)
 	// go metrics.CaptureDebugGCStats(m.Registry, flushTime)
-	registry.MustRegister(
+	promMetrics.Registry.MustRegister(
 		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{Namespace: cfg.Namespace}),
 		prometheus.NewGoCollector(),
 	)
