@@ -1,0 +1,17 @@
+version: "3.7"
+services:
+  prebid-cache:
+    image: 993930779011.dkr.ecr.us-east-1.amazonaws.com/sortable/prebid-cache:latest
+    container_name: "prebid-cache-server"
+    environment:
+      - "REDIS_HOSTNAME=redis"
+      - "REDIS_PORT=3657"
+      - "REDIS_PASSWORD="
+    ports:
+      - 80:2424
+      - 8080:2525
+   volumes:
+     - "./config.yaml.dev:/app/config.yaml"
+  redis:
+    image: redis
+    container_name: "prebid-cache-redis"

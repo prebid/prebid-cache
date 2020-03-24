@@ -13,11 +13,14 @@ request_limits:
 backend:
   type: "redis" # Can also be "aerospike", "azure", "cassandra", "memcache" or "redis"
   redis:
-    host: "<<REDIS_HOSTNAME>>"
-    port: <<REDIS_PORT>>
-    password: "<<REDIS_PASSWORD>>"
+    host: "redis"
+    port: 6379
+    password: ""
     db: 1
     expiration: 10 # in Minutes
+    tls:
+      enabled: false
+      insecure_skip_verify: false
 compression:
   type: "snappy" # Can also be "none"
 metrics:
