@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -137,18 +138,37 @@ const (
 )
 
 type Metrics struct {
+	Type       MetricsType       `mapstructure:"type"`
 	Influx     InfluxMetrics     `mapstructure:"influx"`
 	Prometheus PrometheusMetrics `mapstructure:"prometheus"`
 }
 
 func (cfg *Metrics) validateAndLog() {
-	influxEnabled := cfg.Influx.Enabled && cfg.Influx.validateAndLogMetricsData()
-	prometheusEnabled := cfg.Prometheus.Enabled && cfg.Prometheus.validateAndLogMetricsData()
+	var err error
+	cfg.Influx.Enabled, cfg.Prometheus.Enabled, err = cfg.checkMetricsEnabled(cfg.Type, cfg.Influx.Enabled, cfg.Prometheus.Enabled)
 
-	if !influxEnabled && !prometheusEnabled {
-		log.Fatalf(`No metrics correctly specified in configuration file`)
+	if err != nil {
+		log.Fatalf(err.Error())
 	}
 }
+
+func (cfg *Metrics) checkMetricsEnabled(mtype MetricsType, influxEnabled bool, promEnabled bool) (bool, bool, error) {
+	var err error
+	influxDbEnabled := (mtype == MetricsInflux || influxEnabled) && cfg.Influx.validateAndLogMetricsData()
+	prometheusEnabled := promEnabled && cfg.Prometheus.validateAndLogMetricsData()
+
+	if !influxDbEnabled && !prometheusEnabled && mtype != MetricsNone {
+		err = fmt.Errorf("No metrics correctly specified in configuration file")
+	}
+	return influxDbEnabled, prometheusEnabled, err
+}
+
+type MetricsType string
+
+const (
+	MetricsNone   MetricsType = "none"
+	MetricsInflux MetricsType = "influx"
+)
 
 type InfluxMetrics struct {
 	Host     string `mapstructure:"host"`
@@ -159,11 +179,11 @@ type InfluxMetrics struct {
 }
 
 func (influxMetricsConfig *InfluxMetrics) validateAndLogMetricsData() bool {
-	if influxMetricsConfig.Host != "" {
+	if influxMetricsConfig.Host == "" {
 		influxMetricsConfig.Enabled = false
 		log.Fatalf(`Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`)
 	}
-	if influxMetricsConfig.Database != "" {
+	if influxMetricsConfig.Database == "" {
 		influxMetricsConfig.Enabled = false
 		log.Fatalf(`Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`)
 	}
@@ -187,11 +207,11 @@ func (promMetricsConfig *PrometheusMetrics) validateAndLogMetricsData() bool {
 		promMetricsConfig.Enabled = false
 		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty port number: config.metrics.prometheus.port = 0`)
 	}
-	if promMetricsConfig.Namespace != "" {
+	if promMetricsConfig.Namespace == "" {
 		promMetricsConfig.Enabled = false
-		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty name space: config.metrics.prometheus.namespace = \"\".`)
+		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty name space: config.metrics.prometheus.namespace = %s.`, promMetricsConfig.Namespace)
 	}
-	if promMetricsConfig.Subsystem != "" {
+	if promMetricsConfig.Subsystem == "" {
 		promMetricsConfig.Enabled = false
 		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty subsystem value: config.metrics.prometheus.subsystem = \"\".`)
 	}

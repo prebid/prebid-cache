@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSampleConfig(t *testing.T) {
@@ -41,6 +42,7 @@ func TestSampleConfig(t *testing.T) {
 	assertBoolsEqual(t, "backend.redis.tls.enabled", cfg.Backend.Redis.TLS.Enabled, false)
 	assertBoolsEqual(t, "backend.redis.tls.insecure_skip_verify", cfg.Backend.Redis.TLS.InsecureSkipVerify, false)
 	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "snappy")
+	assertStringsEqual(t, "metrics.type", string(cfg.Metrics.Type), "none")
 	assertStringsEqual(t, "metrics.influx.host", cfg.Metrics.Influx.Host, "default-metrics-host")
 	assertStringsEqual(t, "metrics.influx.database", cfg.Metrics.Influx.Database, "default-metrics-database")
 	assertStringsEqual(t, "metrics.influx.username", cfg.Metrics.Influx.Username, "metrics-username")
@@ -72,6 +74,154 @@ func TestEnvConfig(t *testing.T) {
 
 	assertIntsEqual(t, "port", cfg.Port, 2000)
 	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "none")
+}
+
+func TestCheckMetricsEnabled(t *testing.T) {
+	var otherMetricType MetricsType = "something-else"
+	type aTest struct {
+		description string
+		// In
+		metricType        MetricsType
+		influxEnabled     bool
+		prometheusEnabled bool
+		// Out
+		expectError         bool
+		expectInfluxEnabled bool
+		expectPromEnabled   bool
+	}
+	testCases := []aTest{
+		{ //1
+			description:         "[1] No metrics enabled nor specified, expect error",
+			metricType:          otherMetricType,
+			influxEnabled:       false,
+			prometheusEnabled:   false,
+			expectError:         true,
+			expectInfluxEnabled: false,
+			expectPromEnabled:   false,
+		},
+		{ //2
+			description:         "[2] Unknown metricsType, Promethus enabled",
+			metricType:          otherMetricType,
+			influxEnabled:       false,
+			prometheusEnabled:   true,
+			expectError:         false,
+			expectInfluxEnabled: false,
+			expectPromEnabled:   true,
+		},
+		{ //3
+			description:         "[3] Unknown metricsType, Influx enabled",
+			metricType:          otherMetricType,
+			influxEnabled:       true,
+			prometheusEnabled:   false,
+			expectError:         false,
+			expectInfluxEnabled: true,
+			expectPromEnabled:   false,
+		},
+		{ //4
+			description:         "[4] Unknown metricsType, both Prometheus and Influx enabled",
+			metricType:          otherMetricType,
+			influxEnabled:       true,
+			prometheusEnabled:   true,
+			expectError:         false,
+			expectInfluxEnabled: true,
+			expectPromEnabled:   true,
+		},
+		{ //5
+			description:         "[5] \"Influx\" metricsType, no metrics enabled",
+			metricType:          MetricsInflux,
+			influxEnabled:       false,
+			prometheusEnabled:   false,
+			expectError:         false,
+			expectInfluxEnabled: true,
+			expectPromEnabled:   false,
+		},
+		{ //6
+			description:         "[6] \"Influx\" metricsType, Promethus enabled",
+			metricType:          MetricsInflux,
+			influxEnabled:       false,
+			prometheusEnabled:   true,
+			expectError:         false,
+			expectInfluxEnabled: true,
+			expectPromEnabled:   true,
+		},
+		{ //7
+			description:         "[7] \"Influx\" metricsType, Influx enabled",
+			metricType:          MetricsInflux,
+			influxEnabled:       true,
+			prometheusEnabled:   false,
+			expectError:         false,
+			expectInfluxEnabled: true,
+			expectPromEnabled:   false,
+		},
+		{ //8
+			description:         "[8] \"Influx\" metricsType, both Prometheus and Influx enabled",
+			metricType:          MetricsInflux,
+			influxEnabled:       true,
+			prometheusEnabled:   true,
+			expectError:         false,
+			expectInfluxEnabled: true,
+			expectPromEnabled:   true,
+		},
+		{ //9
+			description:         "[9] \"none\" metricsType, no metrics enabled",
+			metricType:          MetricsNone,
+			influxEnabled:       false,
+			prometheusEnabled:   false,
+			expectError:         false,
+			expectInfluxEnabled: false,
+			expectPromEnabled:   false,
+		},
+		{ //10
+			description:         "[10] \"none\" metricsType, no metrics enabled",
+			metricType:          MetricsNone,
+			influxEnabled:       false,
+			prometheusEnabled:   false,
+			expectError:         false,
+			expectInfluxEnabled: false,
+			expectPromEnabled:   false,
+		},
+		{ //11
+			description:         "11",
+			metricType:          MetricsNone,
+			influxEnabled:       true,
+			prometheusEnabled:   false,
+			expectError:         false,
+			expectInfluxEnabled: true,
+			expectPromEnabled:   false,
+		},
+		{ //12
+			description:         "12",
+			metricType:          MetricsNone,
+			influxEnabled:       true,
+			prometheusEnabled:   true,
+			expectError:         false,
+			expectInfluxEnabled: true,
+			expectPromEnabled:   true,
+		},
+	}
+	cfg := &Metrics{
+		Influx: InfluxMetrics{
+			Host:     "http://fakeurl.com",
+			Database: "database-value",
+		},
+		Prometheus: PrometheusMetrics{
+			Port:      8080,
+			Namespace: "prebid",
+			Subsystem: "cache",
+		},
+	}
+	for _, test := range testCases {
+		actualInfluxEn, actualPromEn, actualErr := cfg.checkMetricsEnabled(test.metricType, test.influxEnabled, test.prometheusEnabled)
+
+		assertBoolsEqual(t, "metrics.influx.enabled", actualInfluxEn, test.expectInfluxEnabled)
+		assertBoolsEqual(t, "metrics.prometheus.enabled", actualPromEn, test.expectPromEnabled)
+
+		if test.expectError {
+			assert.Error(t, actualErr, "We should get a no-metrics-enabled error")
+		} else {
+			assert.NoError(t, actualErr, "We shouldn't have gotten a no-metrics-enabled error")
+		}
+	}
 }
 
 func newViperFromSample(t *testing.T) *viper.Viper {
@@ -121,6 +271,7 @@ backend:
 compression:
   type: "snappy"
 metrics:
+  type: "none"
   influx:
     host: "default-metrics-host"
     database: "default-metrics-database"
