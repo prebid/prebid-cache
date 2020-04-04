@@ -70,25 +70,21 @@ func NewPutHandler(backendClient backends.Backend, maxNumValues int, allowKeys b
 			exitData.status = http.StatusBadRequest
 		} else { // 1 <= len(backend.put.Puts) < maxNumValues
 			// Processonly if all requests come error free
-			validateAndEncode(backend.put, backend.resp, exitData)
+			validateAndEncode(backend, exitData)
 			if exitData.status == http.StatusOK {
 				if len(backend.put.Puts) == 1 {
 					callBackendGet(backend, 0)
 					callBackendPut(backend, exitData, 0)
 				} else {
 					// Run process in parallel
-					indexChannel := make(chan int)
-					done := make(chan bool)
+					var waitGroup sync.WaitGroup
+					waitGroup.Add(len(backend.put.Puts))
 
-					go func() {
-						for i, _ := range backend.put.Puts {
-							indexChannel <- i
-						}
-						close(indexChannel)
-					}()
+					for i, _ := range backend.put.Puts {
+						go callBackendInParallel(backend, exitData, i, &waitGroup)
+					}
 
-					go callBackendInParallel(backend, exitData, indexChannel, done)
-					<-done
+					waitGroup.Wait()
 				}
 			}
 		}
@@ -110,8 +106,8 @@ func NewPutHandler(backendClient backends.Backend, maxNumValues int, allowKeys b
 	}
 }
 
-func validateAndEncode(puts *PutRequest, resp *PutResponse, exit *exitInfo) {
-	for index, p := range puts.Puts {
+func validateAndEncode(backend *backendCallObject, exit *exitInfo) {
+	for index, p := range backend.put.Puts {
 		var toCache string
 
 		if len(p.Value) == 0 {
@@ -151,8 +147,8 @@ func validateAndEncode(puts *PutRequest, resp *PutResponse, exit *exitInfo) {
 			exit.status = http.StatusInternalServerError
 			return
 		}
-		resp.Responses[index].UUID = u2.String()
-		resp.toCacheStrings[index] = toCache
+		backend.resp.Responses[index].UUID = u2.String()
+		backend.resp.toCacheStrings[index] = toCache
 	}
 	return
 }
@@ -165,12 +161,10 @@ type backendCallObject struct {
 	ctx       context.Context
 }
 
-func callBackendInParallel(backend *backendCallObject, exit *exitInfo, indexChannel <-chan int, done chan<- bool) {
-	for index := range indexChannel {
-		callBackendGet(backend, index)
-		callBackendPut(backend, exit, index)
-	}
-	done <- true
+func callBackendInParallel(backend *backendCallObject, exit *exitInfo, index int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	callBackendGet(backend, index)
+	callBackendPut(backend, exit, index)
 }
 
 func callBackendGet(backend *backendCallObject, index int) {
@@ -184,25 +178,13 @@ func callBackendGet(backend *backendCallObject, index int) {
 	}
 }
 
-//func callBackendPut(backend backends.Backend, p *PutRequest, resp *PutResponse, ctx context.Context, exit *exitInfo, putIndexChannel <-chan int, done chan<- bool) {
-//func callBackendPutInParallel(backend *backendCallObject, exit *exitInfo, putIndexChannel <-chan int, done chan<- bool) {
-//	for index := range putIndexChannel {
-//		if exit.status == http.StatusOK {
-//			callBackendPut(backend, exit, index)
-//		}
-//	}
-//	done <- true
-//}
-
 func callBackendPut(backend *backendCallObject, exit *exitInfo, index int) {
 	if len(backend.resp.Responses[index].UUID) > 0 {
 		err := backend.client.Put(backend.ctx, backend.resp.Responses[index].UUID, backend.resp.toCacheStrings[index], backend.put.Puts[index].TTLSeconds)
 		if err != nil {
 			if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
-				exit = &exitInfo{
-					errMsg: fmt.Sprintf("POST /cache element exceeded max size: %v", err),
-					status: http.StatusBadRequest,
-				}
+				exit.errMsg = fmt.Sprintf("POST /cache element exceeded max size: %v", err)
+				exit.status = http.StatusBadRequest
 				return
 			}
 
@@ -210,17 +192,13 @@ func callBackendPut(backend *backendCallObject, exit *exitInfo, index int) {
 			switch err {
 			case context.DeadlineExceeded:
 				logrus.Error("POST /cache timed out:", err)
-				exit = &exitInfo{
-					errMsg: "Timeout writing value to the backend",
-					status: HttpDependencyTimeout,
-				}
+				exit.errMsg = "Timeout writing value to the backend"
+				exit.status = HttpDependencyTimeout
 				return
 			default:
 				logrus.Error("POST /cache had an unexpected error:", err)
-				exit = &exitInfo{
-					errMsg: err.Error(),
-					status: http.StatusInternalServerError,
-				}
+				exit.errMsg = err.Error()
+				exit.status = http.StatusInternalServerError
 				return
 			}
 		}
