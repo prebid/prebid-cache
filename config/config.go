@@ -145,22 +145,23 @@ type Metrics struct {
 
 func (cfg *Metrics) validateAndLog() {
 	var err error
-	cfg.Influx.Enabled, cfg.Prometheus.Enabled, err = cfg.checkMetricsEnabled(cfg.Type, cfg.Influx.Enabled, cfg.Prometheus.Enabled)
+	err = cfg.checkMetricsEnabled()
 
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 }
 
-func (cfg *Metrics) checkMetricsEnabled(mtype MetricsType, influxEnabled bool, promEnabled bool) (bool, bool, error) {
+func (cfg *Metrics) checkMetricsEnabled() error {
 	var err error
-	influxDbEnabled := (mtype == MetricsInflux || influxEnabled) && cfg.Influx.validateAndLogMetricsData()
-	prometheusEnabled := promEnabled && cfg.Prometheus.validateAndLogMetricsData()
+	cfg.Influx.Enabled = (cfg.Type == MetricsInflux || cfg.Influx.Enabled)
+	cfg.Influx.Enabled = cfg.Influx.validateAndLogMetricsData()
+	cfg.Prometheus.Enabled = cfg.Prometheus.Enabled && cfg.Prometheus.validateAndLogMetricsData()
 
-	if !influxDbEnabled && !prometheusEnabled && mtype != MetricsNone {
+	if !cfg.Influx.Enabled && !cfg.Prometheus.Enabled && cfg.Type != MetricsNone {
 		err = fmt.Errorf("No metrics correctly specified in configuration file")
 	}
-	return influxDbEnabled, prometheusEnabled, err
+	return err
 }
 
 type MetricsType string

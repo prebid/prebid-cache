@@ -211,15 +211,19 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		},
 	}
 	for _, test := range testCases {
-		actualInfluxEn, actualPromEn, actualErr := cfg.checkMetricsEnabled(test.metricType, test.influxEnabled, test.prometheusEnabled)
+		cfg.Type = test.metricType
+		cfg.Influx.Enabled = test.influxEnabled
+		cfg.Prometheus.Enabled = test.prometheusEnabled
 
-		assertBoolsEqual(t, "metrics.influx.enabled", actualInfluxEn, test.expectInfluxEnabled)
-		assertBoolsEqual(t, "metrics.prometheus.enabled", actualPromEn, test.expectPromEnabled)
+		actualErr := cfg.checkMetricsEnabled()
+
+		assertBoolsEqual(t, "metrics.influx.enabled", cfg.Influx.Enabled, test.expectInfluxEnabled)
+		assertBoolsEqual(t, "metrics.prometheus.enabled", cfg.Prometheus.Enabled, test.expectPromEnabled)
 
 		if test.expectError {
-			assert.Error(t, actualErr, "We should get a no-metrics-enabled error")
+			assert.Error(t, actualErr, "We should get a no-metrics-enabled error", test.description)
 		} else {
-			assert.NoError(t, actualErr, "We shouldn't have gotten a no-metrics-enabled error")
+			assert.NoError(t, actualErr, "We shouldn't have gotten a no-metrics-enabled error. Description: %s \n", test.description)
 		}
 	}
 }
