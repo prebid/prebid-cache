@@ -408,21 +408,6 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 	assert.Equal(t, HttpDependencyTimeout, httpTestRecorder.Code, "Put should have failed because we are using a MockDeadlineExceededBackend")
 }
 
-func TestEmptyRequestBodyError(t *testing.T) {
-	emptyRequest := ""
-
-	// Use mock client that will return an error
-	backend := backends.NewMemoryBackend()
-
-	// Run client
-	router := httprouter.New()
-	router.POST("/cache", NewPutHandler(backend, 10, true))
-
-	_, httpTestRecorder := doMockPut(t, router, emptyRequest)
-
-	// Assert
-	assert.Equalf(t, http.StatusBadRequest, httpTestRecorder.Code, "Put client should have failed because we passed badly escaped Json: %s \n", httpTestRecorder.Body.String())
-}
 func benchmarkPutHandler(b *testing.B, testCase string) {
 	b.StopTimer()
 	//Set up a request that should succeed
