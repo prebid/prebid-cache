@@ -1,9 +1,11 @@
 package metrics
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prometheus/client_golang/prometheus"
-	"time"
 )
 
 const (
@@ -141,9 +143,9 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	// Should be the equivalent of the following influx collectors
 	// go metrics.CaptureRuntimeMemStats(m.Registry, flushTime)
 	// go metrics.CaptureDebugGCStats(m.Registry, flushTime)
+	collectorNamespace := fmt.Sprintf("%s_%s", cfg.Namespace, cfg.Subsystem)
 	promMetrics.Registry.MustRegister(
-		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{Namespace: cfg.Namespace}),
-		prometheus.NewGoCollector(),
+		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{Namespace: collectorNamespace}),
 	)
 
 	preloadLabelValues(promMetrics)
@@ -183,31 +185,6 @@ func newHistogram(cfg config.PrometheusMetrics, registry *prometheus.Registry, n
 		Buckets:   buckets,
 	}
 	histogram := prometheus.NewHistogram(opts)
-	registry.MustRegister(histogram)
-	return histogram
-}
-
-func newGaugeMetric(cfg config.PrometheusMetrics, registry *prometheus.Registry, name string, help string) prometheus.Gauge {
-	opts := prometheus.GaugeOpts{
-		Namespace: cfg.Namespace,
-		Subsystem: cfg.Subsystem,
-		Name:      name,
-		Help:      help,
-	}
-	gauge := prometheus.NewGauge(opts)
-	registry.MustRegister(gauge)
-	return gauge
-}
-
-func newHistogramVector(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string, labels []string, buckets []float64) *prometheus.HistogramVec {
-	opts := prometheus.HistogramOpts{
-		Namespace: cfg.Namespace,
-		Subsystem: cfg.Subsystem,
-		Name:      name,
-		Help:      help,
-		Buckets:   buckets,
-	}
-	histogram := prometheus.NewHistogramVec(opts, labels)
 	registry.MustRegister(histogram)
 	return histogram
 }

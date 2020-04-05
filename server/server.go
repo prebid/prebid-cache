@@ -55,7 +55,7 @@ func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.Met
 	// Then block the thread. When the OS sends a shutdown signal, alert each of the servers.
 	// Once they're finished shutting down (the "done" channel gets pinged for each server),
 	// this funciton can return.
-	if cfg.Metrics.Prometheus.Port != 0 {
+	if cfg.Metrics.Prometheus.Enabled {
 		promRegistry := metrics.GetEngineRegistry(localprometheus.MetricsPrometheus).(*prometheus.Registry)
 
 		prometheusServer := newPrometheusServer(&cfg, promRegistry)

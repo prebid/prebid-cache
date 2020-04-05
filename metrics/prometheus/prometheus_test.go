@@ -51,6 +51,23 @@ func assertHistogram(t *testing.T, name string, histogram prometheus.Histogram, 
 	assert.Equal(t, expectedSum, actual.GetSampleSum(), name+":sum")
 }
 
+func TestPrometheusGetMetricsEngineName(t *testing.T) {
+	m := createPrometheusMetricsForTesting()
+	engineName := m.GetMetricsEngineName()
+
+	assert.Equal(t, "Prometheus", engineName, "Prometheus engine name should be 'Prometheus', actual: %s \n", engineName)
+}
+
+func TestPrometheusGetEngineRegistry(t *testing.T) {
+	m := createPrometheusMetricsForTesting()
+
+	registry := m.GetEngineRegistry()
+
+	_, ok := registry.(*prometheus.Registry)
+
+	assert.True(t, ok, "Prometheus engine registry should be of type *prometheus.Registry")
+}
+
 func TestPrometheusRequestStatusMetric(t *testing.T) {
 	m := createPrometheusMetricsForTesting()
 
@@ -352,5 +369,5 @@ func TestMetricCountGatekeeping(t *testing.T) {
 	// - This assertion provides a warning for newly added high-cardinality non-adapter specific metrics. The hardcoded limit
 	//   is an arbitrary soft ceiling. Thought should be given as to the value of the new metrics if you find yourself
 	//   needing to increase this number.
-	assert.True(t, generalCardinalityCount <= 52, fmt.Sprintf("General Cardinality. Expected to hace less than 24 metrics, we have: %d \n", generalCardinalityCount))
+	assert.True(t, generalCardinalityCount <= 100, fmt.Sprintf("General Cardinality. Expected to hace less than 24 metrics, we have: %d \n", generalCardinalityCount))
 }
