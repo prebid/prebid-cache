@@ -9,10 +9,6 @@ import (
 	"testing"
 )
 
-/*
-	PostMethod = 1
-	GetMethod  = 2
-*/
 func TestGetRequestSuccessMetrics(t *testing.T) {
 	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 		w.WriteHeader(200)

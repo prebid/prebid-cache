@@ -90,7 +90,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		expectPromEnabled   bool
 	}
 	testCases := []aTest{
-		{ //1
+		{
 			description:         "[1] No metrics enabled nor specified, expect error",
 			metricType:          otherMetricType,
 			influxEnabled:       false,
@@ -99,7 +99,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: false,
 			expectPromEnabled:   false,
 		},
-		{ //2
+		{
 			description:         "[2] Unknown metricsType, Promethus enabled",
 			metricType:          otherMetricType,
 			influxEnabled:       false,
@@ -108,7 +108,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: false,
 			expectPromEnabled:   true,
 		},
-		{ //3
+		{
 			description:         "[3] Unknown metricsType, Influx enabled",
 			metricType:          otherMetricType,
 			influxEnabled:       true,
@@ -117,7 +117,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: true,
 			expectPromEnabled:   false,
 		},
-		{ //4
+		{
 			description:         "[4] Unknown metricsType, both Prometheus and Influx enabled",
 			metricType:          otherMetricType,
 			influxEnabled:       true,
@@ -126,7 +126,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: true,
 			expectPromEnabled:   true,
 		},
-		{ //5
+		{
 			description:         "[5] \"Influx\" metricsType, no metrics enabled",
 			metricType:          MetricsInflux,
 			influxEnabled:       false,
@@ -135,7 +135,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: true,
 			expectPromEnabled:   false,
 		},
-		{ //6
+		{
 			description:         "[6] \"Influx\" metricsType, Promethus enabled",
 			metricType:          MetricsInflux,
 			influxEnabled:       false,
@@ -144,7 +144,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: true,
 			expectPromEnabled:   true,
 		},
-		{ //7
+		{
 			description:         "[7] \"Influx\" metricsType, Influx enabled",
 			metricType:          MetricsInflux,
 			influxEnabled:       true,
@@ -153,7 +153,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: true,
 			expectPromEnabled:   false,
 		},
-		{ //8
+		{
 			description:         "[8] \"Influx\" metricsType, both Prometheus and Influx enabled",
 			metricType:          MetricsInflux,
 			influxEnabled:       true,
@@ -162,8 +162,8 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: true,
 			expectPromEnabled:   true,
 		},
-		{ //9
-			description:         "[9] \"none\" metricsType, no metrics enabled",
+		{
+			description:         "[9] \"none\" metricsType, no metrics enabled. Run server anyway",
 			metricType:          MetricsNone,
 			influxEnabled:       false,
 			prometheusEnabled:   false,
@@ -171,8 +171,8 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: false,
 			expectPromEnabled:   false,
 		},
-		{ //10
-			description:         "[10] \"none\" metricsType, no metrics enabled",
+		{
+			description:         "[10] \"none\" metricsType, Prometheus enabled",
 			metricType:          MetricsNone,
 			influxEnabled:       false,
 			prometheusEnabled:   false,
@@ -180,8 +180,8 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: false,
 			expectPromEnabled:   false,
 		},
-		{ //11
-			description:         "11",
+		{
+			description:         "[11] \"none\" metricsType, Influx enabled",
 			metricType:          MetricsNone,
 			influxEnabled:       true,
 			prometheusEnabled:   false,
@@ -189,8 +189,8 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectInfluxEnabled: true,
 			expectPromEnabled:   false,
 		},
-		{ //12
-			description:         "12",
+		{
+			description:         "[12] \"none\" metricsType, both Prometheus and Influx enabled",
 			metricType:          MetricsNone,
 			influxEnabled:       true,
 			prometheusEnabled:   true,
