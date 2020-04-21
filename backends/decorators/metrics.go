@@ -15,6 +15,7 @@ type backendWithMetrics struct {
 }
 
 func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error) {
+
 	b.metrics.RecordGetBackendTotal()
 	start := time.Now()
 	val, err := b.delegate.Get(ctx, key)
@@ -27,6 +28,7 @@ func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error
 }
 
 func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+
 	if strings.HasPrefix(value, backends.XML_PREFIX) {
 		b.metrics.RecordPutBackendXml()
 	} else if strings.HasPrefix(value, backends.JSON_PREFIX) {

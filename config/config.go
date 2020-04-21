@@ -126,7 +126,6 @@ func (cfg *Compression) validateAndLog() {
 	case CompressionSnappy:
 		log.Infof("config.compression.type: %s", cfg.Type)
 	default:
-		//err = fmt.Errorf(`invalid config.compression.type: %s. It must be "none" or "snappy"`, cfg.Type)
 		log.Fatalf(`invalid config.compression.type: %s. It must be "none" or "snappy"`, cfg.Type)
 	}
 }

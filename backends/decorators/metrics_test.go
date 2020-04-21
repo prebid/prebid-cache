@@ -21,6 +21,7 @@ func (b *failedBackend) Put(ctx context.Context, key string, value string, ttlSe
 }
 
 func TestGetSuccessMetrics(t *testing.T) {
+
 	m := metricstest.CreateMockMetrics()
 	rawBackend := backends.NewMemoryBackend()
 	rawBackend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
@@ -32,6 +33,7 @@ func TestGetSuccessMetrics(t *testing.T) {
 }
 
 func TestGetErrorMetrics(t *testing.T) {
+
 	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(&failedBackend{}, m)
 	backend.Get(context.Background(), "foo")
@@ -41,6 +43,7 @@ func TestGetErrorMetrics(t *testing.T) {
 }
 
 func TestPutSuccessMetrics(t *testing.T) {
+
 	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
@@ -51,6 +54,7 @@ func TestPutSuccessMetrics(t *testing.T) {
 }
 
 func TestTTLDefinedMetrics(t *testing.T) {
+
 	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 1)
@@ -59,6 +63,7 @@ func TestTTLDefinedMetrics(t *testing.T) {
 }
 
 func TestPutErrorMetrics(t *testing.T) {
+
 	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(&failedBackend{}, m)
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
@@ -68,6 +73,7 @@ func TestPutErrorMetrics(t *testing.T) {
 }
 
 func TestJsonPayloadMetrics(t *testing.T) {
+
 	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", "json{\"key\":\"value\"", 0)
@@ -77,6 +83,7 @@ func TestJsonPayloadMetrics(t *testing.T) {
 }
 
 func TestPutSizeSampling(t *testing.T) {
+
 	m := metricstest.CreateMockMetrics()
 	payload := `json{"key":"value"}`
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
@@ -86,6 +93,7 @@ func TestPutSizeSampling(t *testing.T) {
 }
 
 func TestInvalidPayloadMetrics(t *testing.T) {
+
 	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", "bar", 0)
