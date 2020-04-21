@@ -138,7 +138,6 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 		},
 		MetricsName: MetricsPrometheus,
 	}
-	promMetrics.ExtraTTL.ExtraTTLSeconds.Observe(5000.00)
 
 	// Should be the equivalent of the following influx collectors
 	// go metrics.CaptureRuntimeMemStats(m.Registry, flushTime)

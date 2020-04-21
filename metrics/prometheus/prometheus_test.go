@@ -344,10 +344,8 @@ func TestConnectionMetrics(t *testing.T) {
 func TestExtraTTLMetrics(t *testing.T) {
 	m := createPrometheusMetricsForTesting()
 
-	assertHistogram(t, "Assert the extra time to live in seconds allocated when metrics were created", m.ExtraTTL.ExtraTTLSeconds, 1, 5000.00)
-
 	m.RecordExtraTTLSeconds(5)
-	assertHistogram(t, "Assert the extra time to live in seconds was logged", m.ExtraTTL.ExtraTTLSeconds, 2, 5005.00)
+	assertHistogram(t, "Assert the extra time to live in seconds was logged", m.ExtraTTL.ExtraTTLSeconds, 1, 5.00)
 }
 
 func TestMetricCountGatekeeping(t *testing.T) {
