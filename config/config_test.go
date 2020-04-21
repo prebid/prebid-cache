@@ -161,7 +161,12 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			prometheusEnabled: false,
 			metricType:        "none",
 			expectedError:     false,
-			expectedLogInfo:   nil,
+			expectedLogInfo: []logComponents{
+				{
+					msg: "Prebid Cache will run without metrics",
+					lvl: logrus.InfoLevel,
+				},
+			},
 		},
 		{
 			description:       "[2] metricType = \"none\"; prometheus flag on",
@@ -241,7 +246,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectedLogInfo: append(
 				prometheusSuccess,
 				logComponents{
-					msg: "Prebid Cache will continue without the use of unsupported metrics \"trendalyze\".",
+					msg: "Prebid Cache will run without unsupported metrics \"trendalyze\".",
 					lvl: logrus.InfoLevel,
 				},
 			),
@@ -255,7 +260,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectedLogInfo: append(
 				influxSuccess,
 				logComponents{
-					msg: "Prebid Cache will continue without the use of unsupported metrics \"trendalyze\".",
+					msg: "Prebid Cache will run without unsupported metrics \"trendalyze\".",
 					lvl: logrus.InfoLevel,
 				},
 			),
@@ -272,7 +277,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 				prometheusSuccess[1],
 				prometheusSuccess[2],
 				logComponents{
-					msg: "Prebid Cache will continue without the use of unsupported metrics \"trendalyze\".",
+					msg: "Prebid Cache will run without unsupported metrics \"trendalyze\".",
 					lvl: logrus.InfoLevel,
 				},
 			),
@@ -760,8 +765,8 @@ metrics:
     enabled: true
   prometheus:
     port: 8080
-    namespace: "default-prometheus-namespace"
-    subsystem: "default-prometheus-subsystem"
+    namespace: "prebid"
+    subsystem: "cache"
     timeout_ms: 100
     enabled: true
 `

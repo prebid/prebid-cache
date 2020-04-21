@@ -157,15 +157,19 @@ func (cfg *Metrics) validateAndLog() {
 		metricsEnabled = true
 	}
 
-	// Was any other metrics system besides "InfluxDB" or "Prometheus" specified in `cfg.Type`?
-	if cfg.Type != MetricsNone && cfg.Type != MetricsInflux && cfg.Type != "" {
+	if cfg.Type == MetricsNone {
+		if !metricsEnabled {
+			log.Infof("Prebid Cache will run without metrics")
+		}
+	} else if cfg.Type != MetricsInflux && cfg.Type != "" {
+		// Was any other metrics system besides "InfluxDB" or "Prometheus" specified in `cfg.Type`?
 		if metricsEnabled {
 			// Prometheus, Influx or both, are enabled. Log a message explaining that `prebid-cache` will
 			// continue with supported metrics and non-supported metrics will be disabled
-			log.Infof("Prebid Cache will continue without the use of unsupported metrics \"%s\".", cfg.Type)
+			log.Infof("Prebid Cache will run without unsupported metrics \"%s\".", cfg.Type)
 		} else {
 			// The only metrics engine specified in the configuration file is a non-supported
-			// metrics engine, log error and exit program
+			// metrics engine. We should log error and exit program
 			log.Fatalf("Metrics \"%s\" are not supported, exiting program.", cfg.Type)
 		}
 	}
