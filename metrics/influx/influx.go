@@ -109,17 +109,16 @@ func CreateInfluxMetrics() *InfluxMetrics {
 // Export begins sending metrics to the configured database.
 // This method blocks indefinitely, so it should probably be run in a goroutine.
 func (m InfluxMetrics) Export(cfg config.Metrics) {
-	if cfg.Influx.Host != "" {
-		logrus.Infof("Metrics will be exported to Influx with host=%s, db=%s, username=%s", cfg.Influx.Host, cfg.Influx.Database, cfg.Influx.Username)
-		influxdb.InfluxDB(
-			m.Registry,
-			TenSeconds,
-			cfg.Influx.Host,
-			cfg.Influx.Database,
-			cfg.Influx.Username,
-			cfg.Influx.Password,
-		)
-	}
+
+	logrus.Infof("Metrics will be exported to Influx with host=%s, db=%s, username=%s", cfg.Influx.Host, cfg.Influx.Database, cfg.Influx.Username)
+	influxdb.InfluxDB(
+		m.Registry,
+		TenSeconds,
+		cfg.Influx.Host,
+		cfg.Influx.Database,
+		cfg.Influx.Username,
+		cfg.Influx.Password,
+	)
 	return
 }
 

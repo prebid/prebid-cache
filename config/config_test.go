@@ -1,7 +1,6 @@
 package config
 
 import (
-	_ "fmt"
 	"os"
 	"strings"
 	"testing"
@@ -80,14 +79,19 @@ func TestEnvConfig(t *testing.T) {
 }
 
 func TestLogValidateAndLog(t *testing.T) {
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := test.NewGlobal()
 
+	// Define object to run `validateAndLog()` on
 	configLogObject := Log{
 		Level: Debug,
 	}
 
+	// run test
 	configLogObject.validateAndLog()
 
+	// Assert logrus entries
 	if !assert.Equal(t, 1, len(hook.Entries), "No entries were logged to logrus.") {
 		return
 	}
@@ -98,116 +102,48 @@ func TestLogValidateAndLog(t *testing.T) {
 		return
 	}
 
+	// Reset logrus
 	hook.Reset()
 	assert.Nil(t, hook.LastEntry())
 }
 
 func TestCheckMetricsEnabled(t *testing.T) {
-	/* | cfg.Influx.Enabled | cfg.Prometheus.Enabled | cfg.Type ||
-		---|--------------------|------------------------|----------||-------------
-		  1|      false         |       false            | "none"   ||  go ahead no metrics
-		  2|      false         |       true             | "none"   ||  prometheus metrics
-		  3|      true          |       false            | "none"   ||  influx metrics
-		  4|      true          |       true             | "none"   ||  both prometheus and influx
 
-		  1|      false         |       false            | "influx" ||  influx metrics
-		  2|      false         |       true             | "influx" ||  prometheus metrics
-		  3|      true          |       false            | "influx" ||  influx metrics
-		  4|      true          |       true             | "influx" ||  both prometheus and influx
+	// Structure to hold the expected log entry values
+	type logComponents struct {
+		msg string
+		lvl logrus.Level
+	}
+	// Expected log entries when we succeed in activating metrics
+	// Prometheus success
+	prometheusSuccess := []logComponents{
+		{
+			msg: "config.metrics.prometheus.namespace: prebid",
+			lvl: logrus.InfoLevel,
+		},
+		{
+			msg: "config.metrics.prometheus.subsystem: cache",
+			lvl: logrus.InfoLevel,
+		},
+		{
+			msg: "config.metrics.prometheus.port: 8080",
+			lvl: logrus.InfoLevel,
+		},
+	}
 
-		  1|      false         |       false            | "Trendalyze" ||  exit error
-		  2|      false         |       true             | "Trendalyze" ||  prometheus metrics
-		  3|      true          |       false            | "Trendalyze" ||  influx metrics
-		  4|      true          |       true             | "Trendalyze" ||  both prometheus and influx
+	// Influx success
+	influxSuccess := []logComponents{
+		{
+			msg: "config.metrics.influx.host: http://fakeurl.com",
+			lvl: logrus.InfoLevel,
+		},
+		{
+			msg: "config.metrics.influx.database: database-value",
+			lvl: logrus.InfoLevel,
+		},
+	}
 
-	// metricType = "none" area
-		description: "[1] metricType = \"none\"; both prometheus and influx flags off. Continue with no metrics, no log to assert",
-			influxEnabled:       false,
-			prometheusEnabled:   false,
-			metricType:          "none",
-			expectInfluxEnabled: false,
-			expectPromEnabled:   false,
-			expectError:         false,
-		description: "[2] metricType = \"none\"; prometheus flag on",
-			influxEnabled:       false,
-			prometheusEnabled:   true,
-			metricType:          "none",
-			expectInfluxEnabled: false,
-			expectPromEnabled:   true,
-			expectError:         false,
-		description: "[3] metricType = \"none\"; influx flag on",
-			influxEnabled:       true,
-			prometheusEnabled:   false,
-			metricType:          "none",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   false,
-			expectError:         false,
-		description: "[4] both prometheus and influx enabled flags on",
-			influxEnabled:       true,
-			prometheusEnabled:   true,
-			metricType:          "none",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   true,
-			expectError:         false,
-	// metricType = "influx" area
-		description: "[5] metricType = \"influx\"; both prometheus and influx flags off",
-			influxEnabled:       false,
-			prometheusEnabled:   false,
-			metricType:          "influx",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   false,
-			expectError:         false,
-		description: "[6] metricType = \"influx\"; prometheus flags on",
-			influxEnabled:       false,
-			prometheusEnabled:   true,
-			metricType:          "influx",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   true,
-			expectError:         false,
-		description: "[7] metricType = \"influx\"; inlfux flags on",
-			influxEnabled:       true,
-			prometheusEnabled:   false,
-			metricType:          "influx",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   false,
-			expectError:         false,
-		description: "[8] metricType = \"influx\"; prometheus and inlfux flags on",
-			influxEnabled:       true,
-			prometheusEnabled:   true,
-			metricType:          "influx",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   true,
-			expectError:         false,
-	// other metrics system in the `cfg.Type` field
-		description: "[9] metricType = \"trendalyze\"; both prometheus and influx flags off. Exit error",
-			influxEnabled:       false,
-			prometheusEnabled:   false,
-			metricType:          "trendalyze",
-			expectInfluxEnabled: false,
-			expectPromEnabled:   false,
-			expectError:         true,
-		description: "[10] metricType = \"trendalyze\"; prometheus flags on.",
-			influxEnabled:       false,
-			prometheusEnabled:   true,
-			metricType:          "trendalyze",
-			expectInfluxEnabled: false,
-			expectPromEnabled:   true,
-			expectError:         false,
-		description: "[11] metricType = \"trendalyze\"; influx flags on."
-			influxEnabled:       true,
-			prometheusEnabled:   false,
-			metricType:          "trendalyze",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   false,
-			expectError:         false,
-		description: "[12] metricType = \"trendalyze\"; prometheus and inlfux flags on"
-			influxEnabled:       true,
-			prometheusEnabled:   true,
-			metricType:          "trendalyze",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   true,
-			expectError:         false,
-	*/
+	// test cases
 	type aTest struct {
 		description string
 		// In
@@ -215,122 +151,135 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		prometheusEnabled bool
 		metricType        MetricsType
 		// Out
-		expectInfluxEnabled bool
-		expectPromEnabled   bool
-		expectError         bool
+		expectedError   bool
+		expectedLogInfo []logComponents
 	}
 	testCases := []aTest{
 		{
-			description:         "[1] metricType = \"none\"; both prometheus and influx flags off. Continue with no metrics, no log to assert",
-			influxEnabled:       false,
-			prometheusEnabled:   false,
-			metricType:          "none",
-			expectInfluxEnabled: false,
-			expectPromEnabled:   false,
-			expectError:         false,
+			description:       "[1] metricType = \"none\"; both prometheus and influx flags off. Continue with no metrics, no log to assert",
+			influxEnabled:     false,
+			prometheusEnabled: false,
+			metricType:        "none",
+			expectedError:     false,
+			expectedLogInfo:   nil,
 		},
 		{
-			description:         "[2] metricType = \"none\"; prometheus flag on",
-			influxEnabled:       false,
-			prometheusEnabled:   true,
-			metricType:          "none",
-			expectInfluxEnabled: false,
-			expectPromEnabled:   true,
-			expectError:         false,
+			description:       "[2] metricType = \"none\"; prometheus flag on",
+			influxEnabled:     false,
+			prometheusEnabled: true,
+			metricType:        "none",
+			expectedError:     false,
+			expectedLogInfo:   prometheusSuccess,
 		},
 		{
-			description:         "[3] metricType = \"none\"; InfluxDB flag on",
-			influxEnabled:       true,
-			prometheusEnabled:   false,
-			metricType:          "none",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   false,
-			expectError:         false,
+			description:       "[3] metricType = \"none\"; InfluxDB flag on",
+			influxEnabled:     true,
+			prometheusEnabled: false,
+			metricType:        "none",
+			expectedError:     false,
+			expectedLogInfo:   influxSuccess,
 		},
 		{
-			description:         "[4] metricType = \"none\"; Both prometheus and influx flags on",
-			influxEnabled:       true,
-			prometheusEnabled:   true,
-			metricType:          "none",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   true,
-			expectError:         false,
-		},
-		// -------
-		{
-			description:         "[5] metricType = \"influx\"; both prometheus and influx flags off",
-			influxEnabled:       false,
-			prometheusEnabled:   false,
-			metricType:          "influx",
-			expectInfluxEnabled: false,
-			expectPromEnabled:   false,
-			expectError:         false,
+			description:       "[4] metricType = \"none\"; Both prometheus and influx flags on",
+			influxEnabled:     true,
+			prometheusEnabled: true,
+			metricType:        "none",
+			expectedError:     false,
+			expectedLogInfo:   append(influxSuccess, prometheusSuccess...),
 		},
 		{
-			description:         "[6] metricType = \"influx\"; prometheus flags on",
-			influxEnabled:       false,
-			prometheusEnabled:   true,
-			metricType:          "influx",
-			expectInfluxEnabled: false,
-			expectPromEnabled:   true,
-			expectError:         false,
+			description:       "[5] metricType = \"influx\"; both prometheus and influx flags off, expect influx success",
+			influxEnabled:     false,
+			prometheusEnabled: false,
+			metricType:        "influx",
+			expectedError:     false,
+			expectedLogInfo:   influxSuccess,
 		},
 		{
-			description:         "[7] metricType = \"influx\"; inlfux flags on",
-			influxEnabled:       true,
-			prometheusEnabled:   false,
-			metricType:          "influx",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   false,
-			expectError:         false,
+			description:       "[6] metricType = \"influx\"; prometheus flags on, expect both metrics",
+			influxEnabled:     false,
+			prometheusEnabled: true,
+			metricType:        "influx",
+			expectedError:     false,
+			expectedLogInfo:   append(influxSuccess, prometheusSuccess...),
 		},
 		{
-			description:         "[8] metricType = \"influx\"; prometheus and inlfux flags on",
-			influxEnabled:       true,
-			prometheusEnabled:   true,
-			metricType:          "influx",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   true,
-			expectError:         false,
-		},
-		// -------
-		{
-			description:         "[9] metricType = \"trendalyze\"; both prometheus and influx flags off. Exit error",
-			influxEnabled:       false,
-			prometheusEnabled:   false,
-			metricType:          "trendalyze",
-			expectInfluxEnabled: false,
-			expectPromEnabled:   false,
-			expectError:         true,
+			description:       "[7] metricType = \"influx\"; inlfux flags on",
+			influxEnabled:     true,
+			prometheusEnabled: false,
+			metricType:        "influx",
+			expectedError:     false,
+			expectedLogInfo:   influxSuccess,
 		},
 		{
-			description:         "[10] metricType = \"trendalyze\"; prometheus flags on.",
-			influxEnabled:       false,
-			prometheusEnabled:   true,
-			metricType:          "trendalyze",
-			expectInfluxEnabled: false,
-			expectPromEnabled:   true,
-			expectError:         false,
+			description:       "[8] metricType = \"influx\"; prometheus and inlfux flags on",
+			influxEnabled:     true,
+			prometheusEnabled: true,
+			metricType:        "influx",
+			expectedError:     false,
+			expectedLogInfo:   append(influxSuccess, prometheusSuccess...),
 		},
 		{
-			description:         "[11] metricType = \"trendalyze\"; influx flags on.",
-			influxEnabled:       true,
-			prometheusEnabled:   false,
-			metricType:          "trendalyze",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   false,
-			expectError:         false,
+			description:       "[9] metricType = \"trendalyze\"; both prometheus and influx flags off. Exit error",
+			influxEnabled:     false,
+			prometheusEnabled: false,
+			metricType:        "trendalyze",
+			expectedError:     true,
+			expectedLogInfo: []logComponents{
+				{
+					msg: "Metrics \"trendalyze\" are not supported, exiting program.",
+					lvl: logrus.FatalLevel,
+				},
+			},
 		},
 		{
-			description:         "[12] metricType = \"trendalyze\"; prometheus and inlfux flags on",
-			influxEnabled:       true,
-			prometheusEnabled:   true,
-			metricType:          "trendalyze",
-			expectInfluxEnabled: true,
-			expectPromEnabled:   true,
-			expectError:         false,
+			description:       "[10] metricType = \"trendalyze\"; prometheus flags on.",
+			influxEnabled:     false,
+			prometheusEnabled: true,
+			metricType:        "trendalyze",
+			expectedError:     false,
+			expectedLogInfo: append(
+				prometheusSuccess,
+				logComponents{
+					msg: "Prebid Cache will continue without the use of unsupported metrics \"trendalyze\".",
+					lvl: logrus.InfoLevel,
+				},
+			),
+		},
+		{
+			description:       "[11] metricType = \"trendalyze\"; influx flags on.",
+			influxEnabled:     true,
+			prometheusEnabled: false,
+			metricType:        "trendalyze",
+			expectedError:     false,
+			expectedLogInfo: append(
+				influxSuccess,
+				logComponents{
+					msg: "Prebid Cache will continue without the use of unsupported metrics \"trendalyze\".",
+					lvl: logrus.InfoLevel,
+				},
+			),
+		},
+		{
+			description:       "[12] metricType = \"trendalyze\"; prometheus and inlfux flags on",
+			influxEnabled:     true,
+			prometheusEnabled: true,
+			metricType:        "trendalyze",
+			expectedError:     false,
+			expectedLogInfo: append(
+				influxSuccess,
+				prometheusSuccess[0],
+				prometheusSuccess[1],
+				prometheusSuccess[2],
+				logComponents{
+					msg: "Prebid Cache will continue without the use of unsupported metrics \"trendalyze\".",
+					lvl: logrus.InfoLevel,
+				},
+			),
 		},
 	}
+
+	//Standard elements of the config.Metrics object are set so test cases only modify what's relevant to them
 	cfg := &Metrics{
 		Influx: InfluxMetrics{
 			Host:     "http://fakeurl.com",
@@ -342,25 +291,49 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			Subsystem: "cache",
 		},
 	}
-	for _, test := range testCases {
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	var fatal bool
+	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+
+	for i, test := range testCases {
+		// Reset the fatal flag to false every test
+		fatal = false
+
+		// Set test flags in metrics object
 		cfg.Type = test.metricType
 		cfg.Influx.Enabled = test.influxEnabled
 		cfg.Prometheus.Enabled = test.prometheusEnabled
 
-		actualErr := cfg.validateAndLog()
+		//run test
+		cfg.validateAndLog()
 
-		assertBoolsEqual(t, "metrics.influx.enabled", cfg.Influx.Enabled, test.expectInfluxEnabled)
-		assertBoolsEqual(t, "metrics.prometheus.enabled", cfg.Prometheus.Enabled, test.expectPromEnabled)
-
-		if test.expectError {
-			assert.Error(t, actualErr, "We should get a no-metrics-enabled error", test.description)
+		// Assert logrus expected entries
+		if assert.Equal(t, len(test.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(test.expectedLogInfo) = %d len(hook.Entries) = %d", i+1, len(test.expectedLogInfo), len(hook.Entries)) {
+			for j := 0; j < len(test.expectedLogInfo); j++ {
+				assert.Equal(t, test.expectedLogInfo[j].msg, hook.Entries[j].Message, "Test case %d failed", i)
+				assert.Equal(t, test.expectedLogInfo[j].lvl, hook.Entries[j].Level, "Test case %d failed", i)
+			}
 		} else {
-			assert.NoError(t, actualErr, "We shouldn't have gotten a no-metrics-enabled error. Description: %s \n", test.description)
+			return
 		}
+
+		// Assert log.Fatalf() was called or not
+		assert.Equal(t, test.expectedError, fatal, "Test case %d failed.", i)
+
+		//Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
 	}
 }
 
 func TestInfluxValidateAndLog(t *testing.T) {
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := test.NewGlobal()
 
 	type logComponents struct {
@@ -377,37 +350,80 @@ func TestInfluxValidateAndLog(t *testing.T) {
 	}
 	testCases := []aTest{
 		{
-			description: "[1] both InfluxDB host and database blank, expect error",
+			description: "[0] both InfluxDB host and database blank, expect error",
 			influxConfig: &InfluxMetrics{
 				Host:     "",
 				Database: "",
 			},
 			//out
-			expectError:     true,
-			expectedLogInfo: nil,
+			expectError: true,
+			expectedLogInfo: []logComponents{
+				{
+					msg: `Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`,
+					lvl: logrus.FatalLevel,
+				},
+				{
+					msg: `Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`,
+					lvl: logrus.FatalLevel,
+				},
+				{
+					msg: "config.metrics.influx.host: ",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.influx.database: ",
+					lvl: logrus.InfoLevel,
+				},
+			},
 		},
 		{
-			description: "[2] InfluxDB host blank, expect error",
+			description: "[1] InfluxDB host blank, expect error",
 			influxConfig: &InfluxMetrics{
 				Host:     "",
 				Database: "database-value",
 			},
 			//out
-			expectError:     true,
-			expectedLogInfo: nil,
+			expectError: true,
+			expectedLogInfo: []logComponents{
+				{
+					msg: `Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`,
+					lvl: logrus.FatalLevel,
+				},
+				{
+					msg: "config.metrics.influx.host: ",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.influx.database: database-value",
+					lvl: logrus.InfoLevel,
+				},
+			},
 		},
 		{
-			description: "[3] InfluxDB database blank, expect error",
+			description: "[2] InfluxDB database blank, expect error",
 			influxConfig: &InfluxMetrics{
 				Host:     "http://fakeurl.com",
 				Database: "",
 			},
 			//out
-			expectError:     true,
-			expectedLogInfo: nil,
+			expectError: true,
+			expectedLogInfo: []logComponents{
+				{
+					msg: `Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`,
+					lvl: logrus.FatalLevel,
+				},
+				{
+					msg: "config.metrics.influx.host: http://fakeurl.com",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.influx.database: ",
+					lvl: logrus.InfoLevel,
+				},
+			},
 		},
 		{
-			description: "[4] Valid InfluxDB host and database, expect log.Info",
+			description: "[3] Valid InfluxDB host and database, expect log.Info",
 			influxConfig: &InfluxMetrics{
 				Host:     "http://fakeurl.com",
 				Database: "database-value",
@@ -426,33 +442,39 @@ func TestInfluxValidateAndLog(t *testing.T) {
 			},
 		},
 	}
+
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	var fatal bool
+	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+
 	for j, test := range testCases {
+		// Reset the fatal flag to false every test
+		fatal = false
+
 		//run test
-		err := test.influxConfig.validateAndLog()
+		test.influxConfig.validateAndLog()
 
-		//If error, assert
-		if test.expectError {
-			assert.Error(t, err, "Error expected in test number %d", j)
+		// Assert logrus expected entries
+		if assert.Equal(t, len(test.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(test.expectedLogInfo) = %d len(hook.Entries) = %d", j, len(test.expectedLogInfo), len(hook.Entries)) {
+			for i := 0; i < len(test.expectedLogInfo); i++ {
+				assert.Equal(t, test.expectedLogInfo[i].msg, hook.Entries[i].Message, "Test case %d failed", j)
+				assert.Equal(t, test.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Test case %d failed", j)
+			}
 		} else {
-			//If not error, assert
-			assert.NoError(t, err, "No Error expected in test number %d", j)
-
-			//Further assertions
-			if !assert.Equal(t, len(test.expectedLogInfo), len(hook.Entries), "No entries were logged to logrus.") {
-				return
-			}
-			for i := 0; i < len(hook.Entries); i++ {
-				assert.Equal(t, test.expectedLogInfo[i].msg, hook.Entries[i].Message)
-				assert.Equal(t, test.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Expected Info entry in log")
-			}
-			hook.Reset()
-			assert.Nil(t, hook.LastEntry())
+			return
 		}
+
+		// Assert log.Fatalf() was called or not
+		assert.Equal(t, test.expectError, fatal)
+
+		//Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
 	}
 }
 
 func TestPrometheusValidateAndLog(t *testing.T) {
-	hook := test.NewGlobal()
 
 	type logComponents struct {
 		msg string
@@ -475,8 +497,25 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 				Subsystem: "cache",
 			},
 			//out
-			expectError:     true,
-			expectedLogInfo: nil,
+			expectError: true,
+			expectedLogInfo: []logComponents{
+				{
+					msg: `Despite being enabled, prometheus metrics came with an empty port number: config.metrics.prometheus.port = 0`,
+					lvl: logrus.FatalLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.namespace: prebid",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.subsystem: cache",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.port: 0",
+					lvl: logrus.InfoLevel,
+				},
+			},
 		},
 		{
 			description: "[2] Port valid, Namespace invalid, Subsystem valid. Expect error",
@@ -486,8 +525,25 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 				Subsystem: "cache",
 			},
 			//out
-			expectError:     true,
-			expectedLogInfo: nil,
+			expectError: true,
+			expectedLogInfo: []logComponents{
+				{
+					msg: `Despite being enabled, prometheus metrics came with an empty name space: config.metrics.prometheus.namespace = .`,
+					lvl: logrus.FatalLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.namespace: ",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.subsystem: cache",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.port: 8080",
+					lvl: logrus.InfoLevel,
+				},
+			},
 		},
 		{
 			description: "[3] Port valid, Namespace valid, Subsystem invalid. Expect error",
@@ -497,11 +553,28 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 				Subsystem: "",
 			},
 			//out
-			expectError:     true,
-			expectedLogInfo: nil,
+			expectError: true,
+			expectedLogInfo: []logComponents{
+				{
+					msg: `Despite being enabled, prometheus metrics came with an empty subsystem value: config.metrics.prometheus.subsystem = \"\".`,
+					lvl: logrus.FatalLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.namespace: prebid",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.subsystem: ",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.port: 8080",
+					lvl: logrus.InfoLevel,
+				},
+			},
 		},
 		{
-			description: "[3] Port valid, Namespace valid, Subsystem valid. Expect elements in log",
+			description: "[4] Port valid, Namespace valid, Subsystem valid. Expect elements in log",
 			prometheusConfig: &PrometheusMetrics{
 				Port:      8080,
 				Namespace: "prebid",
@@ -525,32 +598,44 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 			},
 		},
 	}
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	var fatal bool
+	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+
 	for j, test := range testCases {
+		// Reset the fatal flag to false every test
+		fatal = false
+
 		//run test
-		err := test.prometheusConfig.validateAndLog()
+		test.prometheusConfig.validateAndLog()
 
-		//If error, assert
-		if test.expectError {
-			assert.Error(t, err, "Error expected in test number %d", j)
-		} else {
-			//If not error, assert
-			assert.NoError(t, err, "No Error expected in test number %d", j)
-
-			//Further assertions
-			if !assert.Equal(t, len(test.expectedLogInfo), len(hook.Entries), "No entries were logged to logrus.") {
-				return
-			}
-			for i := 0; i < len(hook.Entries); i++ {
+		// Assert logrus expected entries
+		if assert.Equal(t, len(test.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(test.expectedLogInfo) = %d len(hook.Entries) = %d", j, len(test.expectedLogInfo), len(hook.Entries)) {
+			for i := 0; i < len(test.expectedLogInfo); i++ {
 				assert.Equal(t, test.expectedLogInfo[i].msg, hook.Entries[i].Message)
 				assert.Equal(t, test.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Expected Info entry in log")
 			}
-			hook.Reset()
-			assert.Nil(t, hook.LastEntry())
+		} else {
+			return
 		}
+
+		// Assert log.Fatalf() was called or not
+		assert.Equal(t, test.expectError, fatal)
+
+		//Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
 	}
 }
 
 func TestCompressionValidateAndLog(t *testing.T) {
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := test.NewGlobal()
 
 	type logComponents struct {
@@ -588,15 +673,20 @@ func TestCompressionValidateAndLog(t *testing.T) {
 		},
 	}
 
+	//substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
 
 	for j, tc := range testCases {
+		// Reset the fatal flag to false every test
 		fatal = false
+
+		//run test
 		tc.compConf.validateAndLog()
 
-		if assert.Equal(t, len(tc.expectedLogInfo), len(hook.Entries), "No entries were logged to logrus in test %d: len(tc.expectedLogInfo) = %d len(hook.Entries) = %d", j, len(tc.expectedLogInfo), len(hook.Entries)) {
+		// Assert logrus expected entries
+		if assert.Equal(t, len(tc.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.expectedLogInfo) = %d len(hook.Entries) = %d", j, len(tc.expectedLogInfo), len(hook.Entries)) {
 			for i := 0; i < len(tc.expectedLogInfo); i++ {
 				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message)
 				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Expected Info entry in log")
@@ -605,8 +695,10 @@ func TestCompressionValidateAndLog(t *testing.T) {
 			return
 		}
 
+		// Assert log.Fatalf() was called or not
 		assert.Equal(t, tc.expectFatal, fatal)
 
+		//Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
 	}
