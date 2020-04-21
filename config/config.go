@@ -61,15 +61,20 @@ type Configuration struct {
 
 // ValidateAndLog validates the config, terminating the program on any errors.
 // It also logs the config values that it used.
-func (cfg *Configuration) ValidateAndLog() {
+func (cfg *Configuration) ValidateAndLog() error {
 	log.Infof("config.port: %d", cfg.Port)
 	log.Infof("config.admin_port: %d", cfg.AdminPort)
 	cfg.Log.validateAndLog()
 	cfg.RateLimiting.validateAndLog()
 	cfg.RequestLimits.validateAndLog()
-	cfg.Backend.validateAndLog()
+	if err := cfg.Backend.validateAndLog(); err != nil {
+		return err
+	}
 	cfg.Compression.validateAndLog()
-	cfg.Metrics.validateAndLog()
+	if err := cfg.Metrics.validateAndLog(); err != nil {
+		return err
+	}
+	return nil
 }
 
 type Log struct {
@@ -126,6 +131,7 @@ func (cfg *Compression) validateAndLog() {
 	case CompressionSnappy:
 		log.Infof("config.compression.type: %s", cfg.Type)
 	default:
+		//err = fmt.Errorf(`invalid config.compression.type: %s. It must be "none" or "snappy"`, cfg.Type)
 		log.Fatalf(`invalid config.compression.type: %s. It must be "none" or "snappy"`, cfg.Type)
 	}
 }
@@ -143,25 +149,36 @@ type Metrics struct {
 	Prometheus PrometheusMetrics `mapstructure:"prometheus"`
 }
 
-func (cfg *Metrics) validateAndLog() {
-	var err error
-	err = cfg.checkMetricsEnabled()
+func (cfg *Metrics) validateAndLog() error {
+	metricsEnabled := false
 
-	if err != nil {
-		log.Fatalf(err.Error())
+	if cfg.Type == MetricsInflux || cfg.Influx.Enabled {
+		if err := cfg.Influx.validateAndLog(); err != nil {
+			return err
+		}
+		metricsEnabled = true
 	}
-}
 
-func (cfg *Metrics) checkMetricsEnabled() error {
-	var err error
-	cfg.Influx.Enabled = (cfg.Type == MetricsInflux || cfg.Influx.Enabled)
-	cfg.Influx.Enabled = cfg.Influx.validateAndLogMetricsData()
-	cfg.Prometheus.Enabled = cfg.Prometheus.Enabled && cfg.Prometheus.validateAndLogMetricsData()
-
-	if !cfg.Influx.Enabled && !cfg.Prometheus.Enabled && cfg.Type != MetricsNone {
-		err = fmt.Errorf("No metrics correctly specified in configuration file")
+	if cfg.Prometheus.Enabled {
+		if err := cfg.Prometheus.validateAndLog(); err != nil {
+			return err
+		}
+		metricsEnabled = true
 	}
-	return err
+
+	// Was any other metrics system besides "InfluxDB" or "Prometheus" specified in `cfg.Type`?
+	if cfg.Type != MetricsNone && cfg.Type != MetricsInflux && cfg.Type != "" {
+		if metricsEnabled {
+			// Prometheus, Influx or both, are enabled. Log a message explaining that `prebid-cache` will
+			// continue with supported metrics and non-supported metrics will be disabled
+			log.Infof("Prebid Cache will continue without the use of unsupported metrics \"%s\".", cfg.Type)
+		} else {
+			// THe only metrics engine specified in the configuration file is a non-supported
+			// metrics engine, log error and exit program
+			return fmt.Errorf("Metrics \"%s\" are not supported, exiting program.", cfg.Type)
+		}
+	}
+	return nil
 }
 
 type MetricsType string
@@ -179,20 +196,17 @@ type InfluxMetrics struct {
 	Enabled  bool   `mapstructure:"enabled"`
 }
 
-func (influxMetricsConfig *InfluxMetrics) validateAndLogMetricsData() bool {
+func (influxMetricsConfig *InfluxMetrics) validateAndLog() error {
 	if influxMetricsConfig.Host == "" {
-		influxMetricsConfig.Enabled = false
-		log.Fatalf(`Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`)
+		return fmt.Errorf(`Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`)
 	}
 	if influxMetricsConfig.Database == "" {
-		influxMetricsConfig.Enabled = false
-		log.Fatalf(`Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`)
+		return fmt.Errorf(`Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`)
 	}
-	if influxMetricsConfig.Enabled {
-		log.Infof("config.metrics.influx.host: %s", influxMetricsConfig.Host)
-		log.Infof("config.metrics.influx.database: %s", influxMetricsConfig.Database)
-	}
-	return influxMetricsConfig.Enabled
+	log.Infof("config.metrics.influx.host: %s", influxMetricsConfig.Host)
+	log.Infof("config.metrics.influx.database: %s", influxMetricsConfig.Database)
+
+	return nil
 }
 
 type PrometheusMetrics struct {
@@ -203,25 +217,21 @@ type PrometheusMetrics struct {
 	Enabled          bool   `mapstructure:"enabled"`
 }
 
-func (promMetricsConfig *PrometheusMetrics) validateAndLogMetricsData() bool {
+func (promMetricsConfig *PrometheusMetrics) validateAndLog() error {
 	if promMetricsConfig.Port == 0 {
-		promMetricsConfig.Enabled = false
-		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty port number: config.metrics.prometheus.port = 0`)
+		return fmt.Errorf(`Despite being enabled, prometheus metrics came with an empty port number: config.metrics.prometheus.port = 0`)
 	}
 	if promMetricsConfig.Namespace == "" {
-		promMetricsConfig.Enabled = false
-		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty name space: config.metrics.prometheus.namespace = %s.`, promMetricsConfig.Namespace)
+		return fmt.Errorf(`Despite being enabled, prometheus metrics came with an empty name space: config.metrics.prometheus.namespace = %s.`, promMetricsConfig.Namespace)
 	}
 	if promMetricsConfig.Subsystem == "" {
-		promMetricsConfig.Enabled = false
-		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty subsystem value: config.metrics.prometheus.subsystem = \"\".`)
+		return fmt.Errorf(`Despite being enabled, prometheus metrics came with an empty subsystem value: config.metrics.prometheus.subsystem = \"\".`)
 	}
-	if promMetricsConfig.Enabled {
-		log.Infof("config.metrics.prometheus.namespace: %s", promMetricsConfig.Namespace)
-		log.Infof("config.metrics.prometheus.subsystem: %s", promMetricsConfig.Subsystem)
-		log.Infof("config.metrics.prometheus.port: %d", promMetricsConfig.Port)
-	}
-	return promMetricsConfig.Enabled
+	log.Infof("config.metrics.prometheus.namespace: %s", promMetricsConfig.Namespace)
+	log.Infof("config.metrics.prometheus.subsystem: %s", promMetricsConfig.Subsystem)
+	log.Infof("config.metrics.prometheus.port: %d", promMetricsConfig.Port)
+
+	return nil
 }
 
 func (m *PrometheusMetrics) Timeout() time.Duration {

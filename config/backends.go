@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -13,7 +15,7 @@ type Backend struct {
 	Redis     Redis       `mapstructure:"redis"`
 }
 
-func (cfg *Backend) validateAndLog() {
+func (cfg *Backend) validateAndLog() error {
 	log.Infof("config.backend.type: %s", cfg.Type)
 	switch cfg.Type {
 	case BackendAerospike:
@@ -28,8 +30,9 @@ func (cfg *Backend) validateAndLog() {
 		cfg.Redis.validateAndLog()
 	case BackendMemory:
 	default:
-		log.Fatalf(`invalid config.backend.type: %s. It must be "aerospike", "azure", "cassandra", "memcache", "redis", or "memory".`, cfg.Type)
+		return fmt.Errorf(`invalid config.backend.type: %s. It must be "aerospike", "azure", "cassandra", "memcache", "redis", or "memory".`, cfg.Type)
 	}
+	return nil
 }
 
 type BackendType string

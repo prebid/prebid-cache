@@ -17,7 +17,9 @@ func main() {
 	log.SetOutput(os.Stdout)
 	cfg := config.NewConfig()
 	setLogLevel(cfg.Log.Level)
-	cfg.ValidateAndLog()
+	if err := cfg.ValidateAndLog(); err != nil {
+		log.Fatalf(err.Error())
+	}
 
 	appMetrics := metrics.CreateMetrics(cfg)
 	backend := backendConfig.NewBackend(cfg, appMetrics)
