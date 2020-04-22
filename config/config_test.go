@@ -282,6 +282,43 @@ func TestCheckMetricsEnabled(t *testing.T) {
 				},
 			),
 		},
+		{
+			description:       "[13] metricType = \"\"; both prometheus and influx flags off. Continue with no metrics, no log to assert",
+			influxEnabled:     false,
+			prometheusEnabled: false,
+			metricType:        "",
+			expectedError:     false,
+			expectedLogInfo: []logComponents{
+				{
+					msg: "Prebid Cache will run without metrics",
+					lvl: logrus.InfoLevel,
+				},
+			},
+		},
+		{
+			description:       "[14] metricType = \"\"; prometheus flag on",
+			influxEnabled:     false,
+			prometheusEnabled: true,
+			metricType:        "",
+			expectedError:     false,
+			expectedLogInfo:   prometheusSuccess,
+		},
+		{
+			description:       "[15] metricType = \"\"; InfluxDB flag on",
+			influxEnabled:     true,
+			prometheusEnabled: false,
+			metricType:        "",
+			expectedError:     false,
+			expectedLogInfo:   influxSuccess,
+		},
+		{
+			description:       "[16] metricType = \"\"; Both prometheus and influx flags on",
+			influxEnabled:     true,
+			prometheusEnabled: true,
+			metricType:        "",
+			expectedError:     false,
+			expectedLogInfo:   append(influxSuccess, prometheusSuccess...),
+		},
 	}
 
 	//Standard elements of the config.Metrics object are set so test cases only modify what's relevant to them
@@ -320,15 +357,15 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		// Assert logrus expected entries
 		if assert.Equal(t, len(test.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(test.expectedLogInfo) = %d len(hook.Entries) = %d", i+1, len(test.expectedLogInfo), len(hook.Entries)) {
 			for j := 0; j < len(test.expectedLogInfo); j++ {
-				assert.Equal(t, test.expectedLogInfo[j].msg, hook.Entries[j].Message, "Test case %d failed", i)
-				assert.Equal(t, test.expectedLogInfo[j].lvl, hook.Entries[j].Level, "Test case %d failed", i)
+				assert.Equal(t, test.expectedLogInfo[j].msg, hook.Entries[j].Message, "Test case %d log message differs", i+1)
+				assert.Equal(t, test.expectedLogInfo[j].lvl, hook.Entries[j].Level, "Test case %d log level differs", i+1)
 			}
 		} else {
 			return
 		}
 
 		// Assert log.Fatalf() was called or not
-		assert.Equal(t, test.expectedError, fatal, "Test case %d failed.", i)
+		assert.Equal(t, test.expectedError, fatal, "Test case %d failed.", i+1)
 
 		//Reset log after every test and assert successful reset
 		hook.Reset()
