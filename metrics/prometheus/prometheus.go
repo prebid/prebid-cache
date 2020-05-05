@@ -63,7 +63,7 @@ type PrometheusExtraTTLMetrics struct {
 
 func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	timeBuckets := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1}
-	requestSizeBuckets := []float64{0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1}
+	requestSizeBuckets := []float64{0, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576}
 	registry := prometheus.NewRegistry()
 	promMetrics := &PrometheusMetrics{
 		Registry: registry,
