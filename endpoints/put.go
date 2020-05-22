@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	uuid "github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/sirupsen/logrus"
 )
 
 // PutHandler serves "POST /cache" requests.
@@ -40,6 +40,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 		defer r.Body.Close()
 
 		put := putAnyRequestPool.Get().(*PutRequest)
+		put.Puts = make([]PutObject, 0)
 		defer putAnyRequestPool.Put(put)
 
 		err = json.Unmarshal(body, put)

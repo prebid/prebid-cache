@@ -196,3 +196,124 @@ func TestReadinessCheck(t *testing.T) {
 		t.Errorf("/status endpoint should always return a 204. Got %d", requestRecorder.Code)
 	}
 }
+
+func TestEmptyPutRequests(t *testing.T) {
+	// Test case: request with more than one element in the "puts" array
+	type aTest struct {
+		description      string
+		reqBody          string
+		expectedResponse string
+		emptyResponses   bool
+	}
+	testCases := []aTest{
+		{
+			description:      "Blank value in put element",
+			reqBody:          "{\"puts\":[{\"type\":\"xml\",\"value\":\"\"}]}",
+			expectedResponse: "{\"responses\":[\"uuid\":\"\"]}",
+			emptyResponses:   false,
+		},
+		{
+			description:      "All empty body",
+			reqBody:          "{}",
+			expectedResponse: "{\"responses\":[]}",
+			emptyResponses:   true,
+		},
+		{
+			description:      "Empty puts arrray",
+			reqBody:          "{\"puts\":[]}",
+			expectedResponse: "{\"responses\":[]}",
+			emptyResponses:   true,
+		},
+	}
+
+	// Set up server
+	router := httprouter.New()
+	backend := backends.NewMemoryBackend()
+
+	router.POST("/cache", NewPutHandler(backend, 10, true))
+
+	for j := 0; j < 1; j++ {
+		for i, test := range testCases {
+			rr := httptest.NewRecorder()
+
+			// Create request everytime
+			request, err := http.NewRequest("POST", "/cache", strings.NewReader(test.reqBody))
+			assert.NoError(t, err, "[%d] Failed to create a POST request: %v", i, err)
+
+			// Run
+			router.ServeHTTP(rr, request)
+			assert.Equal(t, http.StatusOK, rr.Code, "[%d] ServeHTTP(rr, request) failed = %v \n", i, rr.Result())
+
+			// validate results
+			if test.emptyResponses && !assert.Equal(t, test.expectedResponse, rr.Body.String(), "[%d] Text response not empty as expected", i) {
+				return
+			}
+
+			var parsed PutResponse
+			err2 := json.Unmarshal([]byte(rr.Body.String()), &parsed)
+			assert.NoError(t, err2, "[%d] Error found trying to unmarshal: %s \n", i, rr.Body.String())
+
+			if test.emptyResponses {
+				assert.Equal(t, 0, len(parsed.Responses), "[%d] This is NOT an empty response len(parsed.Responses) = %d; parsed.Responses = %v \n", i, len(parsed.Responses), parsed.Responses)
+			} else {
+				assert.Greater(t, len(parsed.Responses), 0, "[%d] This is an empty response len(parsed.Responses) = %d; parsed.Responses = %v \n", i, len(parsed.Responses), parsed.Responses)
+			}
+		}
+	}
+}
+
+func benchmarkPutHandler(b *testing.B, testCase string) {
+	b.StopTimer()
+	//Set up a request that should succeed
+	request, err := http.NewRequest("POST", "/cache", strings.NewReader(testCase))
+	if err != nil {
+		b.Errorf("Failed to create a POST request: %v", err)
+	}
+
+	//Set up server ready to run
+	router := httprouter.New()
+	backend := backends.NewMemoryBackend()
+
+	router.POST("/cache", NewPutHandler(backend, 10, true))
+	router.GET("/cache", NewGetHandler(backend, true))
+
+	rr := httptest.NewRecorder()
+
+	//for statement to execute handler function
+	for i := 0; i < b.N; i++ {
+		b.StartTimer()
+		router.ServeHTTP(rr, request)
+		b.StopTimer()
+	}
+}
+
+func BenchmarkPutHandlerLen1(b *testing.B) {
+	b.StopTimer()
+
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":\"plain text\"}]}"
+	benchmarkPutHandler(b, input)
+}
+
+func BenchmarkPutHandlerLen2(b *testing.B) {
+	b.StopTimer()
+
+	//Set up a request that should succeed
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"xml\",\"value\":\"plain text\"}]}"
+	benchmarkPutHandler(b, input)
+}
+
+func BenchmarkPutHandlerLen4(b *testing.B) {
+	b.StopTimer()
+
+	//Set up a request that should succeed
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"xml\",\"value\":\"plain text\"},{\"type\":\"xml\",\"value\":5}, {\"type\":\"json\",\"value\":\"esca\\\"ped\"}]}"
+	benchmarkPutHandler(b, input)
+}
+
+func BenchmarkPutHandlerLen8(b *testing.B) {
+	b.StopTimer()
+
+	//Set up a request that should succeed
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"xml\",\"value\":\"plain text\"},{\"type\":\"xml\",\"value\":5}, {\"type\":\"json\",\"value\":\"esca\\\"ped\"}, {\"type\":\"json\",\"value\":{\"custom_key\":\"foo\"}},{\"type\":\"xml\",\"value\":{\"custom_key\":\"foo\"}},{\"type\":\"json\",\"value\":null}, {\"type\":\"xml\",\"value\":\"<tag></tag>\"}]}"
+	benchmarkPutHandler(b, input)
+}
