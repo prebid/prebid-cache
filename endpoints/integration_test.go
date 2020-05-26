@@ -3,6 +3,7 @@ package endpoints
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -198,6 +199,64 @@ func TestReadinessCheck(t *testing.T) {
 	}
 }
 
+func TestMultiPutRequestGotStored(t *testing.T) {
+	// Test case: request with more than one element in the "puts" array
+	type aTest struct {
+		description         string
+		elemToPut           string
+		expectedStoredValue string
+	}
+	testCases := []aTest{
+		{
+			description:         "Post in JSON format that contains a bool",
+			elemToPut:           "{\"type\":\"json\",\"value\":true}",
+			expectedStoredValue: "true",
+		},
+		{
+			description:         "Post in XML format containing plain text",
+			elemToPut:           "{\"type\":\"xml\",\"value\":\"plain text\"}",
+			expectedStoredValue: "plain text",
+		},
+		{
+			description:         "Post in XML format containing escaped double quotes",
+			elemToPut:           "{\"type\":\"xml\",\"value\":\"2\"}",
+			expectedStoredValue: "2",
+		},
+	}
+	reqBody := fmt.Sprintf("{\"puts\":[%s, %s, %s]}", testCases[0].elemToPut, testCases[1].elemToPut, testCases[2].elemToPut)
+
+	request, err := http.NewRequest("POST", "/cache", strings.NewReader(reqBody))
+	if err != nil {
+		t.Errorf("Failed to create a POST request: %v", err)
+	}
+
+	//Set up server and run
+	router := httprouter.New()
+	backend := backends.NewMemoryBackend()
+
+	router.POST("/cache", NewPutHandler(backend, 10, true))
+	router.GET("/cache", NewGetHandler(backend, true))
+
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, request)
+
+	// validate results
+	var parsed PutResponse
+	err = json.Unmarshal([]byte(rr.Body.String()), &parsed)
+	if err != nil {
+		t.Errorf("Response from POST doesn't conform to the expected format: %s", rr.Body.String())
+	}
+	for i, resp := range parsed.Responses {
+		// Get value for this UUID. It is supposed to have been stored
+		getResult := doMockGet(t, router, resp.UUID)
+
+		// Assertions
+		assert.Equalf(t, http.StatusOK, getResult.Code, "Description: %s \n Multi-element put failed to store:%s \n", testCases[i].description, testCases[i].elemToPut)
+		assert.Equalf(t, testCases[i].expectedStoredValue, getResult.Body.String(), "GET response error. Expected %v. Actual %v", testCases[i].expectedStoredValue, getResult.Body.String())
+	}
+}
+
 func TestEmptyPutRequests(t *testing.T) {
 	// Test case: request with more than one element in the "puts" array
 	type aTest struct {
@@ -233,32 +292,30 @@ func TestEmptyPutRequests(t *testing.T) {
 
 	router.POST("/cache", NewPutHandler(backend, 10, true))
 
-	for j := 0; j < 1; j++ {
-		for i, test := range testCases {
-			rr := httptest.NewRecorder()
+	for i, test := range testCases {
+		rr := httptest.NewRecorder()
 
-			// Create request everytime
-			request, err := http.NewRequest("POST", "/cache", strings.NewReader(test.reqBody))
-			assert.NoError(t, err, "[%d] Failed to create a POST request: %v", i, err)
+		// Create request everytime
+		request, err := http.NewRequest("POST", "/cache", strings.NewReader(test.reqBody))
+		assert.NoError(t, err, "[%d] Failed to create a POST request: %v", i, err)
 
-			// Run
-			router.ServeHTTP(rr, request)
-			assert.Equal(t, http.StatusOK, rr.Code, "[%d] ServeHTTP(rr, request) failed = %v \n", i, rr.Result())
+		// Run
+		router.ServeHTTP(rr, request)
+		assert.Equal(t, http.StatusOK, rr.Code, "[%d] ServeHTTP(rr, request) failed = %v \n", i, rr.Result())
 
-			// validate results
-			if test.emptyResponses && !assert.Equal(t, test.expectedResponse, rr.Body.String(), "[%d] Text response not empty as expected", i) {
-				return
-			}
+		// validate results
+		if test.emptyResponses && !assert.Equal(t, test.expectedResponse, rr.Body.String(), "[%d] Text response not empty as expected", i) {
+			return
+		}
 
-			var parsed PutResponse
-			err2 := json.Unmarshal([]byte(rr.Body.String()), &parsed)
-			assert.NoError(t, err2, "[%d] Error found trying to unmarshal: %s \n", i, rr.Body.String())
+		var parsed PutResponse
+		err2 := json.Unmarshal([]byte(rr.Body.String()), &parsed)
+		assert.NoError(t, err2, "[%d] Error found trying to unmarshal: %s \n", i, rr.Body.String())
 
-			if test.emptyResponses {
-				assert.Equal(t, 0, len(parsed.Responses), "[%d] This is NOT an empty response len(parsed.Responses) = %d; parsed.Responses = %v \n", i, len(parsed.Responses), parsed.Responses)
-			} else {
-				assert.Greater(t, len(parsed.Responses), 0, "[%d] This is an empty response len(parsed.Responses) = %d; parsed.Responses = %v \n", i, len(parsed.Responses), parsed.Responses)
-			}
+		if test.emptyResponses {
+			assert.Equal(t, 0, len(parsed.Responses), "[%d] This is NOT an empty response len(parsed.Responses) = %d; parsed.Responses = %v \n", i, len(parsed.Responses), parsed.Responses)
+		} else {
+			assert.Greater(t, len(parsed.Responses), 0, "[%d] This is an empty response len(parsed.Responses) = %d; parsed.Responses = %v \n", i, len(parsed.Responses), parsed.Responses)
 		}
 	}
 }
