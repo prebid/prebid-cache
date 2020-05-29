@@ -3,6 +3,7 @@ package endpoints
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
+	"github.com/stretchr/testify/assert"
 )
 
 func doMockGet(t *testing.T, router *httprouter.Router, id string) *httptest.ResponseRecorder {
@@ -195,4 +197,183 @@ func TestReadinessCheck(t *testing.T) {
 	if requestRecorder.Code != http.StatusNoContent {
 		t.Errorf("/status endpoint should always return a 204. Got %d", requestRecorder.Code)
 	}
+}
+
+func TestMultiPutRequestGotStored(t *testing.T) {
+	// Test case: request with more than one element in the "puts" array
+	type aTest struct {
+		description         string
+		elemToPut           string
+		expectedStoredValue string
+	}
+	testCases := []aTest{
+		{
+			description:         "Post in JSON format that contains a bool",
+			elemToPut:           "{\"type\":\"json\",\"value\":true}",
+			expectedStoredValue: "true",
+		},
+		{
+			description:         "Post in XML format containing plain text",
+			elemToPut:           "{\"type\":\"xml\",\"value\":\"plain text\"}",
+			expectedStoredValue: "plain text",
+		},
+		{
+			description:         "Post in XML format containing escaped double quotes",
+			elemToPut:           "{\"type\":\"xml\",\"value\":\"2\"}",
+			expectedStoredValue: "2",
+		},
+	}
+	reqBody := fmt.Sprintf("{\"puts\":[%s, %s, %s]}", testCases[0].elemToPut, testCases[1].elemToPut, testCases[2].elemToPut)
+
+	request, err := http.NewRequest("POST", "/cache", strings.NewReader(reqBody))
+	if err != nil {
+		t.Errorf("Failed to create a POST request: %v", err)
+	}
+
+	//Set up server and run
+	router := httprouter.New()
+	backend := backends.NewMemoryBackend()
+
+	router.POST("/cache", NewPutHandler(backend, 10, true))
+	router.GET("/cache", NewGetHandler(backend, true))
+
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, request)
+
+	// validate results
+	var parsed PutResponse
+	err = json.Unmarshal([]byte(rr.Body.String()), &parsed)
+	if err != nil {
+		t.Errorf("Response from POST doesn't conform to the expected format: %s", rr.Body.String())
+	}
+	for i, resp := range parsed.Responses {
+		// Get value for this UUID. It is supposed to have been stored
+		getResult := doMockGet(t, router, resp.UUID)
+
+		// Assertions
+		assert.Equalf(t, http.StatusOK, getResult.Code, "Description: %s \n Multi-element put failed to store:%s \n", testCases[i].description, testCases[i].elemToPut)
+		assert.Equalf(t, testCases[i].expectedStoredValue, getResult.Body.String(), "GET response error. Expected %v. Actual %v", testCases[i].expectedStoredValue, getResult.Body.String())
+	}
+}
+
+func TestEmptyPutRequests(t *testing.T) {
+	// Test case: request with more than one element in the "puts" array
+	type aTest struct {
+		description      string
+		reqBody          string
+		expectedResponse string
+		emptyResponses   bool
+	}
+	testCases := []aTest{
+		{
+			description:      "Blank value in put element",
+			reqBody:          "{\"puts\":[{\"type\":\"xml\",\"value\":\"\"}]}",
+			expectedResponse: "{\"responses\":[\"uuid\":\"\"]}",
+			emptyResponses:   false,
+		},
+		// This test is meant to come right after the "Blank value in put element" test in order to assert the correction
+		// of a bug in the pre-PR#64 version of `endpoints/put.go`
+		{
+			description:      "All empty body. ",
+			reqBody:          "{}",
+			expectedResponse: "{\"responses\":[]}",
+			emptyResponses:   true,
+		},
+		{
+			description:      "Empty puts arrray",
+			reqBody:          "{\"puts\":[]}",
+			expectedResponse: "{\"responses\":[]}",
+			emptyResponses:   true,
+		},
+	}
+
+	// Set up server
+	router := httprouter.New()
+	backend := backends.NewMemoryBackend()
+
+	router.POST("/cache", NewPutHandler(backend, 10, true))
+
+	for i, test := range testCases {
+		rr := httptest.NewRecorder()
+
+		// Create request everytime
+		request, err := http.NewRequest("POST", "/cache", strings.NewReader(test.reqBody))
+		assert.NoError(t, err, "[%d] Failed to create a POST request: %v", i, err)
+
+		// Run
+		router.ServeHTTP(rr, request)
+		assert.Equal(t, http.StatusOK, rr.Code, "[%d] ServeHTTP(rr, request) failed = %v \n", i, rr.Result())
+
+		// validate results
+		if test.emptyResponses && !assert.Equal(t, test.expectedResponse, rr.Body.String(), "[%d] Text response not empty as expected", i) {
+			return
+		}
+
+		var parsed PutResponse
+		err2 := json.Unmarshal([]byte(rr.Body.String()), &parsed)
+		assert.NoError(t, err2, "[%d] Error found trying to unmarshal: %s \n", i, rr.Body.String())
+
+		if test.emptyResponses {
+			assert.Equal(t, 0, len(parsed.Responses), "[%d] This is NOT an empty response len(parsed.Responses) = %d; parsed.Responses = %v \n", i, len(parsed.Responses), parsed.Responses)
+		} else {
+			assert.Greater(t, len(parsed.Responses), 0, "[%d] This is an empty response len(parsed.Responses) = %d; parsed.Responses = %v \n", i, len(parsed.Responses), parsed.Responses)
+		}
+	}
+}
+
+func benchmarkPutHandler(b *testing.B, testCase string) {
+	b.StopTimer()
+	//Set up a request that should succeed
+	request, err := http.NewRequest("POST", "/cache", strings.NewReader(testCase))
+	if err != nil {
+		b.Errorf("Failed to create a POST request: %v", err)
+	}
+
+	//Set up server ready to run
+	router := httprouter.New()
+	backend := backends.NewMemoryBackend()
+
+	router.POST("/cache", NewPutHandler(backend, 10, true))
+	router.GET("/cache", NewGetHandler(backend, true))
+
+	rr := httptest.NewRecorder()
+
+	//for statement to execute handler function
+	for i := 0; i < b.N; i++ {
+		b.StartTimer()
+		router.ServeHTTP(rr, request)
+		b.StopTimer()
+	}
+}
+
+func BenchmarkPutHandlerLen1(b *testing.B) {
+	b.StopTimer()
+
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":\"plain text\"}]}"
+	benchmarkPutHandler(b, input)
+}
+
+func BenchmarkPutHandlerLen2(b *testing.B) {
+	b.StopTimer()
+
+	//Set up a request that should succeed
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"xml\",\"value\":\"plain text\"}]}"
+	benchmarkPutHandler(b, input)
+}
+
+func BenchmarkPutHandlerLen4(b *testing.B) {
+	b.StopTimer()
+
+	//Set up a request that should succeed
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"xml\",\"value\":\"plain text\"},{\"type\":\"xml\",\"value\":5}, {\"type\":\"json\",\"value\":\"esca\\\"ped\"}]}"
+	benchmarkPutHandler(b, input)
+}
+
+func BenchmarkPutHandlerLen8(b *testing.B) {
+	b.StopTimer()
+
+	//Set up a request that should succeed
+	input := "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"xml\",\"value\":\"plain text\"},{\"type\":\"xml\",\"value\":5}, {\"type\":\"json\",\"value\":\"esca\\\"ped\"}, {\"type\":\"json\",\"value\":{\"custom_key\":\"foo\"}},{\"type\":\"xml\",\"value\":{\"custom_key\":\"foo\"}},{\"type\":\"json\",\"value\":null}, {\"type\":\"xml\",\"value\":\"<tag></tag>\"}]}"
+	benchmarkPutHandler(b, input)
 }

@@ -29,6 +29,7 @@ require (
 	github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec
 	github.com/spf13/pflag v1.0.1
 	github.com/spf13/viper v1.0.2
+	github.com/stretchr/testify v1.5.1
 	github.com/valyala/fasthttp v0.0.0-20160617101304-d42167fd04f6
 	github.com/vrischmann/go-metrics-influxdb v0.0.0-20160917065939-43af8332c303
 	github.com/yuin/gopher-lua v0.0.0-20180630135845-46796da1b0b4
@@ -37,5 +38,5 @@ require (
 	golang.org/x/text v0.3.0
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2
 	gopkg.in/inf.v0 v0.9.1
-	gopkg.in/yaml.v2 v2.2.1
+	gopkg.in/yaml.v2 v2.2.2
 )
