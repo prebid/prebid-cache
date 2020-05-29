@@ -272,8 +272,10 @@ func TestEmptyPutRequests(t *testing.T) {
 			expectedResponse: "{\"responses\":[\"uuid\":\"\"]}",
 			emptyResponses:   false,
 		},
+		// This test is meant to come right after the "Blank value in put element" test in order to assert the correction
+		// of a bug in the pre-PR#64 version of `endpoints/put.go`
 		{
-			description:      "All empty body",
+			description:      "All empty body. ",
 			reqBody:          "{}",
 			expectedResponse: "{\"responses\":[]}",
 			emptyResponses:   true,
