@@ -42,6 +42,7 @@ func NewPutHandler(backendClient backends.Backend, maxNumValues int, allowKeys b
 		backend := &backendCallObject{client: backendClient, allowKeys: allowKeys}
 
 		backend.put = putAnyRequestPool.Get().(*PutRequest)
+    backend.put.Puts = make([]PutObject, 0)
 		defer putAnyRequestPool.Put(backend.put)
 
 		err = json.Unmarshal(body, backend.put)
