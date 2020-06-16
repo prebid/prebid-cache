@@ -2,10 +2,39 @@ package decorators
 
 import (
 	"github.com/julienschmidt/httprouter"
+	"github.com/prebid/prebid-cache/metrics"
 	"net/http"
 	"time"
-	"github.com/prebid/prebid-cache/metrics"
 )
+
+const (
+	PostMethod = 1
+	GetMethod  = 2
+)
+
+type metricsFunctions struct {
+	LogSuccess    func()
+	LogDuration   func(duration time.Duration)
+	LogBadRequest func()
+	LogError      func()
+}
+
+func assignMetricsFunctions(m *metrics.Metrics, method int) *metricsFunctions {
+	metrics := &metricsFunctions{}
+	switch method {
+	case PostMethod:
+		metrics.LogSuccess = m.RecordPutTotal
+		metrics.LogDuration = m.RecordPutDuration
+		metrics.LogBadRequest = m.RecordPutBadRequest
+		metrics.LogError = m.RecordPutError
+	case GetMethod:
+		metrics.LogSuccess = m.RecordGetTotal
+		metrics.LogDuration = m.RecordGetDuration
+		metrics.LogBadRequest = m.RecordGetBadRequest
+		metrics.LogError = m.RecordGetError
+	}
+	return metrics
+}
 
 type writerWithStatus struct {
 	delegate   http.ResponseWriter
@@ -28,9 +57,10 @@ func (w *writerWithStatus) Header() http.Header {
 	return w.delegate.Header()
 }
 
-func MonitorHttp(handler httprouter.Handle, entry *metrics.MetricsEntry) httprouter.Handle {
+func MonitorHttp(handler httprouter.Handle, m *metrics.Metrics, method int) httprouter.Handle {
 	return httprouter.Handle(func(resp http.ResponseWriter, req *http.Request, params httprouter.Params) {
-		entry.Request.Mark(1)
+		mf := assignMetricsFunctions(m, method)
+		mf.LogSuccess()
 		wrapper := writerWithStatus{
 			delegate: resp,
 		}
@@ -40,11 +70,11 @@ func MonitorHttp(handler httprouter.Handle, entry *metrics.MetricsEntry) httprou
 		respCode := wrapper.statusCode
 		// If the calling function never calls WriterHeader explicitly, Go auto-fills it with a 200
 		if respCode == 0 || respCode >= 200 && respCode < 300 {
-			entry.Duration.UpdateSince(start)
+			mf.LogDuration(time.Since(start))
 		} else if respCode >= 400 && respCode < 500 {
-			entry.BadRequest.Mark(1)
+			mf.LogBadRequest()
 		} else {
-			entry.Errors.Mark(1)
+			mf.LogError()
 		}
 	})
 }

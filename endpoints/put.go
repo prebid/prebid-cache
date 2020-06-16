@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	uuid "github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/prebid/prebid-cache/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -88,11 +88,9 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			}
 
 			logrus.Debugf("Storing value: %s", toCache)
-			u2, err := uuid.NewV4()
-			if err != nil {
+			if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
 				http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
 			}
-			resps.Responses[i].UUID = u2.String()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()

@@ -2,69 +2,113 @@ package decorators
 
 import (
 	"github.com/julienschmidt/httprouter"
-	pbcmetrics "github.com/prebid/prebid-cache/metrics"
-	"github.com/rcrowley/go-metrics"
+	"github.com/prebid/prebid-cache/metrics/metricstest"
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"github.com/prebid/prebid-cache/metrics/metricstest"
 )
 
-func TestSuccessMetrics(t *testing.T) {
+func TestGetRequestSuccessMetrics(t *testing.T) {
 	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 		w.WriteHeader(200)
 	}
-	entry := doRequest(handler)
+	doRequest(handler, GetMethod)
 
-	metricstest.AssertSuccessMetricsExist(t, entry)
+	assert.Equalf(t, int64(1), metricstest.MockCounters["gets.current_url.request.total"], "Successful get request has not been accounted for in the total request count")
+	assert.Greater(t, metricstest.MockHistograms["gets.current_url.duration"], 0.00, "Successful get request duration should be greater than zero")
 }
 
-func TestBadRequestMetrics(t *testing.T) {
+func TestPutRequestSuccessMetrics(t *testing.T) {
+	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+		w.WriteHeader(200)
+	}
+	doRequest(handler, PostMethod)
+
+	assert.Equalf(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "Successful put request has not been accounted for in the total request count")
+	assert.Greater(t, metricstest.MockHistograms["puts.current_url.duration"], 0.00, "Successful put request duration should be greater than zero")
+}
+
+func TestBadGetRequestMetrics(t *testing.T) {
 	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 		w.WriteHeader(400)
 	}
-	entry := doRequest(handler)
+	doRequest(handler, GetMethod)
 
-	if entry.Request.Count() != 1 {
-		t.Errorf("The request should have been counted.")
-	}
-	if entry.Duration.Count() != 0 {
-		t.Errorf("The request duration should not have been counted.")
-	}
-	if entry.BadRequest.Count() != 1 {
-		t.Errorf("A Bad request should have been counted.")
-	}
-	if entry.Errors.Count() != 0 {
-		t.Errorf("No Errors should have been counted.")
-	}
+	assert.Equalf(t, int64(1), metricstest.MockCounters["gets.current_url.request.total"], "Unsuccessful get request has not been accounted for in the total request count")
+	assert.Equalf(t, int64(1), metricstest.MockCounters["gets.current_url.request.bad_request"], "Unsuccessful get request has not been accounted for in the bad request count")
+	assert.Equal(t, metricstest.MockHistograms["gets.current_url.duration"], 0.00, "Unsuccessful get request duration should have been logged")
 }
 
-func TestErrorMetrics(t *testing.T) {
+func TestBadPutRequestMetrics(t *testing.T) {
+	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+		w.WriteHeader(400)
+	}
+	doRequest(handler, PostMethod)
+
+	assert.Equalf(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "Unsuccessful put request has not been accounted for in the total request count")
+	assert.Equalf(t, int64(1), metricstest.MockCounters["puts.current_url.request.bad_request"], "Unsuccessful put request has not been accounted for in the bad request count")
+	assert.Equal(t, metricstest.MockHistograms["puts.current_url.duration"], 0.00, "Unsuccessful put request duration should have been logged")
+}
+
+func TestGetRequestErrorMetrics(t *testing.T) {
 	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 		w.WriteHeader(500)
 	}
-	entry := doRequest(handler)
-	metricstest.AssertErrorMetricsExist(t, entry)
+	doRequest(handler, GetMethod)
+
+	assert.Equal(t, int64(1), metricstest.MockCounters["gets.current_url.request.error"], "Failed get request should have been accounted under the error label")
+	assert.Equal(t, int64(1), metricstest.MockCounters["gets.current_url.request.total"], "Failed get request should have been accounted in the request totals")
 }
 
-func TestNoExplicitHeaderMetrics(t *testing.T) {
+func TestPutRequestErrorMetrics(t *testing.T) {
+	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+		w.WriteHeader(500)
+	}
+	doRequest(handler, PostMethod)
+
+	assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.error"], "Failed put request should have been accounted under the error label")
+	assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "Failed put request should have been accounted in the request totals")
+}
+
+func TestGetReqNoExplicitHeaderMetrics(t *testing.T) {
 	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {}
-	entry := doRequest(handler)
-	metricstest.AssertSuccessMetricsExist(t, entry)
+	doRequest(handler, GetMethod)
+
+	assert.Equalf(t, int64(1), metricstest.MockCounters["gets.current_url.request.total"], "Successful get request has not been accounted for in the total request count")
+	assert.Greater(t, metricstest.MockHistograms["gets.current_url.duration"], 0.00, "Successful get request duration should be greater than zero")
 }
 
-func TestWriteBytesMetrics(t *testing.T) {
+func TestPutReqNoExplicitHeaderMetrics(t *testing.T) {
+	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {}
+	doRequest(handler, PostMethod)
+
+	assert.Equalf(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "Successful put request has not been accounted for in the total request count")
+	assert.Greater(t, metricstest.MockHistograms["puts.current_url.duration"], 0.00, "Successful put request duration should be greater than zero")
+}
+
+func TestGetReqWriteBytesMetrics(t *testing.T) {
 	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 		w.Write([]byte("Success"))
 	}
-	entry := doRequest(handler)
-	metricstest.AssertSuccessMetricsExist(t, entry)
+	doRequest(handler, GetMethod)
+
+	assert.Equalf(t, int64(1), metricstest.MockCounters["gets.current_url.request.total"], "Successful get request has not been accounted for in the total request count")
+	assert.Greater(t, metricstest.MockHistograms["gets.current_url.duration"], 0.00, "Successful get request duration should be greater than zero")
 }
 
-func doRequest(handler func(http.ResponseWriter, *http.Request, httprouter.Params)) *pbcmetrics.MetricsEntry {
-	reg := metrics.NewRegistry()
-	entry := pbcmetrics.NewMetricsEntry("foo", reg)
-	monitoredHandler := MonitorHttp(handler, entry)
+func TestPutReqWriteBytesMetrics(t *testing.T) {
+	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+		w.Write([]byte("Success"))
+	}
+	doRequest(handler, PostMethod)
+
+	assert.Equalf(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "Successful put request has not been accounted for in the total request count")
+	assert.Greater(t, metricstest.MockHistograms["puts.current_url.duration"], 0.00, "Successful put request duration should be greater than zero")
+}
+
+func doRequest(handler func(http.ResponseWriter, *http.Request, httprouter.Params), method int) {
+	m := metricstest.CreateMockMetrics()
+	monitoredHandler := MonitorHttp(handler, m, method)
 	monitoredHandler(httptest.NewRecorder(), nil, nil)
-	return entry
 }

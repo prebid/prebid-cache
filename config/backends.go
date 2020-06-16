@@ -14,6 +14,7 @@ type Backend struct {
 }
 
 func (cfg *Backend) validateAndLog() {
+
 	log.Infof("config.backend.type: %s", cfg.Type)
 	switch cfg.Type {
 	case BackendAerospike:

@@ -4,29 +4,29 @@ import (
 	"net"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/prebid/prebid-cache/metrics"
+	log "github.com/sirupsen/logrus"
 )
 
 // monitorableListener tracks any opened connections in the metrics.
 type monitorableListener struct {
 	net.Listener
-	metrics *metrics.ConnectionMetrics
+	metrics *metrics.Metrics
 }
 
 // monitorableConnection tracks any closed connections in the metrics.
 type monitorableConnection struct {
 	net.Conn
-	metrics *metrics.ConnectionMetrics
+	metrics *metrics.Metrics
 }
 
 func (l *monitorableConnection) Close() error {
 	err := l.Conn.Close()
 	if err == nil {
-		l.metrics.ActiveConnections.Dec(1)
+		l.metrics.RecordConnectionClosed()
 	} else {
 		log.Errorf("Error closing connection: %v", err)
-		l.metrics.ConnectionCloseErrors.Mark(1)
+		l.metrics.RecordCloseConnectionErrors()
 	}
 	return err
 }
@@ -35,10 +35,10 @@ func (ln *monitorableListener) Accept() (c net.Conn, err error) {
 	tc, err := ln.Listener.Accept()
 	if err != nil {
 		log.Errorf("Error accepting connection: %v", err)
-		ln.metrics.ConnectionAcceptErrors.Mark(1)
+		ln.metrics.RecordAcceptConnectionErrors()
 		return tc, err
 	}
-	ln.metrics.ActiveConnections.Inc(1)
+	ln.metrics.RecordConnectionOpen()
 	return &monitorableConnection{
 		tc,
 		ln.metrics,

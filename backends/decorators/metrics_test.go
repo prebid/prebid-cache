@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/prebid/prebid-cache/backends"
-	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
+	"github.com/stretchr/testify/assert"
 )
 
 type failedBackend struct{}
@@ -21,112 +21,83 @@ func (b *failedBackend) Put(ctx context.Context, key string, value string, ttlSe
 }
 
 func TestGetSuccessMetrics(t *testing.T) {
-	m := metrics.CreateMetrics()
+
+	m := metricstest.CreateMockMetrics()
 	rawBackend := backends.NewMemoryBackend()
 	rawBackend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
 	backend := LogMetrics(rawBackend, m)
 	backend.Get(context.Background(), "foo")
 
-	metricstest.AssertSuccessMetricsExist(t, m.GetsBackend)
+	assert.Equalf(t, int64(1), metricstest.MockCounters["gets.backends.request.total"], "Successful backend request been accounted for in the total get backend request count")
+	assert.Greater(t, metricstest.MockHistograms["gets.backends.duration"], 0.00, "Successful put request duration should be greater than zero")
 }
 
 func TestGetErrorMetrics(t *testing.T) {
-	m := metrics.CreateMetrics()
+
+	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(&failedBackend{}, m)
 	backend.Get(context.Background(), "foo")
 
-	metricstest.AssertErrorMetricsExist(t, m.GetsBackend)
+	assert.Equal(t, int64(1), metricstest.MockCounters["gets.backends.request.error"], "Failed get backend request should have been accounted under the error label")
+	assert.Equal(t, int64(1), metricstest.MockCounters["gets.backends.request.total"], "Failed get backend request should have been accounted in the request totals")
 }
 
 func TestPutSuccessMetrics(t *testing.T) {
-	m := metrics.CreateMetrics()
+
+	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
 
-	assertSuccessMetricsExist(t, m.PutsBackend)
-	if m.PutsBackend.XmlRequest.Count() != 1 {
-		t.Errorf("An xml request should have been logged.")
-	}
-	if m.PutsBackend.DefinesTTL.Count() != 0 {
-		t.Errorf("An event for TTL defined shouldn't be logged if the TTL was 0")
-	}
+	assert.Greater(t, metricstest.MockHistograms["puts.backends.request_duration"], 0.00, "Successful put request duration should be greater than zero")
+	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.xml"], "An xml request should have been logged.")
+	assert.Equal(t, int64(0), metricstest.MockCounters["puts.backends.defines_ttl"], "An event for TTL defined shouldn't be logged if the TTL was 0")
 }
 
 func TestTTLDefinedMetrics(t *testing.T) {
-	m := metrics.CreateMetrics()
+
+	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 1)
-	if m.PutsBackend.DefinesTTL.Count() != 1 {
-		t.Errorf("An event for TTL defined should be logged if the TTL is not 0")
-	}
+
+	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.defines_ttl"], "An event for TTL defined shouldn't be logged if the TTL was 0")
 }
 
 func TestPutErrorMetrics(t *testing.T) {
-	m := metrics.CreateMetrics()
+
+	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(&failedBackend{}, m)
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
 
-	assertErrorMetricsExist(t, m.PutsBackend)
-	if m.PutsBackend.XmlRequest.Count() != 1 {
-		t.Errorf("The request should have been counted.")
-	}
+	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.xml"], "An xml request should have been logged.")
+	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.request.error"], "Failed get backend request should have been accounted under the error label")
 }
 
 func TestJsonPayloadMetrics(t *testing.T) {
-	m := metrics.CreateMetrics()
+
+	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", "json{\"key\":\"value\"", 0)
 	backend.Get(context.Background(), "foo")
 
-	if m.PutsBackend.JsonRequest.Count() != 1 {
-		t.Errorf("A json Put should have been logged.")
-	}
+	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.json"], "A json request should have been logged.")
 }
 
 func TestPutSizeSampling(t *testing.T) {
-	m := metrics.CreateMetrics()
+
+	m := metricstest.CreateMockMetrics()
 	payload := `json{"key":"value"}`
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", payload, 0)
 
-	if m.PutsBackend.RequestLength.Count() != 1 {
-		t.Errorf("A request size sample should have been logged.")
-	}
+	assert.Greater(t, metricstest.MockHistograms["puts.backends.request_size_bytes"], 0.00, "Successful put request size should be greater than zero")
 }
 
 func TestInvalidPayloadMetrics(t *testing.T) {
-	m := metrics.CreateMetrics()
+
+	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 	backend.Put(context.Background(), "foo", "bar", 0)
 	backend.Get(context.Background(), "foo")
 
-	if m.PutsBackend.InvalidRequest.Count() != 1 {
-		t.Errorf("A Put request of invalid format should have been logged.")
-	}
-}
-
-func assertSuccessMetricsExist(t *testing.T, entry *metrics.MetricsEntryByFormat) {
-	t.Helper()
-	if entry.Duration.Count() != 1 {
-		t.Errorf("The request duration should have been counted.")
-	}
-	if entry.BadRequest.Count() != 0 {
-		t.Errorf("No Bad requests should have been counted.")
-	}
-	if entry.Errors.Count() != 0 {
-		t.Errorf("No Errors should have been counted.")
-	}
-}
-
-func assertErrorMetricsExist(t *testing.T, entry *metrics.MetricsEntryByFormat) {
-	t.Helper()
-	if entry.Duration.Count() != 0 {
-		t.Errorf("The request duration should not have been counted.")
-	}
-	if entry.BadRequest.Count() != 0 {
-		t.Errorf("No Bad requests should have been counted.")
-	}
-	if entry.Errors.Count() != 1 {
-		t.Errorf("An Error should have been counted.")
-	}
+	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.invalid_format"], "A Put request of invalid format should have been logged.")
 }

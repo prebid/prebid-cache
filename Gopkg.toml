@@ -26,10 +26,6 @@
 
 
 [[constraint]]
-  name = "github.com/sirupsen/logrus"
-  version = "0.11.5"
-
-[[constraint]]
   name = "github.com/aerospike/aerospike-client-go"
   version = "1.30.0"
 

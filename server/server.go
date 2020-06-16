@@ -15,15 +15,18 @@ import (
 
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
+	localprometheus "github.com/prebid/prebid-cache/metrics/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Listen serves requests and blocks forever, until OS signals shut down the process.
-func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.ConnectionMetrics) {
+func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.Metrics) {
 	stopSignals := make(chan os.Signal)
 	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
 
 	stopAdmin := make(chan os.Signal)
 	stopMain := make(chan os.Signal)
+	stopPrometheus := make(chan os.Signal)
 	done := make(chan struct{})
 
 	// Rig up each server so that it listens on a channel for signals. These use different channels for each server
@@ -52,7 +55,22 @@ func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.Con
 	// Then block the thread. When the OS sends a shutdown signal, alert each of the servers.
 	// Once they're finished shutting down (the "done" channel gets pinged for each server),
 	// this funciton can return.
-	wait(stopSignals, done, stopMain, stopAdmin)
+	if cfg.Metrics.Prometheus.Enabled {
+		promRegistry := metrics.GetEngineRegistry(localprometheus.MetricsPrometheus).(*prometheus.Registry)
+
+		prometheusServer := newPrometheusServer(&cfg, promRegistry)
+		go shutdownAfterSignals(prometheusServer, stopPrometheus, done)
+		prometheusListener, err := newListener(prometheusServer.Addr, nil)
+		if err != nil {
+			log.Errorf("Error listening for TCP connections on %s: %v for prometheus server", adminServer.Addr, err)
+			return
+		}
+		go runServer(prometheusServer, "Prometheus", prometheusListener)
+
+		wait(stopSignals, done, stopMain, stopAdmin, stopPrometheus)
+	} else {
+		wait(stopSignals, done, stopMain, stopAdmin)
+	}
 	return
 }
 
@@ -77,7 +95,7 @@ func runServer(server *http.Server, name string, listener net.Listener) {
 	log.Errorf("%s server quit with error: %v", name, err)
 }
 
-func newListener(address string, metrics *metrics.ConnectionMetrics) (net.Listener, error) {
+func newListener(address string, metrics *metrics.Metrics) (net.Listener, error) {
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("Error listening for TCP connections on %s: %v", address, err)
