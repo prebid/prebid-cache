@@ -15,7 +15,7 @@ func NewConfig() Configuration {
 	setEnvVars(v)
 
 	if err := v.ReadInConfig(); err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Infof("Failed to load config file: %v", err)
 	}
 	cfg := Configuration{}
 	if err := v.Unmarshal(&cfg); err != nil {
@@ -26,6 +26,38 @@ func NewConfig() Configuration {
 }
 
 func setConfigDefaults(v *viper.Viper) {
+	v.SetDefault("port", 2424)
+	v.SetDefault("admin_port", 2525)
+	v.SetDefault("log.level", "info")
+	v.SetDefault("backend.type", "memory")
+	v.SetDefault("backend.aerospike.host", "")
+	v.SetDefault("backend.aerospike.port", 0)
+	v.SetDefault("backend.aerospike.namespace", "")
+	v.SetDefault("backend.aerospike.default_ttl_seconds", 0)
+	v.SetDefault("backend.azure.account", "")
+	v.SetDefault("backend.azure.key", "")
+	v.SetDefault("backend.cassandra.hosts", "")
+	v.SetDefault("backend.cassandra.keyspace", "")
+	v.SetDefault("backend.memcache.hosts", []string{""})
+	v.SetDefault("backend.redis.host", "")
+	v.SetDefault("backend.redis.port", 0)
+	v.SetDefault("backend.redis.password", "")
+	v.SetDefault("backend.redis.db", 0)
+	v.SetDefault("backend.redis.expiration", 0)
+	v.SetDefault("backend.redis.tls.enabled", false)
+	v.SetDefault("backend.redis.tls.insecure_skip_verify", false)
+	v.SetDefault("compression.type", "snappy")
+	v.SetDefault("metrics.type", "")
+	v.SetDefault("metrics.influx.host", "")
+	v.SetDefault("metrics.influx.database", "")
+	v.SetDefault("metrics.influx.username", "")
+	v.SetDefault("metrics.influx.password", "")
+	v.SetDefault("metrics.influx.enabled", false)
+	v.SetDefault("metrics.prometheus.port", 0)
+	v.SetDefault("metrics.prometheus.namespace", "")
+	v.SetDefault("metrics.prometheus.subsystem", "")
+	v.SetDefault("metrics.prometheus.timeout_ms", 10000)
+	v.SetDefault("metrics.prometheus.enabled", false)
 	v.SetDefault("rate_limiter.enabled", true)
 	v.SetDefault("rate_limiter.num_requests", 100)
 	v.SetDefault("request_limits.allow_setting_keys", false)
