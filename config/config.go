@@ -15,7 +15,7 @@ func NewConfig() Configuration {
 	setEnvVars(v)
 
 	if err := v.ReadInConfig(); err != nil {
-		log.Infof("Failed to load config file: %v", err)
+		log.Fatalf("Failed to load config: %v", err)
 	}
 	cfg := Configuration{}
 	if err := v.Unmarshal(&cfg); err != nil {
@@ -46,7 +46,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("backend.redis.expiration", 0)
 	v.SetDefault("backend.redis.tls.enabled", false)
 	v.SetDefault("backend.redis.tls.insecure_skip_verify", false)
-	v.SetDefault("compression.type", "snappy")
+	v.SetDefault("compression.type", "")
 	v.SetDefault("metrics.type", "")
 	v.SetDefault("metrics.influx.host", "")
 	v.SetDefault("metrics.influx.database", "")
@@ -56,7 +56,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("metrics.prometheus.port", 0)
 	v.SetDefault("metrics.prometheus.namespace", "")
 	v.SetDefault("metrics.prometheus.subsystem", "")
-	v.SetDefault("metrics.prometheus.timeout_ms", 10000)
+	v.SetDefault("metrics.prometheus.timeout_ms", 0)
 	v.SetDefault("metrics.prometheus.enabled", false)
 	v.SetDefault("rate_limiter.enabled", true)
 	v.SetDefault("rate_limiter.num_requests", 100)
