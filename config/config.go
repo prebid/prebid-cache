@@ -8,14 +8,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-func NewConfig() Configuration {
+func NewConfig(filename string) Configuration {
 	v := viper.New()
 	setConfigDefaults(v)
-	setConfigFile(v)
+	setConfigFile(v, filename)
 	setEnvVars(v)
 
 	if err := v.ReadInConfig(); err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Infof("Failed to load config: %v", err)
 	}
 	cfg := Configuration{}
 	if err := v.Unmarshal(&cfg); err != nil {
@@ -34,8 +34,8 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("request_limits.max_ttl_seconds", 3600)
 }
 
-func setConfigFile(v *viper.Viper) {
-	v.SetConfigName("config")              // name of config file (without extension)
+func setConfigFile(v *viper.Viper, filename string) {
+	v.SetConfigName(filename)              // name of config file (without extension)
 	v.AddConfigPath("/etc/prebid-cache/")  // path to look for the config file in
 	v.AddConfigPath("$HOME/.prebid-cache") // call multiple times to add many search paths
 	v.AddConfigPath(".")
