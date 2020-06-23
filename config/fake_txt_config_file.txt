@@ -1,1 +1,1 @@
-Description: A non-yaml file of file extension not supported by Viper
+Description: A non-yaml file of extension not supported by Viper
