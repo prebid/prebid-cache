@@ -57,6 +57,97 @@ func TestSampleConfig(t *testing.T) {
 	assertBoolsEqual(t, "metrics.prometheus.enabled", cfg.Metrics.Prometheus.Enabled, true)
 }
 
+func TestNewConfigWithFile(t *testing.T) {
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	type logComponents struct {
+		msg string
+		lvl logrus.Level
+	}
+
+	testCases := []struct {
+		description        string
+		inConfigFileName   string
+		outExpectedLogInfo []logComponents
+		outExpectedFatal   bool
+	}{
+		{
+			description:      "[1] Empty file name",
+			inConfigFileName: "",
+			outExpectedLogInfo: []logComponents{
+				{
+					msg: "No configuration file was specified, Prebid Cache will initialize with default values",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "Failed to load config: Config File \"config\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
+					lvl: logrus.InfoLevel,
+				},
+			},
+			outExpectedFatal: false,
+		},
+		{
+			description:      "[2] Non-existing file name",
+			inConfigFileName: "non_existent",
+			outExpectedLogInfo: []logComponents{
+				{
+					msg: "Failed to load config: Config File \"non_existent\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
+					lvl: logrus.InfoLevel,
+				},
+			},
+			outExpectedFatal: false,
+		},
+		{
+			description:      "[3] File exists, wrong format",
+			inConfigFileName: "fake_config_file",
+			outExpectedLogInfo: []logComponents{
+				{
+					msg: "Failed to load config: ",
+					lvl: logrus.FatalLevel,
+				},
+			},
+			outExpectedFatal: true,
+		},
+		{
+			description:        "[4] File exists, correct yaml file format",
+			inConfigFileName:   "config",
+			outExpectedLogInfo: []logComponents{},
+			outExpectedFatal:   false,
+		},
+	}
+
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	var fatal bool
+	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+
+	for i, tc := range testCases {
+		// Reset the fatal flag to false every test
+		fatal = false
+
+		//run test
+		NewConfig(tc.inConfigFileName)
+
+		// Assert logrus expected entries
+		if assert.Equal(t, len(tc.outExpectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.outExpectedLogInfo) = %d len(hook.Entries) = %d", i+1, len(tc.outExpectedLogInfo), len(hook.Entries)) {
+			for j := 0; j < len(tc.outExpectedLogInfo); j++ {
+				assert.Equal(t, tc.outExpectedLogInfo[j].msg, hook.Entries[j].Message, "[%d] Wrong log message", i+1)
+				assert.Equal(t, tc.outExpectedLogInfo[j].lvl, hook.Entries[j].Level, "[%d] Wrong info level", i+1)
+			}
+		} else {
+			return
+		}
+
+		// Assert log.Fatalf() was called or not
+		assert.Equal(t, tc.outExpectedFatal, fatal, "[%d] Wrong fatal log call", i)
+
+		//Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
+	}
+}
+
 func TestEnvConfig(t *testing.T) {
 	defer forceEnv(t, "PBC_PORT", "2000")()
 	defer forceEnv(t, "PBC_COMPRESSION_TYPE", "none")()
