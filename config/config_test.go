@@ -57,7 +57,7 @@ func TestSampleConfig(t *testing.T) {
 	assertBoolsEqual(t, "metrics.prometheus.enabled", cfg.Metrics.Prometheus.Enabled, true)
 }
 
-func TestNewConfigWithFile(t *testing.T) {
+func TestNewConfigFuncFileParam(t *testing.T) {
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := test.NewGlobal()
 
@@ -65,55 +65,95 @@ func TestNewConfigWithFile(t *testing.T) {
 		msg string
 		lvl logrus.Level
 	}
+	type testIn struct {
+		configFileName string
+	}
+	type testOut struct {
+		configFileName  string
+		expectedLogInfo []logComponents
+		expectedFatal   bool
+		expectedPortErr bool
+	}
+	realPortNumber := 2424
 
 	testCases := []struct {
-		description        string
-		inConfigFileName   string
-		outExpectedLogInfo []logComponents
-		outExpectedFatal   bool
+		description string
+		in          testIn
+		out         testOut
 	}{
 		{
-			description:      "[1] Empty file name",
-			inConfigFileName: "",
-			outExpectedLogInfo: []logComponents{
-				{
-					msg: "No configuration file was specified, Prebid Cache will initialize with default values",
-					lvl: logrus.InfoLevel,
-				},
-				{
-					msg: "Failed to load config: Config File \"config\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
-					lvl: logrus.InfoLevel,
-				},
+			description: "[1] Empty file name",
+			in: testIn{
+				configFileName: "",
 			},
-			outExpectedFatal: false,
+			out: testOut{
+				expectedLogInfo: []logComponents{
+					{
+						msg: "No configuration file was specified, Prebid Cache will initialize with default values",
+						lvl: logrus.InfoLevel,
+					},
+					{
+						msg: "Failed to load config: Config File \"config\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
+						lvl: logrus.InfoLevel,
+					},
+				},
+				expectedFatal:   false,
+				expectedPortErr: false,
+			},
 		},
 		{
-			description:      "[2] Non-existing file name",
-			inConfigFileName: "non_existent",
-			outExpectedLogInfo: []logComponents{
-				{
-					msg: "Failed to load config: Config File \"non_existent\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
-					lvl: logrus.InfoLevel,
-				},
+			description: "[2] Non-existing file name",
+			in: testIn{
+				configFileName: "non_existent",
 			},
-			outExpectedFatal: false,
+			out: testOut{
+				expectedLogInfo: []logComponents{
+					{
+						msg: "Failed to load config: Config File \"non_existent\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
+						lvl: logrus.InfoLevel,
+					},
+				},
+				expectedFatal:   false,
+				expectedPortErr: false,
+			},
 		},
 		{
-			description:      "[3] File exists, wrong format",
-			inConfigFileName: "fake_config_file",
-			outExpectedLogInfo: []logComponents{
-				{
-					msg: "Failed to load config: ",
-					lvl: logrus.FatalLevel,
-				},
+			description: "[3] File exists, unsupported 'txt' extension",
+			in: testIn{
+				configFileName: "fake_txt_config_file",
 			},
-			outExpectedFatal: true,
+			out: testOut{
+				expectedLogInfo: []logComponents{
+					{
+						msg: "Failed to load config: Config File \"fake_txt_config_file\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
+						lvl: logrus.InfoLevel,
+					},
+				},
+				expectedFatal:   false,
+				expectedPortErr: false,
+			},
 		},
 		{
-			description:        "[4] File exists, correct yaml file format",
-			inConfigFileName:   "config",
-			outExpectedLogInfo: []logComponents{},
-			outExpectedFatal:   false,
+			description: "[4] File exists, supported 'json' extension that will create defective Configuration",
+			in: testIn{
+				configFileName: "fake_json_config_file",
+			},
+			out: testOut{
+				expectedLogInfo: []logComponents{},
+				expectedFatal:   false,
+				expectedPortErr: true,
+			},
+		},
+		{
+			description: "[5] File exists, correct yaml file format",
+			in: testIn{
+				configFileName: "test_yaml_config_file",
+			},
+			out: testOut{
+				expectedLogInfo: []logComponents{},
+				expectedFatal:   false,
+				expectedPortErr: false,
+			},
 		},
 	}
 
@@ -127,20 +167,25 @@ func TestNewConfigWithFile(t *testing.T) {
 		fatal = false
 
 		//run test
-		NewConfig(tc.inConfigFileName)
+		cfg := NewConfig(tc.in.configFileName)
 
 		// Assert logrus expected entries
-		if assert.Equal(t, len(tc.outExpectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.outExpectedLogInfo) = %d len(hook.Entries) = %d", i+1, len(tc.outExpectedLogInfo), len(hook.Entries)) {
-			for j := 0; j < len(tc.outExpectedLogInfo); j++ {
-				assert.Equal(t, tc.outExpectedLogInfo[j].msg, hook.Entries[j].Message, "[%d] Wrong log message", i+1)
-				assert.Equal(t, tc.outExpectedLogInfo[j].lvl, hook.Entries[j].Level, "[%d] Wrong info level", i+1)
+		if assert.Equal(t, len(tc.out.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.out.expectedLogInfo) = %d len(hook.Entries) = %d", i+1, len(tc.out.expectedLogInfo), len(hook.Entries)) {
+			for j := 0; j < len(tc.out.expectedLogInfo); j++ {
+				assert.Equal(t, tc.out.expectedLogInfo[j].msg, hook.Entries[j].Message, "[%d] Wrong log message", i+1)
+				assert.Equal(t, tc.out.expectedLogInfo[j].lvl, hook.Entries[j].Level, "[%d] Wrong info level", i+1)
 			}
 		} else {
 			return
 		}
 
 		// Assert log.Fatalf() was called or not
-		assert.Equal(t, tc.outExpectedFatal, fatal, "[%d] Wrong fatal log call", i)
+		assert.Equal(t, tc.out.expectedFatal, fatal, "[%d] Wrong fatal log call", i+1)
+
+		if tc.out.expectedPortErr {
+			// Assert fake port number was correctly read
+			assert.NotEqual(t, realPortNumber, cfg.Port, "[%d] Port number is supposed to be 0 given the non-yaml, fake config file", i+1)
+		}
 
 		//Reset log after every test and assert successful reset
 		hook.Reset()

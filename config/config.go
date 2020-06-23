@@ -38,7 +38,6 @@ func setConfigFile(v *viper.Viper, filename string) {
 	if filename == "" {
 		log.Infof("No configuration file was specified, Prebid Cache will initialize with default values")
 	}
-	v.SetConfigType("yaml")
 	v.SetConfigName(filename)              // name of config file (without extension)
 	v.AddConfigPath("/etc/prebid-cache/")  // path to look for the config file in
 	v.AddConfigPath("$HOME/.prebid-cache") // call multiple times to add many search paths
