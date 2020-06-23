@@ -18,7 +18,7 @@ func TestDefaults(t *testing.T) {
 
 	cfg := Configuration{}
 	err := v.Unmarshal(&cfg)
-	assert.NoError(t, err, "Failed to unmarshal config: %s", err.Error())
+	assert.NoError(t, err, "Failed to unmarshal config: %v", err)
 
 	assertIntsEqual(t, "port", cfg.Port, 2424)
 	assertIntsEqual(t, "admin_port", cfg.AdminPort, 2525)
