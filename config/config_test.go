@@ -319,6 +319,38 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectedError:     false,
 			expectedLogInfo:   append(influxSuccess, prometheusSuccess...),
 		},
+		{
+			description:       "[17] metricType = \"prometheus\"; both prometheus and influx flags off. Continue with prometheus metrics",
+			influxEnabled:     false,
+			prometheusEnabled: true,
+			metricType:        "",
+			expectedError:     false,
+			expectedLogInfo:   prometheusSuccess,
+		},
+		{
+			description:       "[18] metricType = \"prometheus\"; prometheus flag on. Continue with prometheus metrics",
+			influxEnabled:     false,
+			prometheusEnabled: true,
+			metricType:        "",
+			expectedError:     false,
+			expectedLogInfo:   prometheusSuccess,
+		},
+		{
+			description:       "[19] metricType = \"prometheus\"; InfluxDB flag on. Continue with both metrics",
+			influxEnabled:     true,
+			prometheusEnabled: true,
+			metricType:        "",
+			expectedError:     false,
+			expectedLogInfo:   append(influxSuccess, prometheusSuccess...),
+		},
+		{
+			description:       "[20] metricType = \"prometheus\"; Both prometheus and influx flags on. Continue with both metrics",
+			influxEnabled:     true,
+			prometheusEnabled: true,
+			metricType:        "",
+			expectedError:     false,
+			expectedLogInfo:   append(influxSuccess, prometheusSuccess...),
+		},
 	}
 
 	//Standard elements of the config.Metrics object are set so test cases only modify what's relevant to them
@@ -370,6 +402,163 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		//Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
+	}
+}
+
+func TestEnabledFlagGetsModified(t *testing.T) {
+
+	type testIn struct {
+		metricType        MetricsType
+		influxEnabled     bool
+		prometheusEnabled bool
+	}
+	type testOut struct {
+		expectedInfluxEnabled     bool
+		expectedprometheusEnabled bool
+	}
+
+	// test cases
+	type aTest struct {
+		description string
+		in          testIn
+		out         testOut
+	}
+	testCases := []aTest{
+		{
+			description: "[1] metricType = \"none\"; No flags enabled. ",
+			in:          testIn{"none", false, false},
+			out:         testOut{false, false},
+		},
+		{
+			description: "[2] metricType = \"none\"; Influx flag enabled.",
+			in:          testIn{"none", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[3] metricType = \"none\"; Prometheus flag enabled. ",
+			in:          testIn{"none", false, true},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[4] metricType = \"none\"; Both flags enabled. ",
+			in:          testIn{"none", true, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[5] metricType = \"influx\"; No flags enabled.",
+			in:          testIn{"influx", false, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[6] metricType = \"influx\"; Influx flag enabled.",
+			in:          testIn{"influx", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[7] metricType = \"influx\"; Prometheus flag enabled.",
+			in:          testIn{"influx", false, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[8] metricType = \"influx\"; Both flags enabled.",
+			in:          testIn{"influx", true, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[9] metricType = \"prometheus\"; No flags enabled.",
+			in:          testIn{"prometheus", false, false},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[10] metricType = \"prometheus\"; Influx flag enabled.",
+			in:          testIn{"prometheus", true, false},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[11] metricType = \"prometheus\"; Prometheus flag enabled.",
+			in:          testIn{"prometheus", false, true},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[12] metricType = \"prometheus\"; Both flags enabled.",
+			in:          testIn{"prometheus", true, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[13] metricType = \"trendalyze\"; No flags enabled. ",
+			in:          testIn{"trendalyze", false, false},
+			out:         testOut{false, false},
+		},
+		{
+			description: "[14] metricType = \"trendalyze\"; Influx flag enabled.",
+			in:          testIn{"trendalyze", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[15] metricType = \"trendalyze\"; Prometheus flag enabled. ",
+			in:          testIn{"trendalyze", false, true},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[16] metricType = \"trendalyze\"; Both flags enabled. ",
+			in:          testIn{"trendalyze", true, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[17] metricType = \"\"; No flags enabled. ",
+			in:          testIn{"", false, false},
+			out:         testOut{false, false},
+		},
+		{
+			description: "[18] metricType = \"\"; Influx flag enabled.",
+			in:          testIn{"", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[19] metricType = \"\"; Prometheus flag enabled. ",
+			in:          testIn{"", false, true},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[20] metricType = \"\"; Both flags enabled. ",
+			in:          testIn{"", true, true},
+			out:         testOut{true, true},
+		},
+	}
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
+	for i, test := range testCases {
+		// Reset Metrics object
+		metricsCfg := Metrics{
+			Type: test.in.metricType,
+			Influx: InfluxMetrics{
+				Host:     "http://fakeurl.com",
+				Database: "database-value",
+				Enabled:  test.in.influxEnabled,
+			},
+			Prometheus: PrometheusMetrics{
+				Port:      8080,
+				Namespace: "prebid",
+				Subsystem: "cache",
+				Enabled:   test.in.prometheusEnabled,
+			},
+		}
+
+		//run test
+		metricsCfg.validateAndLog()
+
+		// Assert `Enabled` flags value
+		assert.Equal(t, test.out.expectedInfluxEnabled, metricsCfg.Influx.Enabled, "Test case %d failed. `cfg.Influx.Enabled` carries wrong value.", i+1)
+		assert.Equal(t, test.out.expectedprometheusEnabled, metricsCfg.Prometheus.Enabled, "Test case %d failed. `cfg.Prometheus.Enabled` carries wrong value.", i+1)
+
+		//Reset log after every test
+		hook.Reset()
 	}
 }
 
