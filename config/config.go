@@ -150,7 +150,7 @@ func (cfg *Metrics) validateAndLog() {
 		cfg.Influx.Enabled = true
 	}
 
-	if cfg.Type == MetricsPrometheus || cfg.Prometheus.Enabled {
+	if cfg.Prometheus.Enabled {
 		cfg.Prometheus.validateAndLog()
 		cfg.Prometheus.Enabled = true
 	}
@@ -160,7 +160,7 @@ func (cfg *Metrics) validateAndLog() {
 		if !metricsEnabled {
 			log.Infof("Prebid Cache will run without metrics")
 		}
-	} else if cfg.Type != MetricsInflux && cfg.Type != MetricsPrometheus {
+	} else if cfg.Type != MetricsInflux {
 		// Was any other metrics system besides "InfluxDB" or "Prometheus" specified in `cfg.Type`?
 		if metricsEnabled {
 			// Prometheus, Influx or both, are enabled. Log a message explaining that `prebid-cache` will
@@ -177,9 +177,8 @@ func (cfg *Metrics) validateAndLog() {
 type MetricsType string
 
 const (
-	MetricsNone       MetricsType = "none"
-	MetricsInflux     MetricsType = "influx"
-	MetricsPrometheus MetricsType = "prometheus"
+	MetricsNone   MetricsType = "none"
+	MetricsInflux MetricsType = "influx"
 )
 
 type InfluxMetrics struct {
