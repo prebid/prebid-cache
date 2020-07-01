@@ -225,51 +225,51 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectedLogInfo:   append(influxSuccess, prometheusSuccess...),
 		},
 		{
-			description:       "[9] metricType = \"trendalyze\"; both prometheus and influx flags off. Exit error",
+			description:       "[9] metricType = \"unknown\"; both prometheus and influx flags off. Exit error",
 			influxEnabled:     false,
 			prometheusEnabled: false,
-			metricType:        "trendalyze",
+			metricType:        "unknown",
 			expectedError:     true,
 			expectedLogInfo: []logComponents{
 				{
-					msg: "Metrics \"trendalyze\" are not supported, exiting program.",
+					msg: "Metrics \"unknown\" are not supported, exiting program.",
 					lvl: logrus.FatalLevel,
 				},
 			},
 		},
 		{
-			description:       "[10] metricType = \"trendalyze\"; prometheus flags on.",
+			description:       "[10] metricType = \"unknown\"; prometheus flags on.",
 			influxEnabled:     false,
 			prometheusEnabled: true,
-			metricType:        "trendalyze",
+			metricType:        "unknown",
 			expectedError:     false,
 			expectedLogInfo: append(
 				prometheusSuccess,
 				logComponents{
-					msg: "Prebid Cache will run without unsupported metrics \"trendalyze\".",
+					msg: "Prebid Cache will run without unsupported metrics \"unknown\".",
 					lvl: logrus.InfoLevel,
 				},
 			),
 		},
 		{
-			description:       "[11] metricType = \"trendalyze\"; influx flags on.",
+			description:       "[11] metricType = \"unknown\"; influx flags on.",
 			influxEnabled:     true,
 			prometheusEnabled: false,
-			metricType:        "trendalyze",
+			metricType:        "unknown",
 			expectedError:     false,
 			expectedLogInfo: append(
 				influxSuccess,
 				logComponents{
-					msg: "Prebid Cache will run without unsupported metrics \"trendalyze\".",
+					msg: "Prebid Cache will run without unsupported metrics \"unknown\".",
 					lvl: logrus.InfoLevel,
 				},
 			),
 		},
 		{
-			description:       "[12] metricType = \"trendalyze\"; prometheus and inlfux flags on",
+			description:       "[12] metricType = \"unknown\"; prometheus and inlfux flags on",
 			influxEnabled:     true,
 			prometheusEnabled: true,
-			metricType:        "trendalyze",
+			metricType:        "unknown",
 			expectedError:     false,
 			expectedLogInfo: append(
 				influxSuccess,
@@ -277,7 +277,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 				prometheusSuccess[1],
 				prometheusSuccess[2],
 				logComponents{
-					msg: "Prebid Cache will run without unsupported metrics \"trendalyze\".",
+					msg: "Prebid Cache will run without unsupported metrics \"unknown\".",
 					lvl: logrus.InfoLevel,
 				},
 			),
@@ -370,6 +370,143 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		//Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
+	}
+}
+
+func TestEnabledFlagGetsModified(t *testing.T) {
+
+	type testIn struct {
+		metricType        MetricsType
+		influxEnabled     bool
+		prometheusEnabled bool
+	}
+	type testOut struct {
+		expectedInfluxEnabled     bool
+		expectedprometheusEnabled bool
+	}
+
+	// test cases
+	type aTest struct {
+		description string
+		in          testIn
+		out         testOut
+	}
+	testCases := []aTest{
+		{
+			description: "[1] metricType = \"none\"; No flags enabled. ",
+			in:          testIn{"none", false, false},
+			out:         testOut{false, false},
+		},
+		{
+			description: "[2] metricType = \"none\"; Influx flag enabled.",
+			in:          testIn{"none", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[3] metricType = \"none\"; Prometheus flag enabled. ",
+			in:          testIn{"none", false, true},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[4] metricType = \"none\"; Both flags enabled. ",
+			in:          testIn{"none", true, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[5] metricType = \"influx\"; No flags enabled.",
+			in:          testIn{"influx", false, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[6] metricType = \"influx\"; Influx flag enabled.",
+			in:          testIn{"influx", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[7] metricType = \"influx\"; Prometheus flag enabled.",
+			in:          testIn{"influx", false, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[8] metricType = \"influx\"; Both flags enabled.",
+			in:          testIn{"influx", true, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[9] metricType = \"unknown\"; No flags enabled. ",
+			in:          testIn{"unknown", false, false},
+			out:         testOut{false, false},
+		},
+		{
+			description: "[10] metricType = \"unknown\"; Influx flag enabled.",
+			in:          testIn{"unknown", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[11] metricType = \"unknown\"; Prometheus flag enabled. ",
+			in:          testIn{"unknown", false, true},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[12] metricType = \"unknown\"; Both flags enabled. ",
+			in:          testIn{"unknown", true, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[13] metricType = \"\"; No flags enabled. ",
+			in:          testIn{"", false, false},
+			out:         testOut{false, false},
+		},
+		{
+			description: "[14] metricType = \"\"; Influx flag enabled.",
+			in:          testIn{"", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[15] metricType = \"\"; Prometheus flag enabled. ",
+			in:          testIn{"", false, true},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[16] metricType = \"\"; Both flags enabled. ",
+			in:          testIn{"", true, true},
+			out:         testOut{true, true},
+		},
+	}
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
+	for i, test := range testCases {
+		// Reset Metrics object
+		metricsCfg := Metrics{
+			Type: test.in.metricType,
+			Influx: InfluxMetrics{
+				Host:     "http://fakeurl.com",
+				Database: "database-value",
+				Enabled:  test.in.influxEnabled,
+			},
+			Prometheus: PrometheusMetrics{
+				Port:      8080,
+				Namespace: "prebid",
+				Subsystem: "cache",
+				Enabled:   test.in.prometheusEnabled,
+			},
+		}
+
+		//run test
+		metricsCfg.validateAndLog()
+
+		// Assert `Enabled` flags value
+		assert.Equal(t, test.out.expectedInfluxEnabled, metricsCfg.Influx.Enabled, "Test case %d failed. `cfg.Influx.Enabled` carries wrong value.", i+1)
+		assert.Equal(t, test.out.expectedprometheusEnabled, metricsCfg.Prometheus.Enabled, "Test case %d failed. `cfg.Prometheus.Enabled` carries wrong value.", i+1)
+
+		//Reset log after every test
+		hook.Reset()
 	}
 }
 

@@ -145,18 +145,17 @@ type Metrics struct {
 
 func (cfg *Metrics) validateAndLog() {
 
-	metricsEnabled := false
-
 	if cfg.Type == MetricsInflux || cfg.Influx.Enabled {
 		cfg.Influx.validateAndLog()
-		metricsEnabled = true
+		cfg.Influx.Enabled = true
 	}
 
 	if cfg.Prometheus.Enabled {
 		cfg.Prometheus.validateAndLog()
-		metricsEnabled = true
+		cfg.Prometheus.Enabled = true
 	}
 
+	metricsEnabled := cfg.Influx.Enabled || cfg.Prometheus.Enabled
 	if cfg.Type == MetricsNone || cfg.Type == "" {
 		if !metricsEnabled {
 			log.Infof("Prebid Cache will run without metrics")
