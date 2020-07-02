@@ -11,6 +11,54 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestDefaults(t *testing.T) {
+	v := viper.New()
+
+	setConfigDefaults(v)
+
+	cfg := Configuration{}
+	err := v.Unmarshal(&cfg)
+	assert.NoError(t, err, "Failed to unmarshal config: %v", err)
+
+	assertIntsEqual(t, "port", cfg.Port, 2424)
+	assertIntsEqual(t, "admin_port", cfg.AdminPort, 2525)
+	assertStringsEqual(t, "log.level", string(cfg.Log.Level), "info")
+	assertStringsEqual(t, "backend.type", string(cfg.Backend.Type), "memory")
+	assertStringsEqual(t, "backend.aerospike.host", cfg.Backend.Aerospike.Host, "")
+	assertIntsEqual(t, "backend.aerospike.port", cfg.Backend.Aerospike.Port, 0)
+	assertStringsEqual(t, "backend.aerospike.namespace", cfg.Backend.Aerospike.Namespace, "")
+	assertIntsEqual(t, "backend.aerospike.default_ttl_seconds", cfg.Backend.Aerospike.DefaultTTL, 0)
+	assertStringsEqual(t, "backend.azure.account", cfg.Backend.Azure.Account, "")
+	assertStringsEqual(t, "backend.azure.key", cfg.Backend.Azure.Key, "")
+	assertStringsEqual(t, "backend.cassandra.hosts", cfg.Backend.Cassandra.Hosts, "")
+	assertStringsEqual(t, "backend.cassandra.keyspace", cfg.Backend.Cassandra.Keyspace, "")
+	assert.Equal(t, []string{}, cfg.Backend.Memcache.Hosts, "backend.memcache.hosts should be a zero-lenght slice of strings")
+	assertStringsEqual(t, "backend.redis.host", cfg.Backend.Redis.Host, "")
+	assertIntsEqual(t, "backend.redis.port", cfg.Backend.Redis.Port, 0)
+	assertStringsEqual(t, "backend.redis.password", cfg.Backend.Redis.Password, "")
+	assertIntsEqual(t, "backend.redis.db", cfg.Backend.Redis.Db, 0)
+	assertIntsEqual(t, "backend.redis.expiration", cfg.Backend.Redis.Expiration, 0)
+	assertBoolsEqual(t, "backend.redis.tls.enabled", cfg.Backend.Redis.TLS.Enabled, false)
+	assertBoolsEqual(t, "backend.redis.tls.insecure_skip_verify", cfg.Backend.Redis.TLS.InsecureSkipVerify, false)
+	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "snappy")
+	assertStringsEqual(t, "metrics.type", string(cfg.Metrics.Type), "")
+	assertStringsEqual(t, "metrics.influx.host", cfg.Metrics.Influx.Host, "")
+	assertStringsEqual(t, "metrics.influx.database", cfg.Metrics.Influx.Database, "")
+	assertStringsEqual(t, "metrics.influx.username", cfg.Metrics.Influx.Username, "")
+	assertStringsEqual(t, "metrics.influx.password", cfg.Metrics.Influx.Password, "")
+	assertBoolsEqual(t, "metrics.influx.enabled", cfg.Metrics.Influx.Enabled, false)
+	assertIntsEqual(t, "metrics.prometheus.port", cfg.Metrics.Prometheus.Port, 0)
+	assertStringsEqual(t, "metrics.prometheus.namespace", cfg.Metrics.Prometheus.Namespace, "")
+	assertStringsEqual(t, "metrics.prometheus.subsystem", cfg.Metrics.Prometheus.Subsystem, "")
+	assertIntsEqual(t, "metrics.prometheus.timeout_ms", cfg.Metrics.Prometheus.TimeoutMillisRaw, 0)
+	assertBoolsEqual(t, "metrics.prometheus.enabled", cfg.Metrics.Prometheus.Enabled, false)
+	assertBoolsEqual(t, "rate_limiter.enabled", cfg.RateLimiting.Enabled, true)
+	assertInt64sEqual(t, "rate_limiter.num_requests", cfg.RateLimiting.MaxRequestsPerSecond, 100)
+	assertIntsEqual(t, "request_limits.max_size_bytes", cfg.RequestLimits.MaxSize, 10*1024)
+	assertIntsEqual(t, "request_limits.max_num_values", cfg.RequestLimits.MaxNumValues, 10)
+	assertIntsEqual(t, "request_limits.max_ttl_seconds", cfg.RequestLimits.MaxTTLSeconds, 3600)
+}
+
 func TestSampleConfig(t *testing.T) {
 	cfg := Configuration{}
 	v := newViperFromSample(t)
