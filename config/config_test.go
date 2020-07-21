@@ -52,7 +52,7 @@ func TestDefaults(t *testing.T) {
 	assertStringsEqual(t, "metrics.prometheus.subsystem", cfg.Metrics.Prometheus.Subsystem, "")
 	assertIntsEqual(t, "metrics.prometheus.timeout_ms", cfg.Metrics.Prometheus.TimeoutMillisRaw, 0)
 	assertBoolsEqual(t, "metrics.prometheus.enabled", cfg.Metrics.Prometheus.Enabled, false)
-	assertBoolsEqual(t, "rate_limiter.enabled", cfg.RateLimiting.Enabled, true)
+	assertBoolsEqual(t, "rate_limiter.enabled", cfg.RateLimiting.Enabled, false)
 	assertInt64sEqual(t, "rate_limiter.num_requests", cfg.RateLimiting.MaxRequestsPerSecond, 100)
 	assertIntsEqual(t, "request_limits.max_size_bytes", cfg.RequestLimits.MaxSize, 10*1024)
 	assertIntsEqual(t, "request_limits.max_num_values", cfg.RequestLimits.MaxNumValues, 10)

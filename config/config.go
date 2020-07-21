@@ -57,7 +57,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("metrics.prometheus.subsystem", "")
 	v.SetDefault("metrics.prometheus.timeout_ms", 0)
 	v.SetDefault("metrics.prometheus.enabled", false)
-	v.SetDefault("rate_limiter.enabled", true)
+	v.SetDefault("rate_limiter.enabled", false)
 	v.SetDefault("rate_limiter.num_requests", 100)
 	v.SetDefault("request_limits.allow_setting_keys", false)
 	v.SetDefault("request_limits.max_size_bytes", 10*1024)
