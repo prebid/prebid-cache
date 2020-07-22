@@ -7,7 +7,7 @@ rate_limiter:
   num_requests: 100
 request_limits:
   allow_setting_keys: true
-  max_size_bytes: 10240 # 10K
+  max_size_bytes: 20480 # 20 KiB
   max_num_values: 10
   max_ttl_seconds: 3600
 backend:
