@@ -28,6 +28,8 @@ func NewConfig() Configuration {
 func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("port", 2424)
 	v.SetDefault("admin_port", 2525)
+	v.SetDefault("default_route_enabled", true)
+	v.SetDefault("public_write_enabled", true)
 	v.SetDefault("log.level", "info")
 	v.SetDefault("backend.type", "memory")
 	v.SetDefault("backend.aerospike.host", "")
@@ -79,14 +81,16 @@ func setEnvVars(v *viper.Viper) {
 }
 
 type Configuration struct {
-	Port          int           `mapstructure:"port"`
-	AdminPort     int           `mapstructure:"admin_port"`
-	Log           Log           `mapstructure:"log"`
-	RateLimiting  RateLimiting  `mapstructure:"rate_limiter"`
-	RequestLimits RequestLimits `mapstructure:"request_limits"`
-	Backend       Backend       `mapstructure:"backend"`
-	Compression   Compression   `mapstructure:"compression"`
-	Metrics       Metrics       `mapstructure:"metrics"`
+	Port                int           `mapstructure:"port"`
+	AdminPort           int           `mapstructure:"admin_port"`
+	DefaultRouteEnabled bool          `mapstructure:"default_route_enabled"`
+	PublicWriteEnabled  bool          `mapstructure:"public_write_enabled"`
+	Log                 Log           `mapstructure:"log"`
+	RateLimiting        RateLimiting  `mapstructure:"rate_limiter"`
+	RequestLimits       RequestLimits `mapstructure:"request_limits"`
+	Backend             Backend       `mapstructure:"backend"`
+	Compression         Compression   `mapstructure:"compression"`
+	Metrics             Metrics       `mapstructure:"metrics"`
 }
 
 // ValidateAndLog validates the config, terminating the program on any errors.

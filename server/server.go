@@ -20,7 +20,7 @@ import (
 )
 
 // Listen serves requests and blocks forever, until OS signals shut down the process.
-func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.Metrics) {
+func Listen(cfg config.Configuration, publicHandler http.Handler, adminHandler http.Handler, metrics *metrics.Metrics) {
 	stopSignals := make(chan os.Signal)
 	signal.Notify(stopSignals, syscall.SIGTERM, syscall.SIGINT)
 
@@ -33,8 +33,8 @@ func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.Met
 	// because a shared channel would only alert one consumer (whichever one happens to read it first).
 	//
 	// After a server has finished shutting down, it should send a signal in through the "done" channel.
-	mainServer := newMainServer(cfg, handler)
-	adminServer := newAdminServer(cfg)
+	mainServer := newMainServer(cfg, publicHandler)
+	adminServer := newAdminServer(cfg, adminHandler)
 	go shutdownAfterSignals(mainServer, stopMain, done)
 	go shutdownAfterSignals(adminServer, stopAdmin, done)
 
@@ -74,9 +74,10 @@ func Listen(cfg config.Configuration, handler http.Handler, metrics *metrics.Met
 	return
 }
 
-func newAdminServer(cfg config.Configuration) *http.Server {
+func newAdminServer(cfg config.Configuration, handler http.Handler) *http.Server {
 	return &http.Server{
-		Addr: ":" + strconv.Itoa(cfg.AdminPort),
+		Addr:    ":" + strconv.Itoa(cfg.AdminPort),
+		Handler: handler,
 	}
 }
 
