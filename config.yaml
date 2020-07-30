@@ -1,5 +1,7 @@
 port: 2424
 admin_port: 2525
+default_route_enabled: true
+public_write_enabled: true
 log:
   level: "info"
 rate_limiter:
