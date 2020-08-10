@@ -1,7 +1,5 @@
 port: 2424
 admin_port: 2525
-default_route_enabled: true
-public_write_enabled: true
 log:
   level: "info"
 rate_limiter:
@@ -44,3 +42,6 @@ metrics:
     database: "some-database"
     username: "influx-username"
     password: "influx-password"
+routes:
+  index_enabled: true
+  allow_public_write: true

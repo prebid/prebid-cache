@@ -25,7 +25,7 @@ func NewAdminHandler(cfg config.Configuration, dataStore backends.Backend, appMe
 func NewPublicHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics) http.Handler {
 	router := httprouter.New()
 	addReadRoutes(cfg, dataStore, appMetrics, router)
-	if cfg.PublicWriteEnabled {
+	if cfg.Routes.AllowPublicWrite {
 		addWriteRoutes(cfg, dataStore, appMetrics, router)
 	}
 
@@ -35,7 +35,7 @@ func NewPublicHandler(cfg config.Configuration, dataStore backends.Backend, appM
 }
 
 func addReadRoutes(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics, router *httprouter.Router) {
-	if cfg.DefaultRouteEnabled {
+	if cfg.Routes.IndexEnabled {
 		router.GET("/", endpoints.Index) //Default route handler
 	}
 	router.GET("/status", endpoints.Status) // Determines whether the server is ready for more traffic.
