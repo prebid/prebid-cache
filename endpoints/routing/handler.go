@@ -17,14 +17,14 @@ import (
 
 func NewAdminHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics) http.Handler {
 	router := httprouter.New()
-	router = addReadOnlyRoutes(cfg, dataStore, appMetrics, router)
+	router = addReadRoutes(cfg, dataStore, appMetrics, router)
 	router = addWriteRoutes(cfg, dataStore, appMetrics, router)
 	return router
 }
 
 func NewPublicHandler(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics) http.Handler {
 	router := httprouter.New()
-	router = addReadOnlyRoutes(cfg, dataStore, appMetrics, router)
+	router = addReadRoutes(cfg, dataStore, appMetrics, router)
 	if cfg.PublicWriteEnabled {
 		router = addWriteRoutes(cfg, dataStore, appMetrics, router)
 	}
@@ -34,7 +34,7 @@ func NewPublicHandler(cfg config.Configuration, dataStore backends.Backend, appM
 	return router
 }
 
-func addReadOnlyRoutes(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics, router *httprouter.Router) *httprouter.Router {
+func addReadRoutes(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics, router *httprouter.Router) *httprouter.Router {
 	if cfg.DefaultRouteEnabled {
 		router.GET("/", endpoints.Index) //Default route handler
 	}
