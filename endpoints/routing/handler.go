@@ -31,7 +31,7 @@ func NewPublicHandler(cfg config.Configuration, dataStore backends.Backend, appM
 
 	handler := handleCors(router)
 	handler = handleRateLimiting(handler, cfg.RateLimiting)
-	return router
+	return handler
 }
 
 func addReadRoutes(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics, router *httprouter.Router) {
