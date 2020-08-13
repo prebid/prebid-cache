@@ -43,5 +43,5 @@ metrics:
     username: "influx-username"
     password: "influx-password"
 routes:
-  index_enabled: true
+  empty_index_response: false # Changes / route to be a 204
   allow_public_write: true
