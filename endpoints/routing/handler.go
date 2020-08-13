@@ -35,8 +35,8 @@ func NewPublicHandler(cfg config.Configuration, dataStore backends.Backend, appM
 }
 
 func addReadRoutes(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics, router *httprouter.Router) {
-	router.GET("/", endpoints.NewIndexHandler(cfg.Routes.EmptyIndexResponse)) //Default route handler
-	router.GET("/status", endpoints.Status)                                   // Determines whether the server is ready for more traffic.
+	router.GET("/", endpoints.NewIndexHandler(cfg.Routes.IndexResponse)) //Default route handler
+	router.GET("/status", endpoints.Status)                              // Determines whether the server is ready for more traffic.
 	router.GET("/cache", decorators.MonitorHttp(endpoints.NewGetHandler(dataStore, cfg.RequestLimits.AllowSettingKeys), appMetrics, decorators.GetMethod))
 }
 

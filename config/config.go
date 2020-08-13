@@ -63,7 +63,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("request_limits.max_size_bytes", 10*1024)
 	v.SetDefault("request_limits.max_num_values", 10)
 	v.SetDefault("request_limits.max_ttl_seconds", 3600)
-	v.SetDefault("routes.empty_index_response", false)
+	v.SetDefault("routes.index_response", "This application stores short-term data for use in Prebid.")
 	v.SetDefault("routes.allow_public_write", true)
 }
 
@@ -264,6 +264,6 @@ func (m *PrometheusMetrics) Timeout() time.Duration {
 }
 
 type Routes struct {
-	EmptyIndexResponse bool `mapstructure:"empty_index_response"`
-	AllowPublicWrite   bool `mapstructure:"allow_public_write"`
+	IndexResponse    string `mapstructure:"index_response"`
+	AllowPublicWrite bool   `mapstructure:"allow_public_write"`
 }
