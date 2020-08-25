@@ -105,6 +105,7 @@ func (cfg *Configuration) ValidateAndLog() {
 	cfg.Backend.validateAndLog()
 	cfg.Compression.validateAndLog()
 	cfg.Metrics.validateAndLog()
+	cfg.Routes.validateAndLog()
 }
 
 type Log struct {
@@ -266,4 +267,10 @@ func (m *PrometheusMetrics) Timeout() time.Duration {
 
 type Routes struct {
 	AllowPublicWrite bool `mapstructure:"allow_public_write"`
+}
+
+func (cfg *Routes) validateAndLog() {
+	if !cfg.AllowPublicWrite {
+		log.Infof("Main server will only accept GET requests")
+	}
 }
