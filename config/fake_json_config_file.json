@@ -1,3 +1,0 @@
-{
-    "description": "A non-yaml configuration file that will load nothing into the configuration struct"
-}
