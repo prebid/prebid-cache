@@ -26,12 +26,45 @@ func NewConfig(filename string) Configuration {
 }
 
 func setConfigDefaults(v *viper.Viper) {
+	v.SetDefault("port", 2424)
+	v.SetDefault("admin_port", 2525)
+	v.SetDefault("index_response", "This application stores short-term data for use in Prebid.")
+	v.SetDefault("log.level", "info")
+	v.SetDefault("backend.type", "memory")
+	v.SetDefault("backend.aerospike.host", "")
+	v.SetDefault("backend.aerospike.port", 0)
+	v.SetDefault("backend.aerospike.namespace", "")
+	v.SetDefault("backend.aerospike.default_ttl_seconds", 0)
+	v.SetDefault("backend.azure.account", "")
+	v.SetDefault("backend.azure.key", "")
+	v.SetDefault("backend.cassandra.hosts", "")
+	v.SetDefault("backend.cassandra.keyspace", "")
+	v.SetDefault("backend.memcache.hosts", []string{})
+	v.SetDefault("backend.redis.host", "")
+	v.SetDefault("backend.redis.port", 0)
+	v.SetDefault("backend.redis.password", "")
+	v.SetDefault("backend.redis.db", 0)
+	v.SetDefault("backend.redis.expiration", 0)
+	v.SetDefault("backend.redis.tls.enabled", false)
+	v.SetDefault("backend.redis.tls.insecure_skip_verify", false)
+	v.SetDefault("compression.type", "snappy")
+	v.SetDefault("metrics.influx.host", "")
+	v.SetDefault("metrics.influx.database", "")
+	v.SetDefault("metrics.influx.username", "")
+	v.SetDefault("metrics.influx.password", "")
+	v.SetDefault("metrics.influx.enabled", false)
+	v.SetDefault("metrics.prometheus.port", 0)
+	v.SetDefault("metrics.prometheus.namespace", "")
+	v.SetDefault("metrics.prometheus.subsystem", "")
+	v.SetDefault("metrics.prometheus.timeout_ms", 0)
+	v.SetDefault("metrics.prometheus.enabled", false)
 	v.SetDefault("rate_limiter.enabled", true)
 	v.SetDefault("rate_limiter.num_requests", 100)
 	v.SetDefault("request_limits.allow_setting_keys", false)
 	v.SetDefault("request_limits.max_size_bytes", 10*1024)
 	v.SetDefault("request_limits.max_num_values", 10)
 	v.SetDefault("request_limits.max_ttl_seconds", 3600)
+	v.SetDefault("routes.allow_public_write", true)
 }
 
 func setConfigFile(v *viper.Viper, filename string) {
@@ -53,12 +86,14 @@ func setEnvVars(v *viper.Viper) {
 type Configuration struct {
 	Port          int           `mapstructure:"port"`
 	AdminPort     int           `mapstructure:"admin_port"`
+	IndexResponse string        `mapstructure:"index_response"`
 	Log           Log           `mapstructure:"log"`
 	RateLimiting  RateLimiting  `mapstructure:"rate_limiter"`
 	RequestLimits RequestLimits `mapstructure:"request_limits"`
 	Backend       Backend       `mapstructure:"backend"`
 	Compression   Compression   `mapstructure:"compression"`
 	Metrics       Metrics       `mapstructure:"metrics"`
+	Routes        Routes        `mapstructure:"routes"`
 }
 
 // ValidateAndLog validates the config, terminating the program on any errors.
@@ -73,6 +108,7 @@ func (cfg *Configuration) ValidateAndLog() {
 	cfg.Backend.validateAndLog()
 	cfg.Compression.validateAndLog()
 	cfg.Metrics.validateAndLog()
+	cfg.Routes.validateAndLog()
 }
 
 type Log struct {
@@ -148,18 +184,17 @@ type Metrics struct {
 
 func (cfg *Metrics) validateAndLog() {
 
-	metricsEnabled := false
-
 	if cfg.Type == MetricsInflux || cfg.Influx.Enabled {
 		cfg.Influx.validateAndLog()
-		metricsEnabled = true
+		cfg.Influx.Enabled = true
 	}
 
 	if cfg.Prometheus.Enabled {
 		cfg.Prometheus.validateAndLog()
-		metricsEnabled = true
+		cfg.Prometheus.Enabled = true
 	}
 
+	metricsEnabled := cfg.Influx.Enabled || cfg.Prometheus.Enabled
 	if cfg.Type == MetricsNone || cfg.Type == "" {
 		if !metricsEnabled {
 			log.Infof("Prebid Cache will run without metrics")
@@ -231,4 +266,14 @@ func (promMetricsConfig *PrometheusMetrics) validateAndLog() {
 
 func (m *PrometheusMetrics) Timeout() time.Duration {
 	return time.Duration(m.TimeoutMillisRaw) * time.Millisecond
+}
+
+type Routes struct {
+	AllowPublicWrite bool `mapstructure:"allow_public_write"`
+}
+
+func (cfg *Routes) validateAndLog() {
+	if !cfg.AllowPublicWrite {
+		log.Infof("Main server will only accept GET requests")
+	}
 }

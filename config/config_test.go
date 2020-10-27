@@ -11,6 +11,56 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestDefaults(t *testing.T) {
+	v := viper.New()
+
+	setConfigDefaults(v)
+
+	cfg := Configuration{}
+	err := v.Unmarshal(&cfg)
+	assert.NoError(t, err, "Failed to unmarshal config: %v", err)
+
+	assertIntsEqual(t, "port", cfg.Port, 2424)
+	assertIntsEqual(t, "admin_port", cfg.AdminPort, 2525)
+	assertStringsEqual(t, "index_response", cfg.IndexResponse, "This application stores short-term data for use in Prebid.")
+	assertStringsEqual(t, "log.level", string(cfg.Log.Level), "info")
+	assertStringsEqual(t, "backend.type", string(cfg.Backend.Type), "memory")
+	assertStringsEqual(t, "backend.aerospike.host", cfg.Backend.Aerospike.Host, "")
+	assertIntsEqual(t, "backend.aerospike.port", cfg.Backend.Aerospike.Port, 0)
+	assertStringsEqual(t, "backend.aerospike.namespace", cfg.Backend.Aerospike.Namespace, "")
+	assertIntsEqual(t, "backend.aerospike.default_ttl_seconds", cfg.Backend.Aerospike.DefaultTTL, 0)
+	assertStringsEqual(t, "backend.azure.account", cfg.Backend.Azure.Account, "")
+	assertStringsEqual(t, "backend.azure.key", cfg.Backend.Azure.Key, "")
+	assertStringsEqual(t, "backend.cassandra.hosts", cfg.Backend.Cassandra.Hosts, "")
+	assertStringsEqual(t, "backend.cassandra.keyspace", cfg.Backend.Cassandra.Keyspace, "")
+	assert.Equal(t, []string{}, cfg.Backend.Memcache.Hosts, "backend.memcache.hosts should be a zero-lenght slice of strings")
+	assertStringsEqual(t, "backend.redis.host", cfg.Backend.Redis.Host, "")
+	assertIntsEqual(t, "backend.redis.port", cfg.Backend.Redis.Port, 0)
+	assertStringsEqual(t, "backend.redis.password", cfg.Backend.Redis.Password, "")
+	assertIntsEqual(t, "backend.redis.db", cfg.Backend.Redis.Db, 0)
+	assertIntsEqual(t, "backend.redis.expiration", cfg.Backend.Redis.Expiration, 0)
+	assertBoolsEqual(t, "backend.redis.tls.enabled", cfg.Backend.Redis.TLS.Enabled, false)
+	assertBoolsEqual(t, "backend.redis.tls.insecure_skip_verify", cfg.Backend.Redis.TLS.InsecureSkipVerify, false)
+	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "snappy")
+	assertStringsEqual(t, "metrics.type", string(cfg.Metrics.Type), "")
+	assertStringsEqual(t, "metrics.influx.host", cfg.Metrics.Influx.Host, "")
+	assertStringsEqual(t, "metrics.influx.database", cfg.Metrics.Influx.Database, "")
+	assertStringsEqual(t, "metrics.influx.username", cfg.Metrics.Influx.Username, "")
+	assertStringsEqual(t, "metrics.influx.password", cfg.Metrics.Influx.Password, "")
+	assertBoolsEqual(t, "metrics.influx.enabled", cfg.Metrics.Influx.Enabled, false)
+	assertIntsEqual(t, "metrics.prometheus.port", cfg.Metrics.Prometheus.Port, 0)
+	assertStringsEqual(t, "metrics.prometheus.namespace", cfg.Metrics.Prometheus.Namespace, "")
+	assertStringsEqual(t, "metrics.prometheus.subsystem", cfg.Metrics.Prometheus.Subsystem, "")
+	assertIntsEqual(t, "metrics.prometheus.timeout_ms", cfg.Metrics.Prometheus.TimeoutMillisRaw, 0)
+	assertBoolsEqual(t, "metrics.prometheus.enabled", cfg.Metrics.Prometheus.Enabled, false)
+	assertBoolsEqual(t, "rate_limiter.enabled", cfg.RateLimiting.Enabled, true)
+	assertInt64sEqual(t, "rate_limiter.num_requests", cfg.RateLimiting.MaxRequestsPerSecond, 100)
+	assertIntsEqual(t, "request_limits.max_size_bytes", cfg.RequestLimits.MaxSize, 10*1024)
+	assertIntsEqual(t, "request_limits.max_num_values", cfg.RequestLimits.MaxNumValues, 10)
+	assertIntsEqual(t, "request_limits.max_ttl_seconds", cfg.RequestLimits.MaxTTLSeconds, 3600)
+	assertBoolsEqual(t, "routes.allow_public_write", cfg.Routes.AllowPublicWrite, true)
+}
+
 func TestSampleConfig(t *testing.T) {
 	cfg := Configuration{}
 	v := newViperFromSample(t)
@@ -361,51 +411,51 @@ func TestCheckMetricsEnabled(t *testing.T) {
 			expectedLogInfo:   append(influxSuccess, prometheusSuccess...),
 		},
 		{
-			description:       "[9] metricType = \"trendalyze\"; both prometheus and influx flags off. Exit error",
+			description:       "[9] metricType = \"unknown\"; both prometheus and influx flags off. Exit error",
 			influxEnabled:     false,
 			prometheusEnabled: false,
-			metricType:        "trendalyze",
+			metricType:        "unknown",
 			expectedError:     true,
 			expectedLogInfo: []logComponents{
 				{
-					msg: "Metrics \"trendalyze\" are not supported, exiting program.",
+					msg: "Metrics \"unknown\" are not supported, exiting program.",
 					lvl: logrus.FatalLevel,
 				},
 			},
 		},
 		{
-			description:       "[10] metricType = \"trendalyze\"; prometheus flags on.",
+			description:       "[10] metricType = \"unknown\"; prometheus flags on.",
 			influxEnabled:     false,
 			prometheusEnabled: true,
-			metricType:        "trendalyze",
+			metricType:        "unknown",
 			expectedError:     false,
 			expectedLogInfo: append(
 				prometheusSuccess,
 				logComponents{
-					msg: "Prebid Cache will run without unsupported metrics \"trendalyze\".",
+					msg: "Prebid Cache will run without unsupported metrics \"unknown\".",
 					lvl: logrus.InfoLevel,
 				},
 			),
 		},
 		{
-			description:       "[11] metricType = \"trendalyze\"; influx flags on.",
+			description:       "[11] metricType = \"unknown\"; influx flags on.",
 			influxEnabled:     true,
 			prometheusEnabled: false,
-			metricType:        "trendalyze",
+			metricType:        "unknown",
 			expectedError:     false,
 			expectedLogInfo: append(
 				influxSuccess,
 				logComponents{
-					msg: "Prebid Cache will run without unsupported metrics \"trendalyze\".",
+					msg: "Prebid Cache will run without unsupported metrics \"unknown\".",
 					lvl: logrus.InfoLevel,
 				},
 			),
 		},
 		{
-			description:       "[12] metricType = \"trendalyze\"; prometheus and inlfux flags on",
+			description:       "[12] metricType = \"unknown\"; prometheus and inlfux flags on",
 			influxEnabled:     true,
 			prometheusEnabled: true,
-			metricType:        "trendalyze",
+			metricType:        "unknown",
 			expectedError:     false,
 			expectedLogInfo: append(
 				influxSuccess,
@@ -413,7 +463,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 				prometheusSuccess[1],
 				prometheusSuccess[2],
 				logComponents{
-					msg: "Prebid Cache will run without unsupported metrics \"trendalyze\".",
+					msg: "Prebid Cache will run without unsupported metrics \"unknown\".",
 					lvl: logrus.InfoLevel,
 				},
 			),
@@ -506,6 +556,143 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		//Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
+	}
+}
+
+func TestEnabledFlagGetsModified(t *testing.T) {
+
+	type testIn struct {
+		metricType        MetricsType
+		influxEnabled     bool
+		prometheusEnabled bool
+	}
+	type testOut struct {
+		expectedInfluxEnabled     bool
+		expectedprometheusEnabled bool
+	}
+
+	// test cases
+	type aTest struct {
+		description string
+		in          testIn
+		out         testOut
+	}
+	testCases := []aTest{
+		{
+			description: "[1] metricType = \"none\"; No flags enabled. ",
+			in:          testIn{"none", false, false},
+			out:         testOut{false, false},
+		},
+		{
+			description: "[2] metricType = \"none\"; Influx flag enabled.",
+			in:          testIn{"none", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[3] metricType = \"none\"; Prometheus flag enabled. ",
+			in:          testIn{"none", false, true},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[4] metricType = \"none\"; Both flags enabled. ",
+			in:          testIn{"none", true, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[5] metricType = \"influx\"; No flags enabled.",
+			in:          testIn{"influx", false, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[6] metricType = \"influx\"; Influx flag enabled.",
+			in:          testIn{"influx", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[7] metricType = \"influx\"; Prometheus flag enabled.",
+			in:          testIn{"influx", false, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[8] metricType = \"influx\"; Both flags enabled.",
+			in:          testIn{"influx", true, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[9] metricType = \"unknown\"; No flags enabled. ",
+			in:          testIn{"unknown", false, false},
+			out:         testOut{false, false},
+		},
+		{
+			description: "[10] metricType = \"unknown\"; Influx flag enabled.",
+			in:          testIn{"unknown", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[11] metricType = \"unknown\"; Prometheus flag enabled. ",
+			in:          testIn{"unknown", false, true},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[12] metricType = \"unknown\"; Both flags enabled. ",
+			in:          testIn{"unknown", true, true},
+			out:         testOut{true, true},
+		},
+		{
+			description: "[13] metricType = \"\"; No flags enabled. ",
+			in:          testIn{"", false, false},
+			out:         testOut{false, false},
+		},
+		{
+			description: "[14] metricType = \"\"; Influx flag enabled.",
+			in:          testIn{"", true, false},
+			out:         testOut{true, false},
+		},
+		{
+			description: "[15] metricType = \"\"; Prometheus flag enabled. ",
+			in:          testIn{"", false, true},
+			out:         testOut{false, true},
+		},
+		{
+			description: "[16] metricType = \"\"; Both flags enabled. ",
+			in:          testIn{"", true, true},
+			out:         testOut{true, true},
+		},
+	}
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
+	for i, test := range testCases {
+		// Reset Metrics object
+		metricsCfg := Metrics{
+			Type: test.in.metricType,
+			Influx: InfluxMetrics{
+				Host:     "http://fakeurl.com",
+				Database: "database-value",
+				Enabled:  test.in.influxEnabled,
+			},
+			Prometheus: PrometheusMetrics{
+				Port:      8080,
+				Namespace: "prebid",
+				Subsystem: "cache",
+				Enabled:   test.in.prometheusEnabled,
+			},
+		}
+
+		//run test
+		metricsCfg.validateAndLog()
+
+		// Assert `Enabled` flags value
+		assert.Equal(t, test.out.expectedInfluxEnabled, metricsCfg.Influx.Enabled, "Test case %d failed. `cfg.Influx.Enabled` carries wrong value.", i+1)
+		assert.Equal(t, test.out.expectedprometheusEnabled, metricsCfg.Prometheus.Enabled, "Test case %d failed. `cfg.Prometheus.Enabled` carries wrong value.", i+1)
+
+		//Reset log after every test
+		hook.Reset()
 	}
 }
 

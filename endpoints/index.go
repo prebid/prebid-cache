@@ -7,10 +7,10 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-//Handle Default route for the prebid-cache
-func Index(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	//Default routing instead of showing 404 not found error
-	// Added Default routing handler added message instead of trowing 404 Error
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "This application stores short-term data for use in Prebid.")
+//Default route for the prebid-cache
+func NewIndexHandler(message string) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, message)
+	}
 }

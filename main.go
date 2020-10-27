@@ -21,9 +21,10 @@ func main() {
 
 	appMetrics := metrics.CreateMetrics(cfg)
 	backend := backendConfig.NewBackend(cfg, appMetrics)
-	handler := routing.NewHandler(cfg, backend, appMetrics)
+	publicHandler := routing.NewPublicHandler(cfg, backend, appMetrics)
+	adminHandler := routing.NewAdminHandler(cfg, backend, appMetrics)
 	go appMetrics.Export(cfg)
-	server.Listen(cfg, handler, appMetrics)
+	server.Listen(cfg, publicHandler, adminHandler, appMetrics)
 }
 
 func setLogLevel(logLevel config.LogLevel) {
