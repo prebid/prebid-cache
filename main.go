@@ -15,7 +15,7 @@ import (
 
 func main() {
 	log.SetOutput(os.Stdout)
-	cfg := config.NewConfig("config") // name of config file without extension
+	cfg := config.NewConfig("config")
 	setLogLevel(cfg.Log.Level)
 	cfg.ValidateAndLog()
 
