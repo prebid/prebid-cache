@@ -11,6 +11,11 @@ import (
 func NewConfig(filename string) Configuration {
 	v := viper.New()
 	setConfigDefaults(v)
+
+	if filename == "" {
+		log.Infof("No configuration file was specified, Prebid Cache will initialize with default values")
+	}
+
 	setConfigFile(v, filename)
 	setEnvVars(v)
 
@@ -68,9 +73,6 @@ func setConfigDefaults(v *viper.Viper) {
 }
 
 func setConfigFile(v *viper.Viper, filename string) {
-	if filename == "" {
-		log.Infof("No configuration file was specified, Prebid Cache will initialize with default values")
-	}
 	v.SetConfigName(filename)              // name of config file (without extension)
 	v.AddConfigPath("/etc/prebid-cache/")  // path to look for the config file in
 	v.AddConfigPath("$HOME/.prebid-cache") // call multiple times to add many search paths

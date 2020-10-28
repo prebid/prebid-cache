@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -115,27 +116,20 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 		msg string
 		lvl logrus.Level
 	}
-	type testIn struct {
-		configFileName string
-	}
 	type testOut struct {
 		configFileName  string
 		expectedLogInfo []logComponents
-		expectedFatal   bool
-		expectedPortErr bool
+		overridesPort   bool
 	}
-	realPortNumber := 2424
 
 	testCases := []struct {
-		description string
-		in          testIn
-		out         testOut
+		description      string
+		inConfigFileName string
+		out              testOut
 	}{
 		{
-			description: "[1] Empty file name",
-			in: testIn{
-				configFileName: "",
-			},
+			description:      "Empty file name",
+			inConfigFileName: "",
 			out: testOut{
 				expectedLogInfo: []logComponents{
 					{
@@ -147,15 +141,12 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 						lvl: logrus.InfoLevel,
 					},
 				},
-				expectedFatal:   false,
-				expectedPortErr: false,
+				overridesPort: false,
 			},
 		},
 		{
-			description: "[2] Non-existing file name",
-			in: testIn{
-				configFileName: "non_existent",
-			},
+			description:      "Non-existing file name",
+			inConfigFileName: "non_existent",
 			out: testOut{
 				expectedLogInfo: []logComponents{
 					{
@@ -163,46 +154,44 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 						lvl: logrus.InfoLevel,
 					},
 				},
-				expectedFatal:   false,
-				expectedPortErr: false,
+				overridesPort: false,
 			},
 		},
 		{
-			description: "[3] File exists, unsupported 'txt' extension",
-			in: testIn{
-				configFileName: "fake_txt_config_file",
-			},
+			description:      "File exists, unsupported 'txt' extension",
+			inConfigFileName: filepath.Join("configtest", "fake_txt_config_file"),
 			out: testOut{
 				expectedLogInfo: []logComponents{
 					{
-						msg: "Failed to load config: Config File \"fake_txt_config_file\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
+						msg: "Failed to load config: Config File \"configtest/fake_txt_config_file\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
 						lvl: logrus.InfoLevel,
 					},
 				},
-				expectedFatal:   false,
-				expectedPortErr: false,
+				overridesPort: false,
 			},
 		},
 		{
-			description: "[4] File exists, supported 'json' extension that will create defective Configuration",
-			in: testIn{
-				configFileName: "fake_json_config_file",
-			},
+			description:      "File exists, supported 'json' extension that will create defective Configuration",
+			inConfigFileName: filepath.Join("configtest", "fake_json_config_file"),
 			out: testOut{
 				expectedLogInfo: []logComponents{},
-				expectedFatal:   false,
-				expectedPortErr: true,
+				overridesPort:   false,
 			},
 		},
 		{
-			description: "[5] File exists, correct yaml file format",
-			in: testIn{
-				configFileName: "test_yaml_config_file",
-			},
+			description:      "Yaml file exists, it does not override port default value",
+			inConfigFileName: filepath.Join("configtest", "config_file"),
 			out: testOut{
 				expectedLogInfo: []logComponents{},
-				expectedFatal:   false,
-				expectedPortErr: false,
+				overridesPort:   false,
+			},
+		},
+		{
+			description:      "Valid yaml configuration file overrides port default value",
+			inConfigFileName: filepath.Join("configtest", "config_file_overrides_defaults"),
+			out: testOut{
+				expectedLogInfo: []logComponents{},
+				overridesPort:   true,
 			},
 		},
 	}
@@ -212,29 +201,32 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
 
-	for i, tc := range testCases {
+	for _, tc := range testCases {
 		// Reset the fatal flag to false every test
 		fatal = false
 
 		//run test
-		cfg := NewConfig(tc.in.configFileName)
+		cfg := NewConfig(tc.inConfigFileName)
 
 		// Assert logrus expected entries
-		if assert.Equal(t, len(tc.out.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.out.expectedLogInfo) = %d len(hook.Entries) = %d", i+1, len(tc.out.expectedLogInfo), len(hook.Entries)) {
-			for j := 0; j < len(tc.out.expectedLogInfo); j++ {
-				assert.Equal(t, tc.out.expectedLogInfo[j].msg, hook.Entries[j].Message, "[%d] Wrong log message", i+1)
-				assert.Equal(t, tc.out.expectedLogInfo[j].lvl, hook.Entries[j].Level, "[%d] Wrong info level", i+1)
+		if assert.Len(t, hook.Entries, len(tc.out.expectedLogInfo), "Incorrect number of entries were logged to logrus in test: %s", tc.description) {
+			for i := 0; i < len(tc.out.expectedLogInfo); i++ {
+				assert.Equal(t, tc.out.expectedLogInfo[i].msg, hook.Entries[i].Message, "Wrong log message. Test: %s", tc.description)
+				assert.Equal(t, tc.out.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong info level. Test: %s", tc.description)
 			}
 		} else {
 			return
 		}
 
-		// Assert log.Fatalf() was called or not
-		assert.Equal(t, tc.out.expectedFatal, fatal, "[%d] Wrong fatal log call", i+1)
+		// Assert log.Fatalf() was not called
+		assert.False(t, fatal, "[%d] InfoLevel Fatal should have not been logged. Test: %s", tc.description)
 
-		if tc.out.expectedPortErr {
-			// Assert fake port number was correctly read
-			assert.NotEqual(t, realPortNumber, cfg.Port, "[%d] Port number is supposed to be 0 given the non-yaml, fake config file", i+1)
+		// Assert configuration
+		assert.Equal(t, 2525, cfg.AdminPort, "AdminPort number in this test is supposed to be the 2525 default. Test: %s", tc.description)
+		if tc.out.overridesPort {
+			assert.NotEqual(t, 2424, cfg.Port, "Port number in this test is supposed to be different from the 2424 default. Test: %s", tc.description)
+		} else {
+			assert.Equal(t, 2424, cfg.Port, "Port number in this test is supposed to be 2424 default. Test: %s", tc.description)
 		}
 
 		//Reset log after every test and assert successful reset
