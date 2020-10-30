@@ -157,25 +157,20 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 			},
 		},
 		{
-			description:      "File exists but could not be read because 'txt' extension is not supported: stop execution and log Fatal message",
-			inConfigFileName: filepath.Join("configtest", "fake_txt_config_file"),
+			description:      "Non-yaml configuration file exists and is valid: stop execution and log Fatal message",
+			inConfigFileName: filepath.Join("configtest", "json_config"),
 			out: testOut{
 				expectedLogInfo: []logComponents{
 					{
-						msg: "Failed to load config file: Config File \"configtest/fake_txt_config_file\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
+						msg: "Failed to load config file: Config File \"configtest/json_config\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
 						lvl: logrus.FatalLevel,
 					},
 				},
 			},
 		},
 		{
-			description:      "File exists and its 'json' markup is supported: configuration is parsed from file and overrides default port value",
-			inConfigFileName: filepath.Join("configtest", "fake_json_config_file"),
-			out:              testOut{overridesDefaultPort: true},
-		},
-		{
 			description:      "file exists but its yaml markup is invalid: stop execution and log Fatal message",
-			inConfigFileName: filepath.Join("configtest", "config_file_invalid"),
+			inConfigFileName: filepath.Join("configtest", "config_invalid"),
 			out: testOut{
 				expectedLogInfo: []logComponents{
 					{
@@ -187,12 +182,12 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 		},
 		{
 			description:      "Valid yaml file exists, configuration from file gets read but does not override port default value",
-			inConfigFileName: filepath.Join("configtest", "config_file"),
+			inConfigFileName: filepath.Join("configtest", "config"),
 			out:              testOut{},
 		},
 		{
 			description:      "Valid yaml configuration gets parsed from file and overrides port default value",
-			inConfigFileName: filepath.Join("configtest", "config_file_overrides_defaults"),
+			inConfigFileName: filepath.Join("configtest", "config_overrides_defaults"),
 			out:              testOut{overridesDefaultPort: true},
 		},
 	}

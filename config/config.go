@@ -9,6 +9,9 @@ import (
 )
 
 func NewConfig(filename string) Configuration {
+	// Limit Viper to only support yaml files
+	viper.SupportedExts = []string{"yaml", "yml"}
+
 	v := viper.New()
 
 	// Set default values that will be used when no others are
@@ -17,6 +20,7 @@ func NewConfig(filename string) Configuration {
 
 	setEnvVars(v)
 
+	// Read configuration file if any. Error-out if file was provided and could not be read.
 	if filename != "" {
 		setConfigFile(v, filename)
 		if err := v.ReadInConfig(); err != nil {
