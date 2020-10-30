@@ -42,3 +42,5 @@ metrics:
     database: "some-database"
     username: "influx-username"
     password: "influx-password"
+routes:
+  allow_public_write: true

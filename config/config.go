@@ -28,6 +28,7 @@ func NewConfig() Configuration {
 func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("port", 2424)
 	v.SetDefault("admin_port", 2525)
+	v.SetDefault("index_response", "This application stores short-term data for use in Prebid.")
 	v.SetDefault("log.level", "info")
 	v.SetDefault("backend.type", "memory")
 	v.SetDefault("backend.aerospike.host", "")
@@ -63,6 +64,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("request_limits.max_size_bytes", 10*1024)
 	v.SetDefault("request_limits.max_num_values", 10)
 	v.SetDefault("request_limits.max_ttl_seconds", 3600)
+	v.SetDefault("routes.allow_public_write", true)
 }
 
 func setConfigFile(v *viper.Viper) {
@@ -81,12 +83,14 @@ func setEnvVars(v *viper.Viper) {
 type Configuration struct {
 	Port          int           `mapstructure:"port"`
 	AdminPort     int           `mapstructure:"admin_port"`
+	IndexResponse string        `mapstructure:"index_response"`
 	Log           Log           `mapstructure:"log"`
 	RateLimiting  RateLimiting  `mapstructure:"rate_limiter"`
 	RequestLimits RequestLimits `mapstructure:"request_limits"`
 	Backend       Backend       `mapstructure:"backend"`
 	Compression   Compression   `mapstructure:"compression"`
 	Metrics       Metrics       `mapstructure:"metrics"`
+	Routes        Routes        `mapstructure:"routes"`
 }
 
 // ValidateAndLog validates the config, terminating the program on any errors.
@@ -101,6 +105,7 @@ func (cfg *Configuration) ValidateAndLog() {
 	cfg.Backend.validateAndLog()
 	cfg.Compression.validateAndLog()
 	cfg.Metrics.validateAndLog()
+	cfg.Routes.validateAndLog()
 }
 
 type Log struct {
@@ -258,4 +263,14 @@ func (promMetricsConfig *PrometheusMetrics) validateAndLog() {
 
 func (m *PrometheusMetrics) Timeout() time.Duration {
 	return time.Duration(m.TimeoutMillisRaw) * time.Millisecond
+}
+
+type Routes struct {
+	AllowPublicWrite bool `mapstructure:"allow_public_write"`
+}
+
+func (cfg *Routes) validateAndLog() {
+	if !cfg.AllowPublicWrite {
+		log.Infof("Main server will only accept GET requests")
+	}
 }

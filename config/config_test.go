@@ -22,6 +22,7 @@ func TestDefaults(t *testing.T) {
 
 	assertIntsEqual(t, "port", cfg.Port, 2424)
 	assertIntsEqual(t, "admin_port", cfg.AdminPort, 2525)
+	assertStringsEqual(t, "index_response", cfg.IndexResponse, "This application stores short-term data for use in Prebid.")
 	assertStringsEqual(t, "log.level", string(cfg.Log.Level), "info")
 	assertStringsEqual(t, "backend.type", string(cfg.Backend.Type), "memory")
 	assertStringsEqual(t, "backend.aerospike.host", cfg.Backend.Aerospike.Host, "")
@@ -57,6 +58,7 @@ func TestDefaults(t *testing.T) {
 	assertIntsEqual(t, "request_limits.max_size_bytes", cfg.RequestLimits.MaxSize, 10*1024)
 	assertIntsEqual(t, "request_limits.max_num_values", cfg.RequestLimits.MaxNumValues, 10)
 	assertIntsEqual(t, "request_limits.max_ttl_seconds", cfg.RequestLimits.MaxTTLSeconds, 3600)
+	assertBoolsEqual(t, "routes.allow_public_write", cfg.Routes.AllowPublicWrite, true)
 }
 
 func TestSampleConfig(t *testing.T) {
