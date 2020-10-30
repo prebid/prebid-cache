@@ -10,18 +10,22 @@ import (
 
 func NewConfig(filename string) Configuration {
 	v := viper.New()
+
+	// Set default values that will be used when no others are
+	// provided via flag, config or ENV.
 	setConfigDefaults(v)
 
-	if filename == "" {
+	setEnvVars(v)
+
+	if filename != "" {
+		setConfigFile(v, filename)
+		if err := v.ReadInConfig(); err != nil {
+			log.Fatalf("Failed to load config file: %v", err)
+		}
+	} else {
 		log.Infof("No configuration file was specified, Prebid Cache will initialize with default values")
 	}
 
-	setConfigFile(v, filename)
-	setEnvVars(v)
-
-	if err := v.ReadInConfig(); err != nil {
-		log.Infof("Failed to load config: %v", err)
-	}
 	cfg := Configuration{}
 	if err := v.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Failed to unmarshal config: %v", err)

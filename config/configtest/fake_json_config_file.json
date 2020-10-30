@@ -1,3 +1,4 @@
 {
-    "description": "A non-yaml configuration file that will load nothing into the configuration struct"
+    "description": "A non-yaml configuration file that will load a port value that differs from the default",
+    "port": 9000
 }

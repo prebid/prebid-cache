@@ -112,14 +112,18 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := test.NewGlobal()
 
+	// Some of the values set in the setConfigDefaults(v *viper.Viper) function
+	defaultAdminPort := 2525
+	defaultPort := 2424
+
 	type logComponents struct {
 		msg string
 		lvl logrus.Level
 	}
 	type testOut struct {
-		configFileName  string
-		expectedLogInfo []logComponents
-		overridesPort   bool
+		configFileName       string
+		expectedLogInfo      []logComponents
+		overridesDefaultPort bool
 	}
 
 	testCases := []struct {
@@ -128,7 +132,7 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 		out              testOut
 	}{
 		{
-			description:      "Empty file name",
+			description:      "Empty file name: expect INFO level log message and start server with default config values",
 			inConfigFileName: "",
 			out: testOut{
 				expectedLogInfo: []logComponents{
@@ -136,80 +140,73 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 						msg: "No configuration file was specified, Prebid Cache will initialize with default values",
 						lvl: logrus.InfoLevel,
 					},
-					{
-						msg: "Failed to load config: Config File \"config\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
-						lvl: logrus.InfoLevel,
-					},
 				},
-				overridesPort: false,
+				overridesDefaultPort: false,
 			},
 		},
 		{
-			description:      "Non-existing file name",
-			inConfigFileName: "non_existent",
+			description:      "Configuration file was specified but doesn't exist: stop execution and log Fatal message",
+			inConfigFileName: "non_existent_file",
 			out: testOut{
 				expectedLogInfo: []logComponents{
 					{
-						msg: "Failed to load config: Config File \"non_existent\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
-						lvl: logrus.InfoLevel,
+						msg: "Failed to load config file: Config File \"non_existent_file\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
+						lvl: logrus.FatalLevel,
 					},
 				},
-				overridesPort: false,
 			},
 		},
 		{
-			description:      "File exists, unsupported 'txt' extension",
+			description:      "File exists but could not be read because 'txt' extension is not supported: stop execution and log Fatal message",
 			inConfigFileName: filepath.Join("configtest", "fake_txt_config_file"),
 			out: testOut{
 				expectedLogInfo: []logComponents{
 					{
-						msg: "Failed to load config: Config File \"configtest/fake_txt_config_file\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
-						lvl: logrus.InfoLevel,
+						msg: "Failed to load config file: Config File \"configtest/fake_txt_config_file\" Not Found in \"[/etc/prebid-cache /Users/gcarreongutierrez/.prebid-cache /Users/gcarreongutierrez/go/src/github.com/prebid/prebid-cache/config]\"",
+						lvl: logrus.FatalLevel,
 					},
 				},
-				overridesPort: false,
 			},
 		},
 		{
-			description:      "File exists, supported 'json' extension that will create defective Configuration",
+			description:      "File exists and its 'json' markup is supported: configuration is parsed from file and overrides default port value",
 			inConfigFileName: filepath.Join("configtest", "fake_json_config_file"),
+			out:              testOut{overridesDefaultPort: true},
+		},
+		{
+			description:      "file exists but its yaml markup is invalid: stop execution and log Fatal message",
+			inConfigFileName: filepath.Join("configtest", "config_file_invalid"),
 			out: testOut{
-				expectedLogInfo: []logComponents{},
-				overridesPort:   false,
+				expectedLogInfo: []logComponents{
+					{
+						msg: "Failed to load config file: While parsing config: yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `malform...` into map[string]interface {}",
+						lvl: logrus.FatalLevel,
+					},
+				},
 			},
 		},
 		{
-			description:      "Yaml file exists, it does not override port default value",
+			description:      "Valid yaml file exists, configuration from file gets read but does not override port default value",
 			inConfigFileName: filepath.Join("configtest", "config_file"),
-			out: testOut{
-				expectedLogInfo: []logComponents{},
-				overridesPort:   false,
-			},
+			out:              testOut{},
 		},
 		{
-			description:      "Valid yaml configuration file overrides port default value",
+			description:      "Valid yaml configuration gets parsed from file and overrides port default value",
 			inConfigFileName: filepath.Join("configtest", "config_file_overrides_defaults"),
-			out: testOut{
-				expectedLogInfo: []logComponents{},
-				overridesPort:   true,
-			},
+			out:              testOut{overridesDefaultPort: true},
 		},
 	}
 
 	//substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
-	var fatal bool
-	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	for _, tc := range testCases {
-		// Reset the fatal flag to false every test
-		fatal = false
-
 		//run test
 		cfg := NewConfig(tc.inConfigFileName)
 
 		// Assert logrus expected entries
-		if assert.Len(t, hook.Entries, len(tc.out.expectedLogInfo), "Incorrect number of entries were logged to logrus in test: %s", tc.description) {
+		if assert.Len(t, hook.Entries, len(tc.out.expectedLogInfo), "Incorrect number of entries were logged to logrus in test: %s. Expected: %d Actual: %d", tc.description, len(tc.out.expectedLogInfo), len(hook.Entries)) {
 			for i := 0; i < len(tc.out.expectedLogInfo); i++ {
 				assert.Equal(t, tc.out.expectedLogInfo[i].msg, hook.Entries[i].Message, "Wrong log message. Test: %s", tc.description)
 				assert.Equal(t, tc.out.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong info level. Test: %s", tc.description)
@@ -218,13 +215,10 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 			return
 		}
 
-		// Assert log.Fatalf() was not called
-		assert.False(t, fatal, "[%d] InfoLevel Fatal should have not been logged. Test: %s", tc.description)
-
 		// Assert configuration
-		assert.Equal(t, 2525, cfg.AdminPort, "AdminPort number in this test is supposed to be the 2525 default. Test: %s", tc.description)
-		if tc.out.overridesPort {
-			assert.NotEqual(t, 2424, cfg.Port, "Port number in this test is supposed to be different from the 2424 default. Test: %s", tc.description)
+		assert.Equal(t, defaultAdminPort, cfg.AdminPort, "AdminPort number in this test is supposed to be the 2525 default. Test: %s", tc.description)
+		if tc.out.overridesDefaultPort {
+			assert.NotEqual(t, defaultPort, cfg.Port, "Port number in this test is supposed to be different from the 2424 default. Test: %s", tc.description)
 		} else {
 			assert.Equal(t, 2424, cfg.Port, "Port number in this test is supposed to be 2424 default. Test: %s", tc.description)
 		}
