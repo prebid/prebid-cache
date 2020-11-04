@@ -147,7 +147,18 @@ The easiest way to set config during development is by editing the [config.yaml]
 You can also set the config through environment variables. For example:
 
 ```bash
-PBC_COMPRESSION_TYPE=none ./prebid-cache
+PBC_COMPRESSION_TYPE: "none"
+```
+
+### Rate limiter
+
+Rate limiting uses a lot of memory and is disabled by default. To re-enable rate limiting, set the `PBC_RATE_LIMITER_ENABLED` flag to `true` in the configuration file [config.yaml](./config.yaml). If enabled, the maximum requests per second defaults to 100, this value can also be modified in the configuration file:
+
+Sample rate limiting configuration:
+
+```bash
+PBC_RATE_LIMITER_ENABLED: "true"
+PBC_RATE_LIMITER_NUM_REQUESTS: 150
 ```
 
 ### Docker
