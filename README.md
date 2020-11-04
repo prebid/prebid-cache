@@ -141,13 +141,36 @@ The service will respond to requests on `localhost:2424`, and the admin data wil
 
 ### Configuration
 
-Configuration is handled by [Viper](https://github.com/spf13/viper#putting-values-into-viper).
-The easiest way to set config during development is by editing the [config.yaml](./config.yaml) file.
-
-You can also set the config through environment variables. For example:
+Configuration is handled by [Viper](https://github.com/spf13/viper#putting-values-into-viper). The easiest way to set config during development is by editing the [config.yaml](./config.yaml) file. You can also set the config through environment variables. For instance:
 
 ```bash
-PBC_COMPRESSION_TYPE=none ./prebid-cache
+PBC_COMPRESSION_TYPE: "none"
+```
+
+Prebid Cache's rate limiting feature is also configurable. By default, it is enabled and allows for a maximum of 100 requests per second. Given its high memory consumption, it can be disabled by setting the `rate_limiter.enabled` flag to `false` in the configuration file [config.yaml](./config.yaml) or the `PBC_RATE_LIMITER_ENABLED` environment variable. This is what a sample configuration that disables the rate limiter in the [config.yaml](./config.yaml) file looks like:
+
+```yaml
+rate_limiter:
+  enabled: false
+```
+
+Disabling the rate limiter via environment variable:
+```bash
+PBC_RATE_LIMITER_ENABLED: "false"
+```
+
+In contrast, we could also configure the maximum number of rate limiter requests to a value other than 100:
+Inside [config.yaml](./config.yaml):
+```yaml
+rate_limiter:
+  enabled: true
+  num_requests: 150
+```
+
+Or via the following environment variables:
+```bash
+PBC_RATE_LIMITER_ENABLED: "true"
+PBC_RATE_LIMITER_NUM_REQUESTS: 150
 ```
 
 ### Docker
