@@ -15,7 +15,7 @@ func NewConfig(filename string) Configuration {
 	v := viper.New()
 
 	// Set default values that will be used when no others are
-	// provided via flag, config or ENV.
+	// provided via flag, configuration file or ENV.
 	setConfigDefaults(v)
 
 	setEnvVars(v)
