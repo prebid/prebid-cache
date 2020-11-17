@@ -63,6 +63,7 @@ above. If the server supports key, then the put can optionally use it as:
     }
   ]
 }
+```
 
 This will result in the response
 
@@ -144,33 +145,33 @@ The service will respond to requests on `localhost:2424`, and the admin data wil
 Configuration is handled by [Viper](https://github.com/spf13/viper#putting-values-into-viper). The easiest way to set config during development is by editing the [config.yaml](./config.yaml) file. You can also set the config through environment variables. For instance:
 
 ```bash
-PBC_COMPRESSION_TYPE: "none"
+export PBC_COMPRESSION_TYPE="none"
 ```
+##### Rate limiter configuration
 
-Prebid Cache's rate limiting feature is also configurable. By default, it is enabled and allows for a maximum of 100 requests per second. Given its high memory consumption, it can be disabled by setting the `rate_limiter.enabled` flag to `false` in the configuration file [config.yaml](./config.yaml) or the `PBC_RATE_LIMITER_ENABLED` environment variable. This is what a sample configuration that disables the rate limiter in the [config.yaml](./config.yaml) file looks like:
+Prebid Cache's rate limiting feature, that has the downside of considerable memory consumption, is enabled by default for a maximum of 100 requests per second. From the [config.yaml](./config.yaml) file, use the `rate_limiter.enabled` and `rate_limiter.num_requests` options to either disable the rate limiter or modify its request capacity. For instance:
 
 ```yaml
 rate_limiter:
   enabled: false
 ```
 
-Disabling the rate limiter via environment variable:
+disables the rate limiter. We could also disable setting the following environment variable:
+
 ```bash
-PBC_RATE_LIMITER_ENABLED: "false"
+export PBC_RATE_LIMITER_ENABLED="false"
 ```
 
-In contrast, we could also configure the maximum number of rate limiter requests to a value other than 100:
-Inside [config.yaml](./config.yaml):
+In contrast, we could keep the rate limiter running and set its maximum number of requests to a value other than 100. Inside [config.yaml](./config.yaml):
+
 ```yaml
 rate_limiter:
-  enabled: true
   num_requests: 150
 ```
 
-Or via the following environment variables:
+Or via the following environment variable:
 ```bash
-PBC_RATE_LIMITER_ENABLED: "true"
-PBC_RATE_LIMITER_NUM_REQUESTS: 150
+export PBC_RATE_LIMITER_NUM_REQUESTS=150
 ```
 
 ### Docker
@@ -178,7 +179,9 @@ PBC_RATE_LIMITER_NUM_REQUESTS: 150
 Prebid Cache works in Docker out of the box.
 
 ```bash
-CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo  .
+export CGO_ENABLED=0
+export GOOS=linux
+go build -a -installsuffix cgo  .
 docker build -t prebid-cache
 docker run -p 2424:2424 -t prebid-cache .
 ```
