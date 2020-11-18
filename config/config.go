@@ -9,9 +9,6 @@ import (
 )
 
 func NewConfig(filename string) Configuration {
-	// Limit Viper to only support yaml files
-	viper.SupportedExts = []string{"yaml", "yml"}
-
 	v := viper.New()
 
 	// Set default values that will be used when no others are

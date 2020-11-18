@@ -158,7 +158,7 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 		},
 		{
 			description:      "Non-yaml configuration file exists and is valid: stop execution and log Fatal message",
-			inConfigFileName: filepath.Join("configtest", "json_config"),
+			inConfigFileName: filepath.Join("configtest", "config_csv"),
 			out: testOut{
 				expectedLogInfo: []logComponents{
 					{
@@ -182,7 +182,7 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 		},
 		{
 			description:      "Valid yaml file exists, configuration from file gets read but does not override port default value",
-			inConfigFileName: filepath.Join("configtest", "config"),
+			inConfigFileName: filepath.Join("configtest", "config_same_as_defaults"),
 			out:              testOut{},
 		},
 		{
