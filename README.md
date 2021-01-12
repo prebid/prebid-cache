@@ -1,8 +1,33 @@
 # Prebid Cache
 
-This application stores short-term data for use in Prebid.
+This application stores short-term data for use in Prebid. It exists to support Video Ads from Prebid.js, as well as prebid-native
 
-It exists to support Video Ads from Prebid.js, as well as prebid-native
+## Installation
+
+First install Go version 1.14 or newer.
+
+Note that prebid-cache is using Go modules. We officially support the most recent two major versions of the Go runtime. However, if you'd like to use a version <1.13 and are inside `GOPATH` `GO111MODULE` needs to be set to `GO111MODULE=on`.
+
+Download and prepare Prebid Cache:
+
+```
+cd YOUR_DIRECTORY
+git clone https://github.com/prebid/prebid-server src/github.com/prebid/prebid-server
+cd src/github.com/prebid/prebid-server
+```
+
+Run the automated tests:
+
+```
+./validate.sh
+```
+
+Or just run the server locally:
+
+```
+go build .
+./prebid-cache
+```
 
 ## API
 
@@ -149,20 +174,20 @@ export PBC_COMPRESSION_TYPE="none"
 ```
 ##### Rate limiter configuration
 
-Prebid Cache's rate limiting feature, that has the downside of considerable memory consumption, is enabled by default for a maximum of 100 requests per second. From the [config.yaml](./config.yaml) file, use the `rate_limiter.enabled` and `rate_limiter.num_requests` options to either disable the rate limiter or modify its request capacity. For instance:
+Prebid Cache's rate limiting feature, that has the downside of considerable memory consumption, is enabled by default for a maximum of 100 requests per second. From the [config.yaml](./config.yaml) file, use the `rate_limiter.enabled` and `rate_limiter.num_requests` options to either disable the rate limiter or modify its request capacity. For instance adding the following in the `config.yaml` file:
 
 ```yaml
 rate_limiter:
   enabled: false
 ```
 
-disables the rate limiter. We could also disable setting the following environment variable:
+disables the rate limiter. We could also disable it by setting the following environment variable:
 
 ```bash
 export PBC_RATE_LIMITER_ENABLED="false"
 ```
 
-In contrast, we could keep the rate limiter running and set its maximum number of requests to a value other than 100. Inside [config.yaml](./config.yaml):
+In contrast, we could keep the rate limiter running and set its maximum number of requests to a value other than 100. For instance, to set them to 150, we could modify the `num_requests` field inside [config.yaml](./config.yaml):
 
 ```yaml
 rate_limiter:
@@ -176,14 +201,14 @@ export PBC_RATE_LIMITER_NUM_REQUESTS=150
 
 ### Docker
 
-Prebid Cache works in Docker out of the box.
-
+Prebid Cache works in Docker out of the box. It comes with a Dockerfile that creates a container, downloads all dependencies, and instantly installs a working image for us to run Prebid Cache right away.
+Using the `docker build` command we specify an image name and the location of the folder where we cloned or downloaded Prebid Cache to create an image ready to run. If we cloned Prebid Cache in `~/go/src/github.com/prebid/prebid-cache`, then we could use the command that follows to create the image `prebid-cache`.
 ```bash
-export CGO_ENABLED=0
-export GOOS=linux
-go build -a -installsuffix cgo  .
-docker build -t prebid-cache
-docker run -p 2424:2424 -t prebid-cache .
+docker build -t prebid-cache ~/go/src/github.com/prebid/prebid-cache
+```
+We can run Prebid Cache using the newly created image:
+```bash
+docker run -p 8000:8000 -t prebid-cache
 ```
 
 ### Profiling
