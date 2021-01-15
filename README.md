@@ -1,6 +1,6 @@
 # Prebid Cache
 
-This application stores short-term data for use in Prebid. It exists to support Video Ads from Prebid.js, as well as prebid-native
+This application stores short-term data for use in Prebid Server and Prebid.js, primarily targeting video, native, and AMP formats.
 
 ## Installation
 
