@@ -3,7 +3,7 @@ module github.com/prebid/prebid-cache
 go 1.13
 
 require (
-	github.com/aerospike/aerospike-client-go v1.34.0
+	github.com/aerospike/aerospike-client-go v4.0.0+incompatible
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737
 	github.com/didip/tollbooth v2.2.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.7
