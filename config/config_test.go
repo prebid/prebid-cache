@@ -137,7 +137,7 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 			out: testOut{
 				expectedLogInfo: []logComponents{
 					{
-						msg: "No configuration file was specified, Prebid Cache will initialize with default values",
+						msg: "Config file '' could not be found. Prebid Cache will initialize with default values.",
 						lvl: logrus.InfoLevel,
 					},
 				},
@@ -145,27 +145,16 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 			},
 		},
 		{
-			description:      "Configuration file was specified but doesn't exist: stop execution and log Fatal message",
+			description:      "Configuration file was specified but doesn't exist: expect INFO level log message and start server with default config values",
 			inConfigFileName: "non_existent_file",
 			out: testOut{
 				expectedLogInfo: []logComponents{
 					{
-						msg: "Failed to load config file:",
-						lvl: logrus.FatalLevel,
+						msg: "Config file 'non_existent_file' could not be found. Prebid Cache will initialize with default values.",
+						lvl: logrus.InfoLevel,
 					},
 				},
-			},
-		},
-		{
-			description:      "Non-yaml configuration file exists and is valid: stop execution and log Fatal message",
-			inConfigFileName: filepath.Join("configtest", "config_csv"),
-			out: testOut{
-				expectedLogInfo: []logComponents{
-					{
-						msg: "Failed to load config file:",
-						lvl: logrus.FatalLevel,
-					},
-				},
+				overridesDefaultPort: false,
 			},
 		},
 		{
@@ -203,7 +192,6 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 		// Assert logrus expected entries
 		if assert.Len(t, hook.Entries, len(tc.out.expectedLogInfo), "Incorrect number of entries were logged to logrus in test: %s. Expected: %d Actual: %d", tc.description, len(tc.out.expectedLogInfo), len(hook.Entries)) {
 			for i := 0; i < len(tc.out.expectedLogInfo); i++ {
-				//assert.Equal(t, tc.out.expectedLogInfo[i].msg, hook.Entries[i].Message, "Wrong log message. Test: %s", tc.description)
 				assert.True(t, strings.HasPrefix(hook.Entries[i].Message, tc.out.expectedLogInfo[i].msg), "Wrong log message. Test: %s", tc.description)
 				assert.Equal(t, tc.out.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong info level. Test: %s", tc.description)
 			}

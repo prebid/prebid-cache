@@ -11,20 +11,25 @@ import (
 func NewConfig(filename string) Configuration {
 	v := viper.New()
 
-	// Set default values that will be used when no others are
-	// provided via flag, configuration file or ENV.
+	// Set default values that can be overriden by environment variables
+	// or values found on the configuration file
 	setConfigDefaults(v)
 
 	setEnvVars(v)
 
-	// Read configuration file if any. Error-out if file was provided and could not be read.
-	if filename != "" {
-		setConfigFile(v, filename)
-		if err := v.ReadInConfig(); err != nil {
+	setConfigFile(v, filename)
+
+	// Read configuration file
+	err := v.ReadInConfig()
+	if err != nil {
+		// Make sure the configuration file was not defective
+		if _, fileNotFound := err.(viper.ConfigFileNotFoundError); fileNotFound {
+			// Just log at info level and start Prebid Cache with default values
+			log.Infof("Config file '%s' could not be found. Prebid Cache will initialize with default values.", filename)
+		} else {
+			// Config file was found but was defective, Either `UnsupportedConfigError` or `ConfigParseError` was thrown
 			log.Fatalf("Failed to load config file: %v", err)
 		}
-	} else {
-		log.Infof("No configuration file was specified, Prebid Cache will initialize with default values")
 	}
 
 	cfg := Configuration{}
