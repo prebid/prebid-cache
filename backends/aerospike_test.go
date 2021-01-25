@@ -33,14 +33,14 @@ func NewErrorProneAerospikeClient(funcName string) *errorProneAerospikeClient {
 
 func (c *errorProneAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
 	if c.errorThrowingFunction == "TEST_KEY_GEN_ERROR" {
-		return nil, printAerospikeError(ase.NewAerospikeError(ase.NOT_AUTHENTICATED), "NewUuidKey")
+		return nil, formatAerospikeError(ase.NewAerospikeError(ase.NOT_AUTHENTICATED), "NewUuidKey")
 	}
 	return nil, nil
 }
 
 func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
 	if c.errorThrowingFunction == "TEST_GET_ERROR" {
-		return nil, printAerospikeError(ase.NewAerospikeError(ase.SERVER_NOT_AVAILABLE), "GET")
+		return nil, formatAerospikeError(ase.NewAerospikeError(ase.SERVER_NOT_AVAILABLE), "GET")
 	} else if c.errorThrowingFunction == "TEST_NO_BUCKET_ERROR" {
 		return &as.Record{Bins: as.BinMap{"AnyKey": "any_value"}}, nil
 	} else if c.errorThrowingFunction == "TEST_NON_STRING_VALUE_ERROR" {
@@ -51,7 +51,7 @@ func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
 
 func (c *errorProneAerospikeClient) Put(key *as.Key, value string, ttlSeconds int) error {
 	if c.errorThrowingFunction == "TEST_PUT_ERROR" {
-		return printAerospikeError(ase.NewAerospikeError(ase.KEY_EXISTS_ERROR), "PUT")
+		return formatAerospikeError(ase.NewAerospikeError(ase.KEY_EXISTS_ERROR), "PUT")
 	}
 	return nil
 }
@@ -162,7 +162,7 @@ func TestNewAerospikeBackend(t *testing.T) {
 	}
 }
 
-func TestPrintAerospikeError(t *testing.T) {
+func TestFormatAerospikeError(t *testing.T) {
 	testCases := []struct {
 		desc        string
 		inErr       error
@@ -185,7 +185,7 @@ func TestPrintAerospikeError(t *testing.T) {
 		},
 	}
 	for _, test := range testCases {
-		actualErr := printAerospikeError(test.inErr, "TEST_CASE")
+		actualErr := formatAerospikeError(test.inErr, "TEST_CASE")
 		if test.expectedErr == nil {
 			assert.Nil(t, actualErr, "Nil error was expected")
 		} else {

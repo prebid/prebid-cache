@@ -28,7 +28,7 @@ type Aerospike struct {
 func (db Aerospike) Get(key *as.Key) (*as.Record, error) {
 	rec, err := db.client.Get(nil, key, BIN_VALUE)
 	if err != nil {
-		return nil, printAerospikeError(err, "GET")
+		return nil, formatAerospikeError(err, "GET")
 	}
 	return rec, nil
 }
@@ -39,13 +39,13 @@ func (db Aerospike) Put(key *as.Key, value string, ttlSeconds int) error {
 
 	err := db.client.Put(policy, key, bins)
 
-	return printAerospikeError(err, "PUT")
+	return formatAerospikeError(err, "PUT")
 }
 
 func (db *Aerospike) NewUuidKey(namespace string, key string) (*as.Key, error) {
 	asKey, err := as.NewKey(namespace, SET_NAME, key)
 	if err != nil {
-		return nil, printAerospikeError(err, "NEW_KEY")
+		return nil, formatAerospikeError(err, "NEW_KEY")
 	}
 	return asKey, nil
 }
@@ -65,7 +65,7 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 	}
 	client, err := as.NewClient(cfg.Host, cfg.Port)
 	if err != nil {
-		log.Fatalf("Error creating Aerospike backend: %v", printAerospikeError(err, "NewAerospikeBackend"))
+		log.Fatalf("Error creating Aerospike backend: %v", formatAerospikeError(err, "NewAerospikeBackend"))
 		panic("AerospikeBackend failure. This shouldn't happen.")
 	}
 	log.Infof("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
@@ -115,7 +115,7 @@ func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, tt
 	return a.client.Put(asKey, value, ttlSeconds)
 }
 
-func printAerospikeError(err error, caller string) error {
+func formatAerospikeError(err error, caller string) error {
 	if err != nil {
 		if aerr, ok := err.(ase.AerospikeError); ok {
 			return fmt.Errorf("%s Aerospike error: %s. Code: %d", caller, aerr.Error(), aerr.ResultCode())
