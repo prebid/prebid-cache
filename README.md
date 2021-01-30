@@ -12,8 +12,8 @@ Download and prepare Prebid Cache:
 
 ```
 cd YOUR_DIRECTORY
-git clone https://github.com/prebid/prebid-server src/github.com/prebid/prebid-server
-cd src/github.com/prebid/prebid-server
+git clone https://github.com/prebid/prebid-cache src/github.com/prebid/prebid-cache
+cd src/github.com/prebid/prebid-cache
 ```
 
 Run the automated tests:
@@ -52,12 +52,9 @@ Adds one or more values to the cache. Values can be given as either JSON or XML.
 }
 ```
 
-If any of the `puts` are invalid, then it responds with a **400** none of the values will be retrievable.
-Assuming that all of the values are well-formed, then the server will respond with IDs which can be used to
-fetch the values later.
+If any of the `puts` are invalid, then it responds with a **400** none of the values will be retrievable. Assuming that all of the values are well-formed, then the server will respond with IDs which can be used to fetch the values later.
 
-**Note**: `ttlseconds` is optional, and will only be honored on a _best effort_ basis.
-Callers should never _assume_ that the data will stay in the cache for that long.
+**Note**: `ttlseconds` is optional, and will only be honored on a _best effort_ basis. Callers should never _assume_ that the data will stay in the cache for that long.
 
 ```json
 {
@@ -68,9 +65,7 @@ Callers should never _assume_ that the data will stay in the cache for that long
 }
 ```
 
-An optional parameter `key` has been added that a particular install of prebid cache may or may not support (config option).
-If the server does not support specifying `key`s, then any supplied keys will be ignored and requests will be processed as
-above. If the server supports key, then the put can optionally use it as:
+An optional parameter `key` has been added that a particular install of prebid cache may or may not support (config option). If the server does not support specifying `key`s, then any supplied keys will be ignored and requests will be processed as above. If the server supports key, then the put can optionally use it as:
 
 ```json
 {
@@ -101,12 +96,7 @@ This will result in the response
 }
 ```
 
-so that a cache key can be specified for the cached object. If an entry already exists for "ArbitraryKeyValueHere", it will not be overwitten,
-and "" will be returned for the `uuid` value of that entry. This is to prevent bad actors from trying to overwrite legitimate caches with
-malicious content, or a poorly coded app overwriting its own cache with new values, generating uncertainty what is actually stored under a
-particular key. Note that this is the only case where only a subset of caches will be stored, as this is the only case where a put will fail
-due to no fault of the requester yet the other puts are not called into question. (A failure can happen if the backend datastore errors on the
-storage of one entry, but this then calls into question how successfully the other caches were saved.)
+so that a cache key can be specified for the cached object. If an entry already exists for "ArbitraryKeyValueHere", it will not be overwitten, and "" will be returned for the `uuid` value of that entry. This is to prevent bad actors from trying to overwrite legitimate caches with malicious content, or a poorly coded app overwriting its own cache with new values, generating uncertainty what is actually stored under a particular key. Note that this is the only case where only a subset of caches will be stored, as this is the only case where a put will fail due to no fault of the requester yet the other puts are not called into question. (A failure can happen if the backend datastore errors on the storage of one entry, but this then calls into question how successfully the other caches were saved.)
 
 ### GET /cache?uuid={id}
 
