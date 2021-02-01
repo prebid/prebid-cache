@@ -141,7 +141,6 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 						lvl: logrus.InfoLevel,
 					},
 				},
-				overridesDefaultPort: false,
 			},
 		},
 		{
@@ -154,7 +153,6 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 						lvl: logrus.InfoLevel,
 					},
 				},
-				overridesDefaultPort: false,
 			},
 		},
 		{
@@ -200,11 +198,11 @@ func TestNewConfigFuncFileParam(t *testing.T) {
 		}
 
 		// Assert configuration
-		assert.Equal(t, defaultAdminPort, cfg.AdminPort, "AdminPort number in this test is supposed to be the 2525 default. Test: %s", tc.description)
+		assert.Equal(t, defaultAdminPort, cfg.AdminPort, "AdminPort number in this test is supposed to be the default 2525 value. Test: %s", tc.description)
 		if tc.out.overridesDefaultPort {
 			assert.NotEqual(t, defaultPort, cfg.Port, "Port number in this test is supposed to be different from the 2424 default. Test: %s", tc.description)
 		} else {
-			assert.Equal(t, 2424, cfg.Port, "Port number in this test is supposed to be 2424 default. Test: %s", tc.description)
+			assert.Equal(t, 2424, cfg.Port, "Port number in this test is supposed to be the default 2424 value. Test: %s", tc.description)
 		}
 
 		//Reset log after every test and assert successful reset
