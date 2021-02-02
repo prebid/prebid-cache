@@ -1,8 +1,33 @@
 # Prebid Cache
 
-This application stores short-term data for use in Prebid.
+This application stores short-term data for use in Prebid Server and Prebid.js, primarily targeting video, native, and AMP formats.
 
-It exists to support Video Ads from Prebid.js, as well as prebid-native
+## Installation
+
+First install Go version 1.14 or newer.
+
+Note that prebid-cache is using Go modules. We officially support the most recent two major versions of the Go runtime. However, if you'd like to use a version <1.13 and are inside `GOPATH` `GO111MODULE` needs to be set to `GO111MODULE=on`.
+
+Download and prepare Prebid Cache:
+
+```
+cd YOUR_DIRECTORY
+git clone https://github.com/prebid/prebid-cache src/github.com/prebid/prebid-cache
+cd src/github.com/prebid/prebid-cache
+```
+
+Run the automated tests:
+
+```
+./validate.sh
+```
+
+Or just run the server locally:
+
+```
+go build .
+./prebid-cache
+```
 
 ## API
 
@@ -27,12 +52,9 @@ Adds one or more values to the cache. Values can be given as either JSON or XML.
 }
 ```
 
-If any of the `puts` are invalid, then it responds with a **400** none of the values will be retrievable.
-Assuming that all of the values are well-formed, then the server will respond with IDs which can be used to
-fetch the values later.
+If any of the `puts` are invalid, then it responds with a **400** none of the values will be retrievable. Assuming that all of the values are well-formed, then the server will respond with IDs which can be used to fetch the values later.
 
-**Note**: `ttlseconds` is optional, and will only be honored on a _best effort_ basis.
-Callers should never _assume_ that the data will stay in the cache for that long.
+**Note**: `ttlseconds` is optional, and will only be honored on a _best effort_ basis. Callers should never _assume_ that the data will stay in the cache for that long.
 
 ```json
 {
@@ -43,9 +65,7 @@ Callers should never _assume_ that the data will stay in the cache for that long
 }
 ```
 
-An optional parameter `key` has been added that a particular install of prebid cache may or may not support (config option).
-If the server does not support specifying `key`s, then any supplied keys will be ignored and requests will be processed as
-above. If the server supports key, then the put can optionally use it as:
+An optional parameter `key` has been added that a particular install of prebid cache may or may not support (config option). If the server does not support specifying `key`s, then any supplied keys will be ignored and requests will be processed as above. If the server supports key, then the put can optionally use it as:
 
 ```json
 {
@@ -63,6 +83,7 @@ above. If the server supports key, then the put can optionally use it as:
     }
   ]
 }
+```
 
 This will result in the response
 
@@ -75,12 +96,7 @@ This will result in the response
 }
 ```
 
-so that a cache key can be specified for the cached object. If an entry already exists for "ArbitraryKeyValueHere", it will not be overwitten,
-and "" will be returned for the `uuid` value of that entry. This is to prevent bad actors from trying to overwrite legitimate caches with
-malicious content, or a poorly coded app overwriting its own cache with new values, generating uncertainty what is actually stored under a
-particular key. Note that this is the only case where only a subset of caches will be stored, as this is the only case where a put will fail
-due to no fault of the requester yet the other puts are not called into question. (A failure can happen if the backend datastore errors on the
-storage of one entry, but this then calls into question how successfully the other caches were saved.)
+so that a cache key can be specified for the cached object. If an entry already exists for "ArbitraryKeyValueHere", it will not be overwitten, and "" will be returned for the `uuid` value of that entry. This is to prevent bad actors from trying to overwrite legitimate caches with malicious content, or a poorly coded app overwriting its own cache with new values, generating uncertainty what is actually stored under a particular key. Note that this is the only case where only a subset of caches will be stored, as this is the only case where a put will fail due to no fault of the requester yet the other puts are not called into question. (A failure can happen if the backend datastore errors on the storage of one entry, but this then calls into question how successfully the other caches were saved.)
 
 ### GET /cache?uuid={id}
 
@@ -141,23 +157,48 @@ The service will respond to requests on `localhost:2424`, and the admin data wil
 
 ### Configuration
 
-Configuration is handled by [Viper](https://github.com/spf13/viper#putting-values-into-viper).
-The easiest way to set config during development is by editing the [config.yaml](./config.yaml) file.
-
-You can also set the config through environment variables. For example:
+Configuration is handled by [Viper](https://github.com/spf13/viper#putting-values-into-viper). The easiest way to set config during development is by editing the [config.yaml](./config.yaml) file. You can also set the config through environment variables. For instance:
 
 ```bash
-PBC_COMPRESSION_TYPE=none ./prebid-cache
+export PBC_COMPRESSION_TYPE="none"
+```
+##### Rate limiter configuration
+
+Prebid Cache's rate limiting feature, that has the downside of considerable memory consumption, is enabled by default for a maximum of 100 requests per second. From the [config.yaml](./config.yaml) file, use the `rate_limiter.enabled` and `rate_limiter.num_requests` options to either disable the rate limiter or modify its request capacity. For instance adding the following in the `config.yaml` file:
+
+```yaml
+rate_limiter:
+  enabled: false
+```
+
+disables the rate limiter. We could also disable it by setting the following environment variable:
+
+```bash
+export PBC_RATE_LIMITER_ENABLED="false"
+```
+
+In contrast, we could keep the rate limiter running and set its maximum number of requests to a value other than 100. For instance, to set them to 150, we could modify the `num_requests` field inside [config.yaml](./config.yaml):
+
+```yaml
+rate_limiter:
+  num_requests: 150
+```
+
+Or via the following environment variable:
+```bash
+export PBC_RATE_LIMITER_NUM_REQUESTS=150
 ```
 
 ### Docker
 
-Prebid Cache works in Docker out of the box.
-
+Prebid Cache works in Docker out of the box. It comes with a Dockerfile that creates a container, downloads all dependencies, and instantly installs a working image for us to run Prebid Cache right away.
+Using the `docker build` command we specify an image name and the location of the folder where we cloned or downloaded Prebid Cache to create an image ready to run. If we cloned Prebid Cache in `~/go/src/github.com/prebid/prebid-cache`, then we could use the command that follows to create the image `prebid-cache`.
 ```bash
-CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo  .
-docker build -t prebid-cache
-docker run -p 2424:2424 -t prebid-cache .
+docker build -t prebid-cache ~/go/src/github.com/prebid/prebid-cache
+```
+We can run Prebid Cache using the newly created image:
+```bash
+docker run -p 8000:8000 -t prebid-cache
 ```
 
 ### Profiling
