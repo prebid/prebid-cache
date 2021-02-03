@@ -12,8 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const SET_NAME = "uuid"
-const BIN_VALUE = "value"
+const setName = "uuid"
+const binValue = "value"
 
 type AerospikeDBClient interface {
 	NewUuidKey(namespace string, key string) (*as.Key, error)
@@ -26,7 +26,7 @@ type Aerospike struct {
 }
 
 func (db Aerospike) Get(key *as.Key) (*as.Record, error) {
-	rec, err := db.client.Get(nil, key, BIN_VALUE)
+	rec, err := db.client.Get(nil, key, binValue)
 	if err != nil {
 		return nil, formatAerospikeError(err, "GET")
 	}
@@ -34,7 +34,7 @@ func (db Aerospike) Get(key *as.Key) (*as.Record, error) {
 }
 
 func (db Aerospike) Put(key *as.Key, value string, ttlSeconds int) error {
-	bins := as.BinMap{BIN_VALUE: value}
+	bins := as.BinMap{binValue: value}
 	policy := &as.WritePolicy{Expiration: uint32(ttlSeconds)}
 
 	err := db.client.Put(policy, key, bins)
@@ -43,7 +43,7 @@ func (db Aerospike) Put(key *as.Key, value string, ttlSeconds int) error {
 }
 
 func (db *Aerospike) NewUuidKey(namespace string, key string) (*as.Key, error) {
-	asKey, err := as.NewKey(namespace, SET_NAME, key)
+	asKey, err := as.NewKey(namespace, setName, key)
 	if err != nil {
 		return nil, formatAerospikeError(err, "NEW_KEY")
 	}
@@ -91,7 +91,7 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 	}
 	a.metrics.RecordExtraTTLSeconds(float64(rec.Expiration))
 
-	value, found := rec.Bins[BIN_VALUE]
+	value, found := rec.Bins[binValue]
 	if !found {
 		return "", errors.New("Aerospike GET. No 'value' bucket found")
 	}
@@ -105,7 +105,7 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 }
 
 func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, SET_NAME)
+	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, setName)
 	if err != nil {
 		return err
 	}

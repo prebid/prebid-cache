@@ -44,7 +44,7 @@ func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
 	} else if c.errorThrowingFunction == "TEST_NO_BUCKET_ERROR" {
 		return &as.Record{Bins: as.BinMap{"AnyKey": "any_value"}}, nil
 	} else if c.errorThrowingFunction == "TEST_NON_STRING_VALUE_ERROR" {
-		return &as.Record{Bins: as.BinMap{BIN_VALUE: 0.0}}, nil
+		return &as.Record{Bins: as.BinMap{binValue: 0.0}}, nil
 	}
 	return nil, nil
 }
@@ -70,14 +70,14 @@ func NewGoodAerospikeClient() *goodAerospikeClient {
 }
 
 func (c *goodAerospikeClient) Get(key *as.Key) (*as.Record, error) {
-	if _, found := c.record.Bins[BIN_VALUE]; !found {
-		c.record.Bins[BIN_VALUE] = "Default value"
+	if _, found := c.record.Bins[binValue]; !found {
+		c.record.Bins[binValue] = "Default value"
 	}
 	return c.record, nil
 }
 
 func (c *goodAerospikeClient) Put(key *as.Key, value string, ttlSeconds int) error {
-	c.record.Bins[BIN_VALUE] = value
+	c.record.Bins[binValue] = value
 	return nil
 }
 
