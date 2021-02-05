@@ -28,7 +28,7 @@ func NewConfig(filename string) Configuration {
 			log.Infof("Config file '%s' could not be found. Prebid Cache will initialize with default values.", filename)
 		} else {
 			// Config file was found but was defective, Either `UnsupportedConfigError` or `ConfigParseError` was thrown
-			log.Fatalf("Failed to load config file: %v", err)
+			log.Fatalf("Configuration file could not be read: %v", err)
 		}
 	}
 
