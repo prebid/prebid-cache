@@ -24,7 +24,7 @@ func NewConfig(filename string) Configuration {
 	if err != nil {
 		// Make sure the configuration file was not defective
 		if _, fileNotFound := err.(viper.ConfigFileNotFoundError); fileNotFound {
-			// Just log at info level and start Prebid Cache with default values
+			// Config file not found. Just log at info level and start Prebid Cache with default values
 			log.Infof("Config file '%s' could not be found. Prebid Cache will initialize with default values.", filename)
 		} else {
 			// Config file was found but was defective, Either `UnsupportedConfigError` or `ConfigParseError` was thrown

@@ -772,6 +772,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 }
 
 func TestCompressionValidateAndLog(t *testing.T) {
+
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := test.NewGlobal()
 
