@@ -27,139 +27,6 @@ func TestDefaults(t *testing.T) {
 	assert.Equal(t, expectedConfig, cfg, "Expected Configuration instance does not match.")
 }
 
-func TestValidateAndLog(t *testing.T) {
-	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
-	//substitute logger exit function so execution doesn't get interrupted
-	defer func() { logrus.StandardLogger().ExitFunc = nil }()
-	logrus.StandardLogger().ExitFunc = func(int) {}
-
-	// Instantiate test objects
-	type logComponents struct {
-		msg string
-		lvl logrus.Level
-	}
-
-	expectedConfig := getExpectedDefaultConfig()
-
-	expectedLogInfo := []logComponents{
-		{msg: fmt.Sprintf("config.port: %d", expectedConfig.Port), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.admin_port: %d", expectedConfig.AdminPort), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.log.level: %s", expectedConfig.Log.Level), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.rate_limiter.enabled: %t", expectedConfig.RateLimiting.Enabled), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.rate_limiter.num_requests: %d", expectedConfig.RateLimiting.MaxRequestsPerSecond), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.request_limits.allow_setting_keys: %v", expectedConfig.RequestLimits.AllowSettingKeys), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.request_limits.max_ttl_seconds: %d", expectedConfig.RequestLimits.MaxTTLSeconds), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.request_limits.max_size_bytes: %d", expectedConfig.RequestLimits.MaxSize), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.request_limits.max_num_values: %d", expectedConfig.RequestLimits.MaxNumValues), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.backend.type: %s", expectedConfig.Backend.Type), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.compression.type: %s", expectedConfig.Compression.Type), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("Prebid Cache will run without metrics"), lvl: logrus.InfoLevel},
-	}
-
-	// Run test
-	expectedConfig.ValidateAndLog()
-
-	// Assertions
-	if !assert.Len(t, hook.Entries, len(expectedLogInfo), "Incorrect number of entries were logged to logrus. Expected: %d. Actual: %d", len(expectedLogInfo), len(hook.Entries)) {
-		return
-	}
-
-	for i := 0; i < len(expectedLogInfo); i++ {
-		assert.True(t, strings.HasPrefix(hook.Entries[i].Message, expectedLogInfo[i].msg), "Wrong log message. Entry: %d", i)
-		assert.Equal(t, expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong info level. Entry: %d", i)
-	}
-
-	//Reset log
-	hook.Reset()
-	assert.Nil(t, hook.LastEntry())
-}
-
-func TestNewConfigFromFile(t *testing.T) {
-	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
-
-	type logComponents struct {
-		msg string
-		lvl logrus.Level
-	}
-	testCases := []struct {
-		description      string
-		inConfigFileName string
-		expectedLogInfo  []logComponents
-		expectedConfig   Configuration
-	}{
-		{
-			description:      "Empty file name: expect INFO level log message and start server with default config values",
-			inConfigFileName: "",
-			expectedLogInfo: []logComponents{
-				{
-					msg: "Config file '' could not be found. Prebid Cache will initialize with default values.",
-					lvl: logrus.InfoLevel,
-				},
-			},
-			expectedConfig: getExpectedDefaultConfig(),
-		},
-		{
-			description:      "Configuration file was specified but doesn't exist: expect INFO level log message and start server with default config values",
-			inConfigFileName: "non_existent_file",
-			expectedLogInfo: []logComponents{
-				{
-					msg: "Config file 'non_existent_file' could not be found. Prebid Cache will initialize with default values.",
-					lvl: logrus.InfoLevel,
-				},
-			},
-			expectedConfig: getExpectedDefaultConfig(),
-		},
-		{
-			description:      "file exists but its yaml markup is invalid: stop execution and log Fatal message",
-			inConfigFileName: filepath.Join("configtest", "config_invalid"),
-			expectedLogInfo: []logComponents{
-				{
-					msg: "Configuration file could not be read:",
-					lvl: logrus.FatalLevel,
-				},
-			},
-			expectedConfig: getExpectedDefaultConfig(), //Should we even test the config on fatal scenarios?
-		},
-		{
-			description:      "Valid yaml file exists, configuration from file gets read but does not override port default value",
-			inConfigFileName: filepath.Join("configtest", "config_same_as_defaults"),
-			expectedConfig:   getExpectedDefaultConfig(),
-		},
-		{
-			description:      "Valid yaml configuration populates all configuration fields properly",
-			inConfigFileName: filepath.Join("configtest", "sample_full_config"),
-			expectedConfig:   getExpectedFullConfigSample(),
-		},
-	}
-
-	//substitute logger exit function so execution doesn't get interrupted
-	defer func() { logrus.StandardLogger().ExitFunc = nil }()
-	logrus.StandardLogger().ExitFunc = func(int) {}
-
-	for _, tc := range testCases {
-		//run test
-		actualCfg := NewConfig(tc.inConfigFileName)
-
-		// Assert logrus expected entries
-		if !assert.Len(t, hook.Entries, len(tc.expectedLogInfo), "Incorrect number of entries were logged to logrus. Test desc:%s. Expected: %d Actual: %d", tc.description, len(tc.expectedLogInfo), len(hook.Entries)) {
-			continue
-		}
-
-		for i := 0; i < len(tc.expectedLogInfo); i++ {
-			assert.True(t, strings.HasPrefix(hook.Entries[i].Message, tc.expectedLogInfo[i].msg), "Wrong log message. Test desc:%s", tc.description)
-			assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong info level. Test desc:%s", tc.description)
-		}
-
-		assert.Equal(t, tc.expectedConfig, actualCfg, "Expected Configuration instance does not match. Test desc:%s", tc.description)
-
-		//Reset log after every test and assert successful reset
-		hook.Reset()
-		assert.Nil(t, hook.LastEntry())
-	}
-}
-
 func TestEnvConfig(t *testing.T) {
 	defer forceEnv(t, "PBC_PORT", "2000")()
 	defer forceEnv(t, "PBC_COMPRESSION_TYPE", "none")()
@@ -904,26 +771,6 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 	}
 }
 
-func TestPrometheusTimeoutDuration(t *testing.T) {
-	// Define test objects
-	prometheusConfig := &PrometheusMetrics{
-		Port:             8080,
-		Namespace:        "prebid",
-		Subsystem:        "cache",
-		TimeoutMillisRaw: 5,
-		Enabled:          true,
-	}
-
-	// Duration is an int64 that represents time in nanoseconds
-	expectedTimeout := time.Duration(5 * 1000 * 1000)
-
-	// Run test
-	actualTimeout := prometheusConfig.Timeout()
-
-	// Assert result
-	assert.Equal(t, expectedTimeout, actualTimeout)
-}
-
 func TestCompressionValidateAndLog(t *testing.T) {
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := test.NewGlobal()
@@ -990,6 +837,159 @@ func TestCompressionValidateAndLog(t *testing.T) {
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
 	}
+}
+
+func TestNewConfigFromFile(t *testing.T) {
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	type logComponents struct {
+		msg string
+		lvl logrus.Level
+	}
+	testCases := []struct {
+		description      string
+		inConfigFileName string
+		expectedLogInfo  []logComponents
+		expectedConfig   Configuration
+	}{
+		{
+			description:      "Empty file name: expect INFO level log message and start server with default config values",
+			inConfigFileName: "",
+			expectedLogInfo: []logComponents{
+				{
+					msg: "Config file '' could not be found. Prebid Cache will initialize with default values.",
+					lvl: logrus.InfoLevel,
+				},
+			},
+			expectedConfig: getExpectedDefaultConfig(),
+		},
+		{
+			description:      "Configuration file was specified but doesn't exist: expect INFO level log message and start server with default config values",
+			inConfigFileName: "non_existent_file",
+			expectedLogInfo: []logComponents{
+				{
+					msg: "Config file 'non_existent_file' could not be found. Prebid Cache will initialize with default values.",
+					lvl: logrus.InfoLevel,
+				},
+			},
+			expectedConfig: getExpectedDefaultConfig(),
+		},
+		{
+			description:      "file exists but its yaml markup is invalid: stop execution and log Fatal message",
+			inConfigFileName: filepath.Join("configtest", "config_invalid"),
+			expectedLogInfo: []logComponents{
+				{
+					msg: "Configuration file could not be read:",
+					lvl: logrus.FatalLevel,
+				},
+			},
+			expectedConfig: getExpectedDefaultConfig(), //Should we even test the config on fatal scenarios?
+		},
+		{
+			description:      "Valid yaml file exists, configuration from file gets read but does not override port default value",
+			inConfigFileName: filepath.Join("configtest", "config_same_as_defaults"),
+			expectedConfig:   getExpectedDefaultConfig(),
+		},
+		{
+			description:      "Valid yaml configuration populates all configuration fields properly",
+			inConfigFileName: filepath.Join("configtest", "sample_full_config"),
+			expectedConfig:   getExpectedFullConfigSample(),
+		},
+	}
+
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
+	for _, tc := range testCases {
+		//run test
+		actualCfg := NewConfig(tc.inConfigFileName)
+
+		// Assert logrus expected entries
+		if !assert.Len(t, hook.Entries, len(tc.expectedLogInfo), "Incorrect number of entries were logged to logrus. Test desc:%s. Expected: %d Actual: %d", tc.description, len(tc.expectedLogInfo), len(hook.Entries)) {
+			continue
+		}
+
+		for i := 0; i < len(tc.expectedLogInfo); i++ {
+			assert.True(t, strings.HasPrefix(hook.Entries[i].Message, tc.expectedLogInfo[i].msg), "Wrong log message. Test desc:%s", tc.description)
+			assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong info level. Test desc:%s", tc.description)
+		}
+
+		assert.Equal(t, tc.expectedConfig, actualCfg, "Expected Configuration instance does not match. Test desc:%s", tc.description)
+
+		//Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
+	}
+}
+
+func TestConfigurationValidateAndLog(t *testing.T) {
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
+	// Instantiate test objects
+	type logComponents struct {
+		msg string
+		lvl logrus.Level
+	}
+
+	expectedConfig := getExpectedDefaultConfig()
+
+	expectedLogInfo := []logComponents{
+		{msg: fmt.Sprintf("config.port: %d", expectedConfig.Port), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.admin_port: %d", expectedConfig.AdminPort), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.log.level: %s", expectedConfig.Log.Level), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.rate_limiter.enabled: %t", expectedConfig.RateLimiting.Enabled), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.rate_limiter.num_requests: %d", expectedConfig.RateLimiting.MaxRequestsPerSecond), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_limits.allow_setting_keys: %v", expectedConfig.RequestLimits.AllowSettingKeys), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_limits.max_ttl_seconds: %d", expectedConfig.RequestLimits.MaxTTLSeconds), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_limits.max_size_bytes: %d", expectedConfig.RequestLimits.MaxSize), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_limits.max_num_values: %d", expectedConfig.RequestLimits.MaxNumValues), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.backend.type: %s", expectedConfig.Backend.Type), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.compression.type: %s", expectedConfig.Compression.Type), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("Prebid Cache will run without metrics"), lvl: logrus.InfoLevel},
+	}
+
+	// Run test
+	expectedConfig.ValidateAndLog()
+
+	// Assertions
+	if !assert.Len(t, hook.Entries, len(expectedLogInfo), "Incorrect number of entries were logged to logrus. Expected: %d. Actual: %d", len(expectedLogInfo), len(hook.Entries)) {
+		return
+	}
+
+	for i := 0; i < len(expectedLogInfo); i++ {
+		assert.True(t, strings.HasPrefix(hook.Entries[i].Message, expectedLogInfo[i].msg), "Wrong log message. Entry: %d", i)
+		assert.Equal(t, expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong info level. Entry: %d", i)
+	}
+
+	//Reset log
+	hook.Reset()
+	assert.Nil(t, hook.LastEntry())
+}
+
+func TestPrometheusTimeoutDuration(t *testing.T) {
+	// Define test objects
+	prometheusConfig := &PrometheusMetrics{
+		Port:             8080,
+		Namespace:        "prebid",
+		Subsystem:        "cache",
+		TimeoutMillisRaw: 5,
+		Enabled:          true,
+	}
+
+	// Duration is an int64 that represents time in nanoseconds
+	expectedTimeout := time.Duration(5 * 1000 * 1000)
+
+	// Run test
+	actualTimeout := prometheusConfig.Timeout()
+
+	// Assert result
+	assert.Equal(t, expectedTimeout, actualTimeout)
 }
 
 func TestRoutesValidateAndLog(t *testing.T) {
