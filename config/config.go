@@ -11,8 +11,6 @@ import (
 func NewConfig(filename string) Configuration {
 	v := viper.New()
 
-	// Set default values that can be overriden by environment variables
-	// or values found on the configuration file
 	setConfigDefaults(v)
 
 	setEnvVars(v)
@@ -25,7 +23,7 @@ func NewConfig(filename string) Configuration {
 		// Make sure the configuration file was not defective
 		if _, fileNotFound := err.(viper.ConfigFileNotFoundError); fileNotFound {
 			// Config file not found. Just log at info level and start Prebid Cache with default values
-			log.Infof("Config file '%s' could not be found. Prebid Cache will initialize with default values.", filename)
+			log.Info("Configuration file not detected. Initializing with default values and environment variable overrides.")
 		} else {
 			// Config file was found but was defective, Either `UnsupportedConfigError` or `ConfigParseError` was thrown
 			log.Fatalf("Configuration file could not be read: %v", err)

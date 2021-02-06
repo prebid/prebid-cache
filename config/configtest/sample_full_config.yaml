@@ -40,8 +40,8 @@ compression:
 metrics:
   type: "none"
   influx:
-    host: "default-metrics-host"
-    database: "default-metrics-database"
+    host: "metrics-host"
+    database: "metrics-database"
     username: "metrics-username"
     password: "metrics-password"
     enabled: true

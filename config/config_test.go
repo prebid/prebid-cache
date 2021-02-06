@@ -28,13 +28,14 @@ func TestDefaults(t *testing.T) {
 }
 
 func TestEnvConfig(t *testing.T) {
-	defer forceEnv(t, "PBC_PORT", "2000")()
-	defer forceEnv(t, "PBC_COMPRESSION_TYPE", "none")()
+	defer setEnvVar(t, "PBC_METRICS_INFLUX_HOST", "env-var-defined-metrics-host")()
 
-	cfg := NewConfig("")
+	// Inside NewConfig() metrics.influx.host sets the default value to ""
+	// "config/configtest/sample_full_config.yaml", sets it to  "metrics-host"
+	cfg := NewConfig("sample_full_config")
 
-	assert.Equal(t, 2000, cfg.Port, "port %d did not equal expected %d", cfg.Port, 2000)
-	assert.Equal(t, "none", string(cfg.Compression.Type), "compression.type value \"%s\" did not equal expected \"%s\"", string(cfg.Compression.Type), "none")
+	// assert env variable value supercedes them both
+	assert.Equal(t, "env-var-defined-metrics-host", string(cfg.Metrics.Influx.Host), "metrics.influx.host did not equal expected")
 }
 
 func TestLogValidateAndLog(t *testing.T) {
@@ -782,36 +783,36 @@ func TestCompressionValidateAndLog(t *testing.T) {
 	}
 
 	testCases := []struct {
-		description      string
-		inCompressionCfg *Compression
-		expectedLogInfo  []logComponents
+		description     string
+		compressionCfg  *Compression
+		expectedLogInfo []logComponents
 	}{
 		{
-			description:      "Blank compression type, expect fatal level log entry",
-			inCompressionCfg: &Compression{Type: CompressionType("")},
+			description:    "Blank compression type, expect fatal level log entry",
+			compressionCfg: &Compression{Type: CompressionType("")},
 			expectedLogInfo: []logComponents{
-				{msg: "invalid config.compression.type: . It must be \"none\" or \"snappy\"", lvl: logrus.FatalLevel},
+				{msg: `invalid config.compression.type: . It must be "none" or "snappy"`, lvl: logrus.FatalLevel},
 			},
 		},
 		{
-			description:      "Valid compression type 'none', expect info level log entry",
-			inCompressionCfg: &Compression{Type: CompressionNone},
+			description:    "Valid compression type 'none', expect info level log entry",
+			compressionCfg: &Compression{Type: CompressionNone},
 			expectedLogInfo: []logComponents{
 				{msg: "config.compression.type: none", lvl: logrus.InfoLevel},
 			},
 		},
 		{
-			description:      "Valid compression type 'snappy', expect info level log entry",
-			inCompressionCfg: &Compression{Type: CompressionSnappy},
+			description:    "Valid compression type 'snappy', expect info level log entry",
+			compressionCfg: &Compression{Type: CompressionSnappy},
 			expectedLogInfo: []logComponents{
 				{msg: "config.compression.type: snappy", lvl: logrus.InfoLevel},
 			},
 		},
 		{
-			description:      "Unsupported compression, expect fatal level log entry",
-			inCompressionCfg: &Compression{Type: CompressionType("UnknownCompressionType")},
+			description:    "Unsupported compression, expect fatal level log entry",
+			compressionCfg: &Compression{Type: CompressionType("UnknownCompressionType")},
 			expectedLogInfo: []logComponents{
-				{msg: "invalid config.compression.type: UnknownCompressionType. It must be \"none\" or \"snappy\"", lvl: logrus.FatalLevel},
+				{msg: `invalid config.compression.type: UnknownCompressionType. It must be "none" or "snappy"`, lvl: logrus.FatalLevel},
 			},
 		},
 	}
@@ -822,16 +823,14 @@ func TestCompressionValidateAndLog(t *testing.T) {
 
 	for _, tc := range testCases {
 		// Run test
-		tc.inCompressionCfg.validateAndLog()
+		tc.compressionCfg.validateAndLog()
 
 		// Assert logrus expected entries
-		if !assert.Len(t, hook.Entries, len(tc.expectedLogInfo), "Incorrect number of entries were logged to logrus. Expected: %d. Actual: %d", len(tc.expectedLogInfo), len(hook.Entries)) {
-			return
-		}
-
-		for i := 0; i < len(tc.expectedLogInfo); i++ {
-			assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message)
-			assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Expected Info entry in log.")
+		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.description) {
+			for i := 0; i < len(tc.expectedLogInfo); i++ {
+				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message, tc.description+":message")
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.description+":log level")
+			}
 		}
 
 		//Reset log after every test and assert successful reset
@@ -859,7 +858,7 @@ func TestNewConfigFromFile(t *testing.T) {
 			inConfigFileName: "",
 			expectedLogInfo: []logComponents{
 				{
-					msg: "Config file '' could not be found. Prebid Cache will initialize with default values.",
+					msg: "Configuration file not detected. Initializing with default values and environment variable overrides.",
 					lvl: logrus.InfoLevel,
 				},
 			},
@@ -870,7 +869,7 @@ func TestNewConfigFromFile(t *testing.T) {
 			inConfigFileName: "non_existent_file",
 			expectedLogInfo: []logComponents{
 				{
-					msg: "Config file 'non_existent_file' could not be found. Prebid Cache will initialize with default values.",
+					msg: "Configuration file not detected. Initializing with default values and environment variable overrides.",
 					lvl: logrus.InfoLevel,
 				},
 			},
@@ -885,17 +884,12 @@ func TestNewConfigFromFile(t *testing.T) {
 					lvl: logrus.FatalLevel,
 				},
 			},
-			expectedConfig: getExpectedDefaultConfig(), //Should we even test the config on fatal scenarios?
-		},
-		{
-			description:      "Valid yaml file exists, configuration from file gets read but does not override port default value",
-			inConfigFileName: filepath.Join("configtest", "config_same_as_defaults"),
-			expectedConfig:   getExpectedDefaultConfig(),
+			expectedConfig: getExpectedDefaultConfig(),
 		},
 		{
 			description:      "Valid yaml configuration populates all configuration fields properly",
 			inConfigFileName: filepath.Join("configtest", "sample_full_config"),
-			expectedConfig:   getExpectedFullConfigSample(),
+			expectedConfig:   getExpectedFullConfigForTestFile(),
 		},
 	}
 
@@ -908,13 +902,11 @@ func TestNewConfigFromFile(t *testing.T) {
 		actualCfg := NewConfig(tc.inConfigFileName)
 
 		// Assert logrus expected entries
-		if !assert.Len(t, hook.Entries, len(tc.expectedLogInfo), "Incorrect number of entries were logged to logrus. Test desc:%s. Expected: %d Actual: %d", tc.description, len(tc.expectedLogInfo), len(hook.Entries)) {
-			continue
-		}
-
-		for i := 0; i < len(tc.expectedLogInfo); i++ {
-			assert.True(t, strings.HasPrefix(hook.Entries[i].Message, tc.expectedLogInfo[i].msg), "Wrong log message. Test desc:%s", tc.description)
-			assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong info level. Test desc:%s", tc.description)
+		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.description) {
+			for i := 0; i < len(tc.expectedLogInfo); i++ {
+				assert.True(t, strings.HasPrefix(hook.Entries[i].Message, tc.expectedLogInfo[i].msg), tc.description+":message")
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.description+":log level")
+			}
 		}
 
 		assert.Equal(t, tc.expectedConfig, actualCfg, "Expected Configuration instance does not match. Test desc:%s", tc.description)
@@ -959,13 +951,11 @@ func TestConfigurationValidateAndLog(t *testing.T) {
 	expectedConfig.ValidateAndLog()
 
 	// Assertions
-	if !assert.Len(t, hook.Entries, len(expectedLogInfo), "Incorrect number of entries were logged to logrus. Expected: %d. Actual: %d", len(expectedLogInfo), len(hook.Entries)) {
-		return
-	}
-
-	for i := 0; i < len(expectedLogInfo); i++ {
-		assert.True(t, strings.HasPrefix(hook.Entries[i].Message, expectedLogInfo[i].msg), "Wrong log message. Entry: %d", i)
-		assert.Equal(t, expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong info level. Entry: %d", i)
+	if assert.Len(t, hook.Entries, len(expectedLogInfo)) {
+		for i := 0; i < len(expectedLogInfo); i++ {
+			assert.True(t, strings.HasPrefix(hook.Entries[i].Message, expectedLogInfo[i].msg), "Wrong message")
+			assert.Equal(t, expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong log level")
+		}
 	}
 
 	//Reset log
@@ -974,22 +964,12 @@ func TestConfigurationValidateAndLog(t *testing.T) {
 }
 
 func TestPrometheusTimeoutDuration(t *testing.T) {
-	// Define test objects
 	prometheusConfig := &PrometheusMetrics{
-		Port:             8080,
-		Namespace:        "prebid",
-		Subsystem:        "cache",
 		TimeoutMillisRaw: 5,
-		Enabled:          true,
 	}
 
-	// Duration is an int64 that represents time in nanoseconds
 	expectedTimeout := time.Duration(5 * 1000 * 1000)
-
-	// Run test
 	actualTimeout := prometheusConfig.Timeout()
-
-	// Assert result
 	assert.Equal(t, expectedTimeout, actualTimeout)
 }
 
@@ -1030,13 +1010,11 @@ func TestRoutesValidateAndLog(t *testing.T) {
 		tc.inRoutesConfig.validateAndLog()
 
 		// Assert logrus expected entries
-		if !assert.Len(t, hook.Entries, len(tc.expectedLogInfo), "Incorrect number of entries were logged to logrus. Expected: %d. Actual: %d", len(tc.expectedLogInfo), len(hook.Entries)) {
-			return
-		}
-
-		for i := 0; i < len(tc.expectedLogInfo); i++ {
-			assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message)
-			assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Expected Info entry in log.")
+		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.description) {
+			for i := 0; i < len(tc.expectedLogInfo); i++ {
+				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message, tc.description+":message")
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.description+":log level")
+			}
 		}
 
 		//Reset log after every test and assert successful reset
@@ -1045,8 +1023,8 @@ func TestRoutesValidateAndLog(t *testing.T) {
 	}
 }
 
-// forceEnv sets an environment variable to a certain value, and returns a function which resets it to its original value.
-func forceEnv(t *testing.T, key string, val string) func() {
+// setEnvVar sets an environment variable to a certain value, and returns a function which resets it to its original value.
+func setEnvVar(t *testing.T, key string, val string) func() {
 	orig, set := os.LookupEnv(key)
 	err := os.Setenv(key, val)
 	if err != nil {
@@ -1099,7 +1077,8 @@ func getExpectedDefaultConfig() Configuration {
 	}
 }
 
-func getExpectedFullConfigSample() Configuration {
+// Returns a Configuration object that matches the values found in the `sample_full_config.yaml`
+func getExpectedFullConfigForTestFile() Configuration {
 	return Configuration{
 		Port:          9000,
 		AdminPort:     2525,
@@ -1154,8 +1133,8 @@ func getExpectedFullConfigSample() Configuration {
 		Metrics: Metrics{
 			Type: MetricsType("none"),
 			Influx: InfluxMetrics{
-				Host:     "default-metrics-host",
-				Database: "default-metrics-database",
+				Host:     "metrics-host",
+				Database: "metrics-database",
 				Username: "metrics-username",
 				Password: "metrics-password",
 				Enabled:  true,
