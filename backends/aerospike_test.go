@@ -222,19 +222,19 @@ func TestClientGet(t *testing.T) {
 			desc:              "AerospikeBackend.Get() throws error when 'client.Get(..)' returns a nil record",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_NIL_RECORD_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "Aerospike GET. Nil record",
+			expectedErrorMsg:  "Aerospike GET: Nil record",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error no BIN_VALUE bucket is found",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_NO_BUCKET_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "Aerospike GET. No 'value' bucket found",
+			expectedErrorMsg:  "Aerospike GET: No 'value' bucket found",
 		},
 		{
 			desc:              "AerospikeBackend.Get() returns a record that does not store a string",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_NON_STRING_VALUE_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "Aerospike GET. Retrieved value is not a string",
+			expectedErrorMsg:  "Aerospike GET: Unexpected non-string value found",
 		},
 		{
 			desc:              "AerospikeBackend.Get() does not throw error",

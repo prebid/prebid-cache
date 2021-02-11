@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	as "github.com/aerospike/aerospike-client-go"
-	ase "github.com/aerospike/aerospike-client-go/types"
+	as_types "github.com/aerospike/aerospike-client-go/types"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
 	log "github.com/sirupsen/logrus"
@@ -87,25 +87,25 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 		return "", err
 	}
 	if rec == nil {
-		return "", errors.New("Aerospike GET. Nil record")
+		return "", errors.New("Aerospike GET: Nil record")
 	}
 	a.metrics.RecordExtraTTLSeconds(float64(rec.Expiration))
 
 	value, found := rec.Bins[binValue]
 	if !found {
-		return "", errors.New("Aerospike GET. No 'value' bucket found")
+		return "", errors.New("Aerospike GET: No 'value' bucket found")
 	}
 
 	str, isString := value.(string)
 	if !isString {
-		return "", errors.New("Aerospike GET. Retrieved value is not a string")
+		return "", errors.New("Aerospike GET: Unexpected non-string value found")
 	}
 
 	return str, nil
 }
 
 func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, setName)
+	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,10 @@ func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, tt
 
 func formatAerospikeError(err error, caller string) error {
 	if err != nil {
-		if aerr, ok := err.(ase.AerospikeError); ok {
+		if aerr, ok := err.(as_types.AerospikeError); ok {
+			//if aerr.ResultCode() == ase.INVALID_NAMESPACE {
+			// return key not found status code
+			//}
 			return fmt.Errorf("%s Aerospike error: %s. Code: %d", caller, aerr.Error(), aerr.ResultCode())
 		}
 	}

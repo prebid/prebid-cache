@@ -33,7 +33,7 @@ func TestDefaults(t *testing.T) {
 	assertStringsEqual(t, "backend.azure.key", cfg.Backend.Azure.Key, "")
 	assertStringsEqual(t, "backend.cassandra.hosts", cfg.Backend.Cassandra.Hosts, "")
 	assertStringsEqual(t, "backend.cassandra.keyspace", cfg.Backend.Cassandra.Keyspace, "")
-	assert.Equal(t, []string{}, cfg.Backend.Memcache.Hosts, "backend.memcache.hosts should be a zero-lenght slice of strings")
+	assert.ElementsMatch(t, []string{}, cfg.Backend.Memcache.Hosts, "backend.memcache.hosts should be a zero-lenght slice of strings")
 	assertStringsEqual(t, "backend.redis.host", cfg.Backend.Redis.Host, "")
 	assertIntsEqual(t, "backend.redis.port", cfg.Backend.Redis.Port, 0)
 	assertStringsEqual(t, "backend.redis.password", cfg.Backend.Redis.Password, "")

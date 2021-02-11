@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -168,21 +171,140 @@ func TestXMLOther(t *testing.T) {
 	expectFailedPut(t, "{\"puts\":[{\"type\":\"xml\",\"value\":5}]}")
 }
 
-func TestGetInvalidUUIDs(t *testing.T) {
-	backend := backends.NewMemoryBackend()
-	router := httprouter.New()
-	router.GET("/cache", NewGetHandler(backend, false))
-
-	getResults := doMockGet(t, router, "fdd9405b-ef2b-46da-a55a-2f526d338e16")
-	if getResults.Code != http.StatusNotFound {
-		t.Fatalf("Expected GET to return 404 on unrecognized ID. Got: %d", getResults.Code)
-		return
+func TestGetHandler(t *testing.T) {
+	type logEntry struct {
+		msg string
+		lvl logrus.Level
+	}
+	type testInput struct {
+		uuid      string
+		allowKeys bool
+	}
+	type testOutput struct {
+		responseCode int
+		responseBody string
+		logEntries   []logEntry
 	}
 
-	getResults = doMockGet(t, router, "abc")
-	if getResults.Code != http.StatusNotFound {
-		t.Fatalf("Expected GET to return 404 on unrecognized ID. Got: %d", getResults.Code)
-		return
+	testCases := []struct {
+		desc string
+		in   testInput
+		out  testOutput
+	}{
+		{ // 1
+			"Missing UUID. Return http error but don't interrupt server's execution",
+			testInput{uuid: ""},
+			testOutput{
+				responseCode: http.StatusBadRequest,
+				responseBody: "Missing required parameter uuid\n",
+				logEntries: []logEntry{
+					{
+						msg: "Missing required parameter uuid",
+						lvl: logrus.ErrorLevel,
+					},
+				},
+			},
+		},
+		{ // 2
+			"Test uses backend that doesn't allow for keys different than 36 char long. Respond with http error and don't interrupt server's execution",
+			testInput{uuid: "non-36-char-key-maps-to-json"},
+			testOutput{
+				responseCode: http.StatusNotFound,
+				responseBody: "uuid=non-36-char-key-maps-to-json: invalid uuid lenght\n",
+				logEntries: []logEntry{
+					{
+						msg: "uuid=non-36-char-key-maps-to-json: invalid uuid lenght",
+						lvl: logrus.ErrorLevel,
+					},
+				},
+			},
+		},
+		{ // 3
+			"Test uses backend allows for different than 36 char long and incomming uuid maps to a value. Do not return nor log error",
+			testInput{
+				uuid:      "non-36-char-key-maps-to-json",
+				allowKeys: true,
+			},
+			testOutput{
+				responseCode: http.StatusOK,
+				responseBody: `{"field":"value"}`,
+				logEntries:   []logEntry{},
+			},
+		},
+		{ // 4
+			"Valid 36 char long UUID not found in database. Return http error but don't interrupt server's execution",
+			testInput{uuid: "uuid-not-found-and-links-to-no-value"},
+			testOutput{
+				responseCode: http.StatusNotFound,
+				responseBody: "uuid=uuid-not-found-and-links-to-no-value: Not found in mock backend\n",
+				logEntries: []logEntry{
+					{
+						msg: "uuid=uuid-not-found-and-links-to-no-value: Not found in mock backend",
+						lvl: logrus.ErrorLevel,
+					},
+				},
+			},
+		},
+		{ // 5
+			"Data from backend is not preceeded by 'xml' nor 'json' string. Return http error but don't interrupt server's execution",
+			testInput{uuid: "36-char-key-maps-to-non-xml-nor-json"},
+			testOutput{
+				responseCode: http.StatusInternalServerError,
+				responseBody: "uuid=36-char-key-maps-to-non-xml-nor-json: Cache data was corrupted. Cannot determine type.\n",
+				logEntries: []logEntry{
+					{
+						msg: "uuid=36-char-key-maps-to-non-xml-nor-json: Cache data was corrupted. Cannot determine type.",
+						lvl: logrus.ErrorLevel,
+					},
+				},
+			},
+		},
+		{ // 6
+			"Valid 36 char long UUID returns valid XML. Don't return nor log error",
+			testInput{uuid: "36-char-key-maps-to-actual-xml-value"},
+			testOutput{
+				responseCode: http.StatusOK,
+				responseBody: "<tag>xml data here</tag>",
+				logEntries:   []logEntry{},
+			},
+		},
+	}
+
+	// Test suite-wide objects
+	hook := test.NewGlobal()
+
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	var fatal bool
+	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+
+	for _, test := range testCases {
+		// Reset the fatal flag to false every test
+		fatal = false
+
+		// Set up test object
+		backend := newMockBackend()
+		router := httprouter.New()
+		router.GET("/cache", NewGetHandler(backend, test.in.allowKeys))
+
+		// Run test
+		getResults := doMockGet(t, router, test.in.uuid)
+
+		// Assert server response and status code
+		assert.Equal(t, test.out.responseCode, getResults.Code, test.desc)
+		assert.Equal(t, test.out.responseBody, getResults.Body.String(), test.desc)
+
+		// Assert log entries
+		if assert.Len(t, hook.Entries, len(test.out.logEntries), test.desc) {
+			for i := 0; i < len(test.out.logEntries); i++ {
+				assert.Equal(t, test.out.logEntries[i].msg, hook.Entries[i].Message, test.desc)
+				assert.Equal(t, test.out.logEntries[i].lvl, hook.Entries[i].Level, test.desc)
+			}
+			// Assert the logger didn't exit the program
+			assert.False(t, fatal, test.desc)
+		}
+
+		// Reset log
+		hook.Reset()
 	}
 }
 
@@ -226,9 +348,7 @@ func TestMultiPutRequestGotStored(t *testing.T) {
 	reqBody := fmt.Sprintf("{\"puts\":[%s, %s, %s]}", testCases[0].elemToPut, testCases[1].elemToPut, testCases[2].elemToPut)
 
 	request, err := http.NewRequest("POST", "/cache", strings.NewReader(reqBody))
-	if err != nil {
-		t.Errorf("Failed to create a POST request: %v", err)
-	}
+	assert.NoError(t, err, "Failed to create a POST request: %v", err)
 
 	//Set up server and run
 	router := httprouter.New()
@@ -244,9 +364,8 @@ func TestMultiPutRequestGotStored(t *testing.T) {
 	// validate results
 	var parsed PutResponse
 	err = json.Unmarshal([]byte(rr.Body.String()), &parsed)
-	if err != nil {
-		t.Errorf("Response from POST doesn't conform to the expected format: %s", rr.Body.String())
-	}
+	assert.NoError(t, err, "Response from POST doesn't conform to the expected format: %s", rr.Body.String())
+
 	for i, resp := range parsed.Responses {
 		// Get value for this UUID. It is supposed to have been stored
 		getResult := doMockGet(t, router, resp.UUID)
@@ -376,4 +495,31 @@ func BenchmarkPutHandlerLen8(b *testing.B) {
 	//Set up a request that should succeed
 	input := "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"xml\",\"value\":\"plain text\"},{\"type\":\"xml\",\"value\":5}, {\"type\":\"json\",\"value\":\"esca\\\"ped\"}, {\"type\":\"json\",\"value\":{\"custom_key\":\"foo\"}},{\"type\":\"xml\",\"value\":{\"custom_key\":\"foo\"}},{\"type\":\"json\",\"value\":null}, {\"type\":\"xml\",\"value\":\"<tag></tag>\"}]}"
 	benchmarkPutHandler(b, input)
+}
+
+type mockBackend struct {
+	data map[string]string
+}
+
+func (b *mockBackend) Get(ctx context.Context, key string) (string, error) {
+	v, ok := b.data[key]
+	if !ok {
+		return "", fmt.Errorf("Not found in mock backend")
+	}
+	return v, nil
+}
+
+func (b *mockBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+	b.data[key] = value
+	return nil
+}
+
+func newMockBackend() *mockBackend {
+	return &mockBackend{
+		data: map[string]string{
+			"non-36-char-key-maps-to-json":         `json{"field":"value"}`,
+			"36-char-key-maps-to-non-xml-nor-json": `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`,
+			"36-char-key-maps-to-actual-xml-value": "xml<tag>xml data here</tag>",
+		},
+	}
 }
