@@ -13,9 +13,9 @@ func NewConfig(filename string) Configuration {
 
 	setConfigDefaults(v)
 
-	setEnvVars(v)
+	setEnvVarsLookup(v)
 
-	setConfigFile(v, filename)
+	setConfigFilePath(v, filename)
 
 	// Read configuration file
 	err := v.ReadInConfig()
@@ -80,14 +80,14 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("routes.allow_public_write", true)
 }
 
-func setConfigFile(v *viper.Viper, filename string) {
+func setConfigFilePath(v *viper.Viper, filename string) {
 	v.SetConfigName(filename)              // name of config file (without extension)
 	v.AddConfigPath("/etc/prebid-cache/")  // path to look for the config file in
 	v.AddConfigPath("$HOME/.prebid-cache") // call multiple times to add many search paths
 	v.AddConfigPath(".")
 }
 
-func setEnvVars(v *viper.Viper) {
+func setEnvVarsLookup(v *viper.Viper) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.SetEnvPrefix("PBC")
 	v.AutomaticEnv()
