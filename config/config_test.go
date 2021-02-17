@@ -1,9 +1,12 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -20,112 +23,19 @@ func TestDefaults(t *testing.T) {
 	err := v.Unmarshal(&cfg)
 	assert.NoError(t, err, "Failed to unmarshal config: %v", err)
 
-	assertIntsEqual(t, "port", cfg.Port, 2424)
-	assertIntsEqual(t, "admin_port", cfg.AdminPort, 2525)
-	assertStringsEqual(t, "index_response", cfg.IndexResponse, "This application stores short-term data for use in Prebid.")
-	assertStringsEqual(t, "log.level", string(cfg.Log.Level), "info")
-	assertStringsEqual(t, "backend.type", string(cfg.Backend.Type), "memory")
-	assertStringsEqual(t, "backend.aerospike.host", cfg.Backend.Aerospike.Host, "")
-	assertIntsEqual(t, "backend.aerospike.port", cfg.Backend.Aerospike.Port, 0)
-	assertStringsEqual(t, "backend.aerospike.namespace", cfg.Backend.Aerospike.Namespace, "")
-	assertIntsEqual(t, "backend.aerospike.default_ttl_seconds", cfg.Backend.Aerospike.DefaultTTL, 0)
-	assertStringsEqual(t, "backend.azure.account", cfg.Backend.Azure.Account, "")
-	assertStringsEqual(t, "backend.azure.key", cfg.Backend.Azure.Key, "")
-	assertStringsEqual(t, "backend.cassandra.hosts", cfg.Backend.Cassandra.Hosts, "")
-	assertStringsEqual(t, "backend.cassandra.keyspace", cfg.Backend.Cassandra.Keyspace, "")
-	assert.ElementsMatch(t, []string{}, cfg.Backend.Memcache.Hosts, "backend.memcache.hosts should be a zero-lenght slice of strings")
-	assertStringsEqual(t, "backend.redis.host", cfg.Backend.Redis.Host, "")
-	assertIntsEqual(t, "backend.redis.port", cfg.Backend.Redis.Port, 0)
-	assertStringsEqual(t, "backend.redis.password", cfg.Backend.Redis.Password, "")
-	assertIntsEqual(t, "backend.redis.db", cfg.Backend.Redis.Db, 0)
-	assertIntsEqual(t, "backend.redis.expiration", cfg.Backend.Redis.Expiration, 0)
-	assertBoolsEqual(t, "backend.redis.tls.enabled", cfg.Backend.Redis.TLS.Enabled, false)
-	assertBoolsEqual(t, "backend.redis.tls.insecure_skip_verify", cfg.Backend.Redis.TLS.InsecureSkipVerify, false)
-	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "snappy")
-	assertStringsEqual(t, "metrics.type", string(cfg.Metrics.Type), "")
-	assertStringsEqual(t, "metrics.influx.host", cfg.Metrics.Influx.Host, "")
-	assertStringsEqual(t, "metrics.influx.database", cfg.Metrics.Influx.Database, "")
-	assertStringsEqual(t, "metrics.influx.username", cfg.Metrics.Influx.Username, "")
-	assertStringsEqual(t, "metrics.influx.password", cfg.Metrics.Influx.Password, "")
-	assertBoolsEqual(t, "metrics.influx.enabled", cfg.Metrics.Influx.Enabled, false)
-	assertIntsEqual(t, "metrics.prometheus.port", cfg.Metrics.Prometheus.Port, 0)
-	assertStringsEqual(t, "metrics.prometheus.namespace", cfg.Metrics.Prometheus.Namespace, "")
-	assertStringsEqual(t, "metrics.prometheus.subsystem", cfg.Metrics.Prometheus.Subsystem, "")
-	assertIntsEqual(t, "metrics.prometheus.timeout_ms", cfg.Metrics.Prometheus.TimeoutMillisRaw, 0)
-	assertBoolsEqual(t, "metrics.prometheus.enabled", cfg.Metrics.Prometheus.Enabled, false)
-	assertBoolsEqual(t, "rate_limiter.enabled", cfg.RateLimiting.Enabled, true)
-	assertInt64sEqual(t, "rate_limiter.num_requests", cfg.RateLimiting.MaxRequestsPerSecond, 100)
-	assertIntsEqual(t, "request_limits.max_size_bytes", cfg.RequestLimits.MaxSize, 10*1024)
-	assertIntsEqual(t, "request_limits.max_num_values", cfg.RequestLimits.MaxNumValues, 10)
-	assertIntsEqual(t, "request_limits.max_ttl_seconds", cfg.RequestLimits.MaxTTLSeconds, 3600)
-	assertBoolsEqual(t, "routes.allow_public_write", cfg.Routes.AllowPublicWrite, true)
-}
-
-func TestSampleConfig(t *testing.T) {
-	cfg := Configuration{}
-	v := newViperFromSample(t)
-
-	if err := v.Unmarshal(&cfg); err != nil {
-		t.Fatalf("Failed to unmarshal config: %v", err)
-	}
-
-	assertIntsEqual(t, "port", cfg.Port, 2424)
-	assertIntsEqual(t, "admin_port", cfg.AdminPort, 2525)
-	assertStringsEqual(t, "log.level", string(cfg.Log.Level), "info")
-	assertBoolsEqual(t, "rate_limiter.enabled", cfg.RateLimiting.Enabled, true)
-	assertInt64sEqual(t, "rate_limiter.num_requests", cfg.RateLimiting.MaxRequestsPerSecond, 100)
-	assertIntsEqual(t, "request_limits.max_size_bytes", cfg.RequestLimits.MaxSize, 10240)
-	assertIntsEqual(t, "request_limits.max_num_values", cfg.RequestLimits.MaxNumValues, 10)
-	assertIntsEqual(t, "request_limits.max_ttl_seconds", cfg.RequestLimits.MaxTTLSeconds, 5000)
-	assertStringsEqual(t, "backend.type", string(cfg.Backend.Type), "memory")
-	assertIntsEqual(t, "backend.aerospike.default_ttl_seconds", cfg.Backend.Aerospike.DefaultTTL, 3600)
-	assertStringsEqual(t, "backend.aerospike.host", cfg.Backend.Aerospike.Host, "aerospike.prebid.com")
-	assertIntsEqual(t, "backend.aerospike.port", cfg.Backend.Aerospike.Port, 3000)
-	assertStringsEqual(t, "backend.aerospike.namespace", cfg.Backend.Aerospike.Namespace, "whatever")
-	assertStringsEqual(t, "backend.azure.account", cfg.Backend.Azure.Account, "azure-account-here")
-	assertStringsEqual(t, "backend.azure.key", cfg.Backend.Azure.Key, "azure-key-here")
-	assertStringsEqual(t, "backend.cassandra.hosts", cfg.Backend.Cassandra.Hosts, "127.0.0.1")
-	assertStringsEqual(t, "backend.cassandra.keyspace", cfg.Backend.Cassandra.Keyspace, "prebid")
-	assertStringsEqual(t, "backend.memcache.hosts", cfg.Backend.Memcache.Hosts[0], "10.0.0.1:11211")
-	assertIntsEqual(t, "backend.redis.port", cfg.Backend.Redis.Port, 6379)
-	assertIntsEqual(t, "backend.redis.db", cfg.Backend.Redis.Db, 1)
-	assertStringsEqual(t, "backend.redis.host", cfg.Backend.Redis.Host, "127.0.0.1")
-	assertStringsEqual(t, "backend.redis.password", cfg.Backend.Redis.Password, "")
-	assertBoolsEqual(t, "backend.redis.tls.enabled", cfg.Backend.Redis.TLS.Enabled, false)
-	assertBoolsEqual(t, "backend.redis.tls.insecure_skip_verify", cfg.Backend.Redis.TLS.InsecureSkipVerify, false)
-	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "snappy")
-	assertStringsEqual(t, "metrics.type", string(cfg.Metrics.Type), "none")
-	assertStringsEqual(t, "metrics.influx.host", cfg.Metrics.Influx.Host, "default-metrics-host")
-	assertStringsEqual(t, "metrics.influx.database", cfg.Metrics.Influx.Database, "default-metrics-database")
-	assertStringsEqual(t, "metrics.influx.username", cfg.Metrics.Influx.Username, "metrics-username")
-	assertStringsEqual(t, "metrics.influx.password", cfg.Metrics.Influx.Password, "metrics-password")
-	assertBoolsEqual(t, "metrics.influx.enabled", cfg.Metrics.Influx.Enabled, true)
-	assertIntsEqual(t, "metrics.prometheus.port", cfg.Metrics.Prometheus.Port, 8080)
-	assertStringsEqual(t, "metrics.prometheus.namespace", cfg.Metrics.Prometheus.Namespace, "prebid")
-	assertStringsEqual(t, "metrics.prometheus.subsystem", cfg.Metrics.Prometheus.Subsystem, "cache")
-	assertIntsEqual(t, "metrics.prometheus.timeout_ms", cfg.Metrics.Prometheus.TimeoutMillisRaw, 100)
-	assertBoolsEqual(t, "metrics.prometheus.enabled", cfg.Metrics.Prometheus.Enabled, true)
+	expectedConfig := getExpectedDefaultConfig()
+	assert.Equal(t, expectedConfig, cfg, "Expected Configuration instance does not match.")
 }
 
 func TestEnvConfig(t *testing.T) {
-	defer forceEnv(t, "PBC_PORT", "2000")()
-	defer forceEnv(t, "PBC_COMPRESSION_TYPE", "none")()
+	defer setEnvVar(t, "PBC_METRICS_INFLUX_HOST", "env-var-defined-metrics-host")()
 
-	v := viper.New()
-	setConfigDefaults(v)
-	setEnvVars(v)
-	v.SetConfigType("yaml")
-	if err := v.ReadConfig(strings.NewReader(sampleConfig)); err != nil {
-		t.Errorf("Failed to read sample file: %v", err)
-	}
+	// Inside NewConfig() metrics.influx.host sets the default value to ""
+	// "config/configtest/sample_full_config.yaml", sets it to  "metrics-host"
+	cfg := NewConfig("sample_full_config")
 
-	cfg := Configuration{}
-	if err := v.Unmarshal(&cfg); err != nil {
-		t.Fatalf("Failed to unmarshal config: %v", err)
-	}
-
-	assertIntsEqual(t, "port", cfg.Port, 2000)
-	assertStringsEqual(t, "compression.type", string(cfg.Compression.Type), "none")
+	// assert env variable value supercedes them both
+	assert.Equal(t, "env-var-defined-metrics-host", string(cfg.Metrics.Influx.Host), "metrics.influx.host did not equal expected")
 }
 
 func TestLogValidateAndLog(t *testing.T) {
@@ -874,58 +784,54 @@ func TestCompressionValidateAndLog(t *testing.T) {
 
 	testCases := []struct {
 		description     string
-		compConf        *Compression
-		expectFatal     bool
+		compressionCfg  *Compression
 		expectedLogInfo []logComponents
 	}{
 		{
-			description: "[1] Valid compression type expect to log.Infof",
-			compConf:    &Compression{Type: CompressionSnappy},
-			expectFatal: false,
+			description:    "Blank compression type, expect fatal level log entry",
+			compressionCfg: &Compression{Type: CompressionType("")},
 			expectedLogInfo: []logComponents{
-				{
-					msg: "config.compression.type: snappy",
-					lvl: logrus.InfoLevel,
-				},
+				{msg: `invalid config.compression.type: . It must be "none" or "snappy"`, lvl: logrus.FatalLevel},
 			},
 		},
 		{
-			description: "[2] Invalid compression type expect to log.Fatal",
-			compConf:    &Compression{Type: CompressionType("invalid")},
-			expectFatal: true,
+			description:    "Valid compression type 'none', expect info level log entry",
+			compressionCfg: &Compression{Type: CompressionNone},
 			expectedLogInfo: []logComponents{
-				{
-					msg: `invalid config.compression.type: invalid. It must be "none" or "snappy"`,
-					lvl: logrus.FatalLevel,
-				},
+				{msg: "config.compression.type: none", lvl: logrus.InfoLevel},
+			},
+		},
+		{
+			description:    "Valid compression type 'snappy', expect info level log entry",
+			compressionCfg: &Compression{Type: CompressionSnappy},
+			expectedLogInfo: []logComponents{
+				{msg: "config.compression.type: snappy", lvl: logrus.InfoLevel},
+			},
+		},
+		{
+			description:    "Unsupported compression, expect fatal level log entry",
+			compressionCfg: &Compression{Type: CompressionType("UnknownCompressionType")},
+			expectedLogInfo: []logComponents{
+				{msg: `invalid config.compression.type: UnknownCompressionType. It must be "none" or "snappy"`, lvl: logrus.FatalLevel},
 			},
 		},
 	}
 
 	//substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
-	var fatal bool
-	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+	logrus.StandardLogger().ExitFunc = func(int) {}
 
-	for j, tc := range testCases {
-		// Reset the fatal flag to false every test
-		fatal = false
-
-		//run test
-		tc.compConf.validateAndLog()
+	for _, tc := range testCases {
+		// Run test
+		tc.compressionCfg.validateAndLog()
 
 		// Assert logrus expected entries
-		if assert.Equal(t, len(tc.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.expectedLogInfo) = %d len(hook.Entries) = %d", j, len(tc.expectedLogInfo), len(hook.Entries)) {
+		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.description) {
 			for i := 0; i < len(tc.expectedLogInfo); i++ {
-				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message)
-				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Expected Info entry in log")
+				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message, tc.description+":message")
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.description+":log level")
 			}
-		} else {
-			return
 		}
-
-		// Assert log.Fatalf() was called or not
-		assert.Equal(t, tc.expectFatal, fatal)
 
 		//Reset log after every test and assert successful reset
 		hook.Reset()
@@ -933,98 +839,192 @@ func TestCompressionValidateAndLog(t *testing.T) {
 	}
 }
 
-func newViperFromSample(t *testing.T) *viper.Viper {
-	v := viper.New()
-	v.SetConfigType("yaml")
-	if err := v.ReadConfig(strings.NewReader(sampleConfig)); err != nil {
-		t.Errorf("Failed to read sample file: %v", err)
+func TestNewConfigFromFile(t *testing.T) {
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	type logComponents struct {
+		msg string
+		lvl logrus.Level
 	}
-	return v
-}
-
-const sampleConfig = `
-port: 2424
-admin_port: 2525
-log:
-  level: "info"
-rate_limiter:
-  enabled: true
-  num_requests: 100
-request_limits:
-  max_size_bytes: 10240
-  max_num_values: 10
-  max_ttl_seconds: 5000
-backend:
-  type: "memory"
-  aerospike:
-    default_ttl_seconds: 3600
-    host: "aerospike.prebid.com"
-    port: 3000
-    namespace: "whatever"
-  memcache:
-    hosts: "10.0.0.1:11211"
-  cassandra:
-    hosts: "127.0.0.1"
-    keyspace: "prebid"
-  azure:
-    account: "azure-account-here"
-    key: "azure-key-here"
-  redis:
-    host: "127.0.0.1"
-    port: 6379
-    password: ""
-    db: 1
-    tls:
-      enabled: false
-      insecure_skip_verify: false
-compression:
-  type: "snappy"
-metrics:
-  type: "none"
-  influx:
-    host: "default-metrics-host"
-    database: "default-metrics-database"
-    username: "metrics-username"
-    password: "metrics-password"
-    enabled: true
-  prometheus:
-    port: 8080
-    namespace: "prebid"
-    subsystem: "cache"
-    timeout_ms: 100
-    enabled: true
-`
-
-func assertBoolsEqual(t *testing.T, path string, actual bool, expected bool) {
-	t.Helper()
-	if actual != expected {
-		t.Errorf("%s value %t did not equal expected %t", path, actual, expected)
+	testCases := []struct {
+		description      string
+		inConfigFileName string
+		expectedLogInfo  []logComponents
+		expectedConfig   Configuration
+	}{
+		{
+			description:      "Empty file name: expect INFO level log message and start server with default config values",
+			inConfigFileName: "",
+			expectedLogInfo: []logComponents{
+				{
+					msg: "Configuration file not detected. Initializing with default values and environment variable overrides.",
+					lvl: logrus.InfoLevel,
+				},
+			},
+			expectedConfig: getExpectedDefaultConfig(),
+		},
+		{
+			description:      "Configuration file was specified but doesn't exist: expect INFO level log message and start server with default config values",
+			inConfigFileName: "non_existent_file",
+			expectedLogInfo: []logComponents{
+				{
+					msg: "Configuration file not detected. Initializing with default values and environment variable overrides.",
+					lvl: logrus.InfoLevel,
+				},
+			},
+			expectedConfig: getExpectedDefaultConfig(),
+		},
+		{
+			description:      "file exists but its yaml markup is invalid: stop execution and log Fatal message",
+			inConfigFileName: filepath.Join("configtest", "config_invalid"),
+			expectedLogInfo: []logComponents{
+				{
+					msg: "Configuration file could not be read:",
+					lvl: logrus.FatalLevel,
+				},
+			},
+			expectedConfig: getExpectedDefaultConfig(),
+		},
+		{
+			description:      "Valid yaml configuration populates all configuration fields properly",
+			inConfigFileName: filepath.Join("configtest", "sample_full_config"),
+			expectedConfig:   getExpectedFullConfigForTestFile(),
+		},
 	}
-}
 
-func assertIntsEqual(t *testing.T, path string, actual int, expected int) {
-	t.Helper()
-	if actual != expected {
-		t.Errorf("%s value %d did not equal expected %d", path, actual, expected)
-	}
-}
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
 
-func assertInt64sEqual(t *testing.T, path string, actual int64, expected int) {
-	t.Helper()
-	if actual != int64(expected) {
-		t.Errorf("%s value %d did not equal expected %d", path, actual, expected)
+	for _, tc := range testCases {
+		//run test
+		actualCfg := NewConfig(tc.inConfigFileName)
+
+		// Assert logrus expected entries
+		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.description) {
+			for i := 0; i < len(tc.expectedLogInfo); i++ {
+				assert.True(t, strings.HasPrefix(hook.Entries[i].Message, tc.expectedLogInfo[i].msg), tc.description+":message")
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.description+":log level")
+			}
+		}
+
+		assert.Equal(t, tc.expectedConfig, actualCfg, "Expected Configuration instance does not match. Test desc:%s", tc.description)
+
+		//Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
 	}
 }
 
-func assertStringsEqual(t *testing.T, path string, actual string, expected string) {
-	t.Helper()
-	if actual != expected {
-		t.Errorf(`%s value "%s" did not equal expected "%s"`, path, actual, expected)
+func TestConfigurationValidateAndLog(t *testing.T) {
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
+	// Instantiate test objects
+	type logComponents struct {
+		msg string
+		lvl logrus.Level
+	}
+
+	expectedConfig := getExpectedDefaultConfig()
+
+	expectedLogInfo := []logComponents{
+		{msg: fmt.Sprintf("config.port: %d", expectedConfig.Port), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.admin_port: %d", expectedConfig.AdminPort), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.log.level: %s", expectedConfig.Log.Level), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.rate_limiter.enabled: %t", expectedConfig.RateLimiting.Enabled), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.rate_limiter.num_requests: %d", expectedConfig.RateLimiting.MaxRequestsPerSecond), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_limits.allow_setting_keys: %v", expectedConfig.RequestLimits.AllowSettingKeys), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_limits.max_ttl_seconds: %d", expectedConfig.RequestLimits.MaxTTLSeconds), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_limits.max_size_bytes: %d", expectedConfig.RequestLimits.MaxSize), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_limits.max_num_values: %d", expectedConfig.RequestLimits.MaxNumValues), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.backend.type: %s", expectedConfig.Backend.Type), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.compression.type: %s", expectedConfig.Compression.Type), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("Prebid Cache will run without metrics"), lvl: logrus.InfoLevel},
+	}
+
+	// Run test
+	expectedConfig.ValidateAndLog()
+
+	// Assertions
+	if assert.Len(t, hook.Entries, len(expectedLogInfo)) {
+		for i := 0; i < len(expectedLogInfo); i++ {
+			assert.True(t, strings.HasPrefix(hook.Entries[i].Message, expectedLogInfo[i].msg), "Wrong message")
+			assert.Equal(t, expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong log level")
+		}
+	}
+
+	//Reset log
+	hook.Reset()
+	assert.Nil(t, hook.LastEntry())
+}
+
+func TestPrometheusTimeoutDuration(t *testing.T) {
+	prometheusConfig := &PrometheusMetrics{
+		TimeoutMillisRaw: 5,
+	}
+
+	expectedTimeout := time.Duration(5 * 1000 * 1000)
+	actualTimeout := prometheusConfig.Timeout()
+	assert.Equal(t, expectedTimeout, actualTimeout)
+}
+
+func TestRoutesValidateAndLog(t *testing.T) {
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	type logComponents struct {
+		msg string
+		lvl logrus.Level
+	}
+
+	testCases := []struct {
+		description     string
+		inRoutesConfig  *Routes
+		expectedLogInfo []logComponents
+	}{
+		{
+			description:    "Public write is not allowed, log info level message",
+			inRoutesConfig: &Routes{AllowPublicWrite: false},
+			expectedLogInfo: []logComponents{
+				{msg: "Main server will only accept GET requests", lvl: logrus.InfoLevel},
+			},
+		},
+		{
+			description:     "Public write allowed. Default GET and POST methods are allowed, no need to log anything",
+			inRoutesConfig:  &Routes{AllowPublicWrite: true},
+			expectedLogInfo: []logComponents{},
+		},
+	}
+
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
+	for _, tc := range testCases {
+		// Run test
+		tc.inRoutesConfig.validateAndLog()
+
+		// Assert logrus expected entries
+		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.description) {
+			for i := 0; i < len(tc.expectedLogInfo); i++ {
+				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message, tc.description+":message")
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.description+":log level")
+			}
+		}
+
+		//Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
 	}
 }
 
-// forceEnv sets an environment variable to a certain value, and returns a function which resets it to its original value.
-func forceEnv(t *testing.T, key string, val string) func() {
+// setEnvVar sets an environment variable to a certain value, and returns a function which resets it to its original value.
+func setEnvVar(t *testing.T, key string, val string) func() {
 	orig, set := os.LookupEnv(key)
 	err := os.Setenv(key, val)
 	if err != nil {
@@ -1042,5 +1042,113 @@ func forceEnv(t *testing.T, key string, val string) func() {
 				t.Fatalf("Error unsetting evnvironment %s", key)
 			}
 		}
+	}
+}
+
+func getExpectedDefaultConfig() Configuration {
+	return Configuration{
+		Port:          2424,
+		AdminPort:     2525,
+		IndexResponse: "This application stores short-term data for use in Prebid.",
+		Log: Log{
+			Level: Info,
+		},
+		Backend: Backend{
+			Type: BackendMemory,
+			Memcache: Memcache{
+				Hosts: []string{},
+			},
+		},
+		Compression: Compression{
+			Type: CompressionType("snappy"),
+		},
+		RateLimiting: RateLimiting{
+			Enabled:              true,
+			MaxRequestsPerSecond: 100,
+		},
+		RequestLimits: RequestLimits{
+			MaxSize:       10240,
+			MaxNumValues:  10,
+			MaxTTLSeconds: 3600,
+		},
+		Routes: Routes{
+			AllowPublicWrite: true,
+		},
+	}
+}
+
+// Returns a Configuration object that matches the values found in the `sample_full_config.yaml`
+func getExpectedFullConfigForTestFile() Configuration {
+	return Configuration{
+		Port:          9000,
+		AdminPort:     2525,
+		IndexResponse: "Any index response",
+		Log: Log{
+			Level: Info,
+		},
+		RateLimiting: RateLimiting{
+			Enabled:              false,
+			MaxRequestsPerSecond: 150,
+		},
+		RequestLimits: RequestLimits{
+			MaxSize:          10240,
+			MaxNumValues:     10,
+			MaxTTLSeconds:    5000,
+			AllowSettingKeys: true,
+		},
+		Backend: Backend{
+			Type: BackendMemory,
+			Aerospike: Aerospike{
+				DefaultTTL: 3600,
+				Host:       "aerospike.prebid.com",
+				Port:       3000,
+				Namespace:  "whatever",
+			},
+			Azure: Azure{
+				Account: "azure-account-here",
+				Key:     "azure-key-here",
+			},
+			Cassandra: Cassandra{
+				Hosts:    "127.0.0.1",
+				Keyspace: "prebid",
+			},
+			Memcache: Memcache{
+				Hosts: []string{"10.0.0.1:11211", "127.0.0.1"},
+			},
+			Redis: Redis{
+				Host:       "127.0.0.1",
+				Port:       6379,
+				Password:   "redis-password",
+				Db:         1,
+				Expiration: 1,
+				TLS: RedisTLS{
+					Enabled:            false,
+					InsecureSkipVerify: false,
+				},
+			},
+		},
+		Compression: Compression{
+			Type: CompressionType("snappy"),
+		},
+		Metrics: Metrics{
+			Type: MetricsType("none"),
+			Influx: InfluxMetrics{
+				Host:     "metrics-host",
+				Database: "metrics-database",
+				Username: "metrics-username",
+				Password: "metrics-password",
+				Enabled:  true,
+			},
+			Prometheus: PrometheusMetrics{
+				Port:             8080,
+				Namespace:        "prebid",
+				Subsystem:        "cache",
+				TimeoutMillisRaw: 100,
+				Enabled:          true,
+			},
+		},
+		Routes: Routes{
+			AllowPublicWrite: true,
+		},
 	}
 }

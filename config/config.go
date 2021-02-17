@@ -8,15 +8,28 @@ import (
 	"github.com/spf13/viper"
 )
 
-func NewConfig() Configuration {
+func NewConfig(filename string) Configuration {
 	v := viper.New()
-	setConfigDefaults(v)
-	setConfigFile(v)
-	setEnvVars(v)
 
-	if err := v.ReadInConfig(); err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+	setConfigDefaults(v)
+
+	setEnvVarsLookup(v)
+
+	setConfigFilePath(v, filename)
+
+	// Read configuration file
+	err := v.ReadInConfig()
+	if err != nil {
+		// Make sure the configuration file was not defective
+		if _, fileNotFound := err.(viper.ConfigFileNotFoundError); fileNotFound {
+			// Config file not found. Just log at info level and start Prebid Cache with default values
+			log.Info("Configuration file not detected. Initializing with default values and environment variable overrides.")
+		} else {
+			// Config file was found but was defective, Either `UnsupportedConfigError` or `ConfigParseError` was thrown
+			log.Fatalf("Configuration file could not be read: %v", err)
+		}
 	}
+
 	cfg := Configuration{}
 	if err := v.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Failed to unmarshal config: %v", err)
@@ -67,14 +80,14 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("routes.allow_public_write", true)
 }
 
-func setConfigFile(v *viper.Viper) {
-	v.SetConfigName("config")              // name of config file (without extension)
+func setConfigFilePath(v *viper.Viper, filename string) {
+	v.SetConfigName(filename)              // name of config file (without extension)
 	v.AddConfigPath("/etc/prebid-cache/")  // path to look for the config file in
 	v.AddConfigPath("$HOME/.prebid-cache") // call multiple times to add many search paths
 	v.AddConfigPath(".")
 }
 
-func setEnvVars(v *viper.Viper) {
+func setEnvVarsLookup(v *viper.Viper) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.SetEnvPrefix("PBC")
 	v.AutomaticEnv()

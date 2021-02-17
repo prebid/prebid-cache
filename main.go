@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "net/http/pprof"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -13,9 +12,11 @@ import (
 	"github.com/prebid/prebid-cache/server"
 )
 
+const configFileName = "config"
+
 func main() {
 	log.SetOutput(os.Stdout)
-	cfg := config.NewConfig()
+	cfg := config.NewConfig(configFileName)
 	setLogLevel(cfg.Log.Level)
 	cfg.ValidateAndLog()
 
