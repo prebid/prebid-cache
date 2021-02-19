@@ -16,10 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//
-// Mock clients
-//
-
 // Mock Aerospike client that always throws an error
 type errorProneAerospikeClient struct {
 	errorThrowingFunction string
@@ -85,9 +81,6 @@ func (c *goodAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key,
 	return nil, nil
 }
 
-//
-// Tests
-//
 func TestNewAerospikeBackend(t *testing.T) {
 	type logEntry struct {
 		msg string
