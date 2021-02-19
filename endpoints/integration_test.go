@@ -220,7 +220,7 @@ func TestGetHandler(t *testing.T) {
 			},
 		},
 		{ // 3
-			"Test uses backend allows for different than 36 char long and incomming uuid maps to a value. Do not return nor log error",
+			"Test uses backend that allows for different than 36 char long uuids. Since the uuid maps to a value, return it along a 200 status code",
 			testInput{
 				uuid:      "non-36-char-key-maps-to-json",
 				allowKeys: true,
