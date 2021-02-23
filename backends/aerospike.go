@@ -15,17 +15,17 @@ import (
 const setName = "uuid"
 const binValue = "value"
 
-type AerospikeDBClient interface {
+type AerospikeDB interface {
 	NewUuidKey(namespace string, key string) (*as.Key, error)
 	Get(key *as.Key) (*as.Record, error)
 	Put(key *as.Key, value string, ttlSeconds int) error
 }
 
-type Aerospike struct {
+type AerospikeDBClient struct {
 	client *as.Client
 }
 
-func (db Aerospike) Get(key *as.Key) (*as.Record, error) {
+func (db AerospikeDBClient) Get(key *as.Key) (*as.Record, error) {
 	rec, err := db.client.Get(nil, key, binValue)
 	if err != nil {
 		return nil, formatAerospikeError(err, "GET")
@@ -33,7 +33,7 @@ func (db Aerospike) Get(key *as.Key) (*as.Record, error) {
 	return rec, nil
 }
 
-func (db Aerospike) Put(key *as.Key, value string, ttlSeconds int) error {
+func (db AerospikeDBClient) Put(key *as.Key, value string, ttlSeconds int) error {
 	bins := as.BinMap{binValue: value}
 	policy := &as.WritePolicy{Expiration: uint32(ttlSeconds)}
 
@@ -42,17 +42,17 @@ func (db Aerospike) Put(key *as.Key, value string, ttlSeconds int) error {
 	return formatAerospikeError(err, "PUT")
 }
 
-func (db *Aerospike) NewUuidKey(namespace string, key string) (*as.Key, error) {
+func (db *AerospikeDBClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
 	asKey, err := as.NewKey(namespace, setName, key)
 	if err != nil {
-		return nil, formatAerospikeError(err, "NEW_KEY")
+		return nil, err
 	}
 	return asKey, nil
 }
 
 type AerospikeBackend struct {
 	cfg     config.Aerospike
-	client  AerospikeDBClient
+	client  AerospikeDB
 	metrics *metrics.Metrics
 }
 
@@ -72,7 +72,7 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 
 	return &AerospikeBackend{
 		cfg:     cfg,
-		client:  &Aerospike{client},
+		client:  &AerospikeDBClient{client},
 		metrics: metrics,
 	}
 }
@@ -80,7 +80,7 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) {
 	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
 	if err != nil {
-		return "", err
+		return "", formatAerospikeError(err, "GET")
 	}
 	rec, err := a.client.Get(asKey)
 	if err != nil {
@@ -107,7 +107,7 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
 	if err != nil {
-		return err
+		return formatAerospikeError(err, "PUT")
 	}
 	if ttlSeconds == 0 {
 		ttlSeconds = a.cfg.DefaultTTL
@@ -118,10 +118,7 @@ func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, tt
 func formatAerospikeError(err error, caller string) error {
 	if err != nil {
 		if aerr, ok := err.(as_types.AerospikeError); ok {
-			//if aerr.ResultCode() == ase.INVALID_NAMESPACE {
-			// return key not found status code
-			//}
-			return fmt.Errorf("%s Aerospike error: %s. Code: %d", caller, aerr.Error(), aerr.ResultCode())
+			return fmt.Errorf("Aerospike %s: %s", caller, aerr.Error())
 		}
 	}
 	return err

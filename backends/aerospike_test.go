@@ -29,7 +29,7 @@ func NewErrorProneAerospikeClient(funcName string) *errorProneAerospikeClient {
 
 func (c *errorProneAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
 	if c.errorThrowingFunction == "TEST_KEY_GEN_ERROR" {
-		return nil, formatAerospikeError(ase.NewAerospikeError(ase.NOT_AUTHENTICATED), "NewUuidKey")
+		return nil, ase.NewAerospikeError(ase.NOT_AUTHENTICATED)
 	}
 	return nil, nil
 }
@@ -174,7 +174,7 @@ func TestFormatAerospikeError(t *testing.T) {
 		{
 			desc:        "Aerospike error",
 			inErr:       ase.NewAerospikeError(ase.SERVER_NOT_AVAILABLE),
-			expectedErr: fmt.Errorf("TEST_CASE Aerospike error: Server is not accepting requests.. Code: -11"),
+			expectedErr: fmt.Errorf("Aerospike TEST_CASE: Server is not accepting requests."),
 		},
 	}
 	for _, test := range testCases {
@@ -182,7 +182,7 @@ func TestFormatAerospikeError(t *testing.T) {
 		if test.expectedErr == nil {
 			assert.Nil(t, actualErr, "Nil error was expected")
 		} else {
-			assert.Equal(t, strings.Compare(test.expectedErr.Error(), actualErr.Error()), 0, "printAerospikeError didn't print the error as expected")
+			assert.Equal(t, strings.Compare(test.expectedErr.Error(), actualErr.Error()), 0, test.desc)
 		}
 	}
 }
@@ -195,7 +195,7 @@ func TestClientGet(t *testing.T) {
 
 	testCases := []struct {
 		desc              string
-		inAerospikeClient AerospikeDBClient
+		inAerospikeClient AerospikeDB
 		expectedValue     string
 		expectedErrorMsg  string
 	}{
@@ -203,13 +203,13 @@ func TestClientGet(t *testing.T) {
 			desc:              "AerospikeBackend.Get() throws error when trying to generate new key",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_KEY_GEN_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "NewUuidKey Aerospike error: Not authenticated. Code: 80",
+			expectedErrorMsg:  "Aerospike GET: Not authenticated",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error when 'client.Get(..)' gets called",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_GET_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "GET Aerospike error: Server is not accepting requests.. Code: -11",
+			expectedErrorMsg:  "Aerospike GET: Server is not accepting requests.",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error when 'client.Get(..)' returns a nil record",
@@ -265,7 +265,7 @@ func TestClientPut(t *testing.T) {
 
 	testCases := []struct {
 		desc              string
-		inAerospikeClient AerospikeDBClient
+		inAerospikeClient AerospikeDB
 		inKey             string
 		inValueToStore    string
 		expectedStoredVal string
@@ -277,7 +277,7 @@ func TestClientPut(t *testing.T) {
 			inKey:             "testKey",
 			inValueToStore:    "not default value",
 			expectedStoredVal: "",
-			expectedErrorMsg:  "NewUuidKey Aerospike error: Not authenticated. Code: 80",
+			expectedErrorMsg:  "Aerospike PUT: Not authenticated",
 		},
 		{
 			desc:              "AerospikeBackend.Put() throws error when 'client.Put(..)' gets called",
@@ -285,7 +285,7 @@ func TestClientPut(t *testing.T) {
 			inKey:             "testKey",
 			inValueToStore:    "not default value",
 			expectedStoredVal: "",
-			expectedErrorMsg:  "PUT Aerospike error: Key already exists. Code: 5",
+			expectedErrorMsg:  "Aerospike PUT: Key already exists",
 		},
 		{
 			desc:              "AerospikeBackend.Put() does not throw error",
@@ -297,7 +297,6 @@ func TestClientPut(t *testing.T) {
 		},
 	}
 
-	//Run tests
 	for i, tt := range testCases {
 		// Assign aerospike backend cient
 		aerospikeBackend.client = tt.inAerospikeClient
