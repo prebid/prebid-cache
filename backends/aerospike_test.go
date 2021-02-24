@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	as "github.com/aerospike/aerospike-client-go"
-	ase "github.com/aerospike/aerospike-client-go/types"
+	as_types "github.com/aerospike/aerospike-client-go/types"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/sirupsen/logrus"
@@ -29,14 +29,14 @@ func NewErrorProneAerospikeClient(funcName string) *errorProneAerospikeClient {
 
 func (c *errorProneAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
 	if c.errorThrowingFunction == "TEST_KEY_GEN_ERROR" {
-		return nil, ase.NewAerospikeError(ase.NOT_AUTHENTICATED)
+		return nil, as_types.NewAerospikeError(as_types.NOT_AUTHENTICATED)
 	}
 	return nil, nil
 }
 
 func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
 	if c.errorThrowingFunction == "TEST_GET_ERROR" {
-		return nil, formatAerospikeError(ase.NewAerospikeError(ase.SERVER_NOT_AVAILABLE), "GET")
+		return nil, formatAerospikeError(as_types.NewAerospikeError(as_types.SERVER_NOT_AVAILABLE), "GET")
 	} else if c.errorThrowingFunction == "TEST_NO_BUCKET_ERROR" {
 		return &as.Record{Bins: as.BinMap{"AnyKey": "any_value"}}, nil
 	} else if c.errorThrowingFunction == "TEST_NON_STRING_VALUE_ERROR" {
@@ -47,7 +47,7 @@ func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
 
 func (c *errorProneAerospikeClient) Put(key *as.Key, value string, ttlSeconds int) error {
 	if c.errorThrowingFunction == "TEST_PUT_ERROR" {
-		return formatAerospikeError(ase.NewAerospikeError(ase.KEY_EXISTS_ERROR), "PUT")
+		return formatAerospikeError(as_types.NewAerospikeError(as_types.KEY_EXISTS_ERROR), "PUT")
 	}
 	return nil
 }
@@ -173,7 +173,7 @@ func TestFormatAerospikeError(t *testing.T) {
 		},
 		{
 			desc:        "Aerospike error",
-			inErr:       ase.NewAerospikeError(ase.SERVER_NOT_AVAILABLE),
+			inErr:       as_types.NewAerospikeError(as_types.SERVER_NOT_AVAILABLE),
 			expectedErr: fmt.Errorf("Aerospike TEST_CASE: Server is not accepting requests."),
 		},
 	}
