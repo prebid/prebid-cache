@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -13,24 +15,26 @@ type Backend struct {
 	Redis     Redis       `mapstructure:"redis"`
 }
 
-func (cfg *Backend) validateAndLog() {
+func (cfg *Backend) validateAndLog() error {
 
 	log.Infof("config.backend.type: %s", cfg.Type)
 	switch cfg.Type {
 	case BackendAerospike:
-		cfg.Aerospike.validateAndLog()
+		return cfg.Aerospike.validateAndLog()
 	case BackendAzure:
-		cfg.Azure.validateAndLog()
+		return cfg.Azure.validateAndLog()
 	case BackendCassandra:
-		cfg.Cassandra.validateAndLog()
+		return cfg.Cassandra.validateAndLog()
 	case BackendMemcache:
-		cfg.Memcache.validateAndLog()
+		return cfg.Memcache.validateAndLog()
 	case BackendRedis:
-		cfg.Redis.validateAndLog()
+		return cfg.Redis.validateAndLog()
 	case BackendMemory:
+		return nil
 	default:
-		log.Fatalf(`invalid config.backend.type: %s. It must be "aerospike", "azure", "cassandra", "memcache", "redis", or "memory".`, cfg.Type)
+		return fmt.Errorf(`invalid config.backend.type: %s. It must be "aerospike", "azure", "cassandra", "memcache", "redis", or "memory".`, cfg.Type)
 	}
+	return nil
 }
 
 type BackendType string
@@ -51,11 +55,19 @@ type Aerospike struct {
 	Namespace  string `mapstructure:"namespace"`
 }
 
-func (cfg *Aerospike) validateAndLog() {
+func (cfg *Aerospike) validateAndLog() error {
+	if len(cfg.Host) < 1 {
+		return fmt.Errorf("Cannot connect to empty Aerospike host")
+	}
+	if cfg.Port <= 0 {
+		return fmt.Errorf("Cannot connect to Aerospike host at port %d", cfg.Port)
+	}
 	log.Infof("config.backend.aerospike.default_ttl_seconds: %d", cfg.DefaultTTL)
 	log.Infof("config.backend.aerospike.host: %s", cfg.Host)
 	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
 	log.Infof("config.backend.aerospike.namespace: %s", cfg.Namespace)
+
+	return nil
 }
 
 type Azure struct {
@@ -63,9 +75,10 @@ type Azure struct {
 	Key     string `mapstructure:"key"`
 }
 
-func (cfg *Azure) validateAndLog() {
+func (cfg *Azure) validateAndLog() error {
 	log.Infof("config.backend.azure.account: %s", cfg.Account)
 	log.Infof("config.backend.azure.key: %s", cfg.Key)
+	return nil
 }
 
 type Cassandra struct {
@@ -73,17 +86,19 @@ type Cassandra struct {
 	Keyspace string `mapstructure:"keyspace"`
 }
 
-func (cfg *Cassandra) validateAndLog() {
+func (cfg *Cassandra) validateAndLog() error {
 	log.Infof("config.backend.cassandra.hosts: %s", cfg.Hosts)
 	log.Infof("config.backend.cassandra.keyspace: %s", cfg.Keyspace)
+	return nil
 }
 
 type Memcache struct {
 	Hosts []string `mapstructure:"hosts"`
 }
 
-func (cfg *Memcache) validateAndLog() {
+func (cfg *Memcache) validateAndLog() error {
 	log.Infof("config.backend.memcache.hosts: %v", cfg.Hosts)
+	return nil
 }
 
 type Redis struct {
@@ -100,11 +115,12 @@ type RedisTLS struct {
 	InsecureSkipVerify bool `mapstructure:"insecure_skip_verify"`
 }
 
-func (cfg *Redis) validateAndLog() {
+func (cfg *Redis) validateAndLog() error {
 	log.Infof("config.backend.redis.host: %s", cfg.Host)
 	log.Infof("config.backend.redis.port: %d", cfg.Port)
 	log.Infof("config.backend.redis.db: %d", cfg.Db)
 	log.Infof("config.backend.redis.expiration: %d", cfg.Expiration)
 	log.Infof("config.backend.redis.tls.enabled: %t", cfg.TLS.Enabled)
 	log.Infof("config.backend.redis.tls.insecure_skip_verify: %t", cfg.TLS.InsecureSkipVerify)
+	return nil
 }

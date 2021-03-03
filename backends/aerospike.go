@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	as "github.com/aerospike/aerospike-client-go"
-	as_types "github.com/aerospike/aerospike-client-go/types"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
 	log "github.com/sirupsen/logrus"
@@ -15,10 +14,11 @@ import (
 const setName = "uuid"
 const binValue = "value"
 
+// Wrapper for the Aerospike client
 type AerospikeDB interface {
 	NewUuidKey(namespace string, key string) (*as.Key, error)
 	Get(key *as.Key) (*as.Record, error)
-	Put(key *as.Key, value string, ttlSeconds int) error
+	Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error
 }
 
 type AerospikeDBClient struct {
@@ -26,30 +26,18 @@ type AerospikeDBClient struct {
 }
 
 func (db AerospikeDBClient) Get(key *as.Key) (*as.Record, error) {
-	rec, err := db.client.Get(nil, key, binValue)
-	if err != nil {
-		return nil, formatAerospikeError(err, "GET")
-	}
-	return rec, nil
+	return db.client.Get(nil, key, binValue)
 }
 
-func (db AerospikeDBClient) Put(key *as.Key, value string, ttlSeconds int) error {
-	bins := as.BinMap{binValue: value}
-	policy := &as.WritePolicy{Expiration: uint32(ttlSeconds)}
-
-	err := db.client.Put(policy, key, bins)
-
-	return formatAerospikeError(err, "PUT")
+func (db AerospikeDBClient) Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error {
+	return db.client.Put(policy, key, binMap)
 }
 
 func (db *AerospikeDBClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
-	asKey, err := as.NewKey(namespace, setName, key)
-	if err != nil {
-		return nil, err
-	}
-	return asKey, nil
+	return as.NewKey(namespace, setName, key)
 }
 
+// Instantiates, and configures the Aerospike client, it also performs Get and Put operations and monitors results
 type AerospikeBackend struct {
 	cfg     config.Aerospike
 	client  AerospikeDB
@@ -57,15 +45,9 @@ type AerospikeBackend struct {
 }
 
 func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *AerospikeBackend {
-	if cfg.Host == "" {
-		log.Fatalf("Cannot connect to empty Aerospike host")
-	}
-	if cfg.Port <= 0 {
-		log.Fatalf("Cannot connect to Aerospike host at port %d", cfg.Port)
-	}
 	client, err := as.NewClient(cfg.Host, cfg.Port)
 	if err != nil {
-		log.Fatalf("Error creating Aerospike backend: %v", formatAerospikeError(err, "NewAerospikeBackend"))
+		log.Fatalf("%v", formatAerospikeError(err).Error())
 		panic("AerospikeBackend failure. This shouldn't happen.")
 	}
 	log.Infof("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
@@ -84,21 +66,21 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 	}
 	rec, err := a.client.Get(asKey)
 	if err != nil {
-		return "", err
+		return "", formatAerospikeError(err, "GET")
 	}
 	if rec == nil {
-		return "", errors.New("Aerospike GET: Nil record")
+		return "", formatAerospikeError(errors.New("Nil record"), "GET")
 	}
 	a.metrics.RecordExtraTTLSeconds(float64(rec.Expiration))
 
 	value, found := rec.Bins[binValue]
 	if !found {
-		return "", errors.New("Aerospike GET: No 'value' bucket found")
+		return "", formatAerospikeError(errors.New("No 'value' bucket found"), "GET")
 	}
 
 	str, isString := value.(string)
 	if !isString {
-		return "", errors.New("Aerospike GET: Unexpected non-string value found")
+		return "", formatAerospikeError(errors.New("Unexpected non-string value found"), "GET")
 	}
 
 	return str, nil
@@ -109,17 +91,28 @@ func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, tt
 	if err != nil {
 		return formatAerospikeError(err, "PUT")
 	}
+
 	if ttlSeconds == 0 {
 		ttlSeconds = a.cfg.DefaultTTL
 	}
-	return a.client.Put(asKey, value, ttlSeconds)
+
+	bins := as.BinMap{binValue: value}
+	policy := &as.WritePolicy{Expiration: uint32(ttlSeconds)}
+
+	if err := a.client.Put(policy, asKey, bins); err != nil {
+		return formatAerospikeError(err, "PUT")
+	}
+
+	return nil
 }
 
-func formatAerospikeError(err error, caller string) error {
+func formatAerospikeError(err error, caller ...string) error {
 	if err != nil {
-		if aerr, ok := err.(as_types.AerospikeError); ok {
-			return fmt.Errorf("Aerospike %s: %s", caller, aerr.Error())
+		msg := "Aerospike"
+		if len(caller) == 1 && len(caller[0]) > 0 {
+			msg = fmt.Sprintf("%s %s", msg, caller[0])
 		}
+		return fmt.Errorf("%s: %s", msg, err.Error())
 	}
 	return err
 }

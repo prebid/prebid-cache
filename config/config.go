@@ -115,7 +115,11 @@ func (cfg *Configuration) ValidateAndLog() {
 	cfg.Log.validateAndLog()
 	cfg.RateLimiting.validateAndLog()
 	cfg.RequestLimits.validateAndLog()
-	cfg.Backend.validateAndLog()
+
+	if err := cfg.Backend.validateAndLog(); err != nil {
+		log.Fatalf("%s", err.Error())
+	}
+
 	cfg.Compression.validateAndLog()
 	cfg.Metrics.validateAndLog()
 	cfg.Routes.validateAndLog()

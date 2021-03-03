@@ -3,7 +3,6 @@ package backends
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	as "github.com/aerospike/aerospike-client-go"
@@ -36,7 +35,7 @@ func (c *errorProneAerospikeClient) NewUuidKey(namespace string, key string) (*a
 
 func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
 	if c.errorThrowingFunction == "TEST_GET_ERROR" {
-		return nil, formatAerospikeError(as_types.NewAerospikeError(as_types.SERVER_NOT_AVAILABLE), "GET")
+		return nil, as_types.NewAerospikeError(as_types.KEY_NOT_FOUND_ERROR)
 	} else if c.errorThrowingFunction == "TEST_NO_BUCKET_ERROR" {
 		return &as.Record{Bins: as.BinMap{"AnyKey": "any_value"}}, nil
 	} else if c.errorThrowingFunction == "TEST_NON_STRING_VALUE_ERROR" {
@@ -45,40 +44,53 @@ func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
 	return nil, nil
 }
 
-func (c *errorProneAerospikeClient) Put(key *as.Key, value string, ttlSeconds int) error {
+func (c *errorProneAerospikeClient) Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error {
 	if c.errorThrowingFunction == "TEST_PUT_ERROR" {
-		return formatAerospikeError(as_types.NewAerospikeError(as_types.KEY_EXISTS_ERROR), "PUT")
+		return as_types.NewAerospikeError(as_types.KEY_EXISTS_ERROR)
 	}
 	return nil
 }
 
 // Mock Aerospike client that does not throw errors
 type goodAerospikeClient struct {
-	record *as.Record
+	records map[string]*as.Record
 }
 
 func NewGoodAerospikeClient() *goodAerospikeClient {
 	return &goodAerospikeClient{
-		record: &as.Record{
-			Bins: make(as.BinMap, 1),
+		records: map[string]*as.Record{
+			"defaultKey": &as.Record{
+				Bins: as.BinMap{binValue: "Default value"},
+			},
 		},
 	}
 }
 
-func (c *goodAerospikeClient) Get(key *as.Key) (*as.Record, error) {
-	if _, found := c.record.Bins[binValue]; !found {
-		c.record.Bins[binValue] = "Default value"
+func (c *goodAerospikeClient) Get(aeKey *as.Key) (*as.Record, error) {
+	if aeKey != nil && aeKey.Value() != nil {
+
+		key := aeKey.Value().String()
+
+		if rec, found := c.records[key]; found {
+			return rec, nil
+		}
 	}
-	return c.record, nil
+	return nil, as_types.NewAerospikeError(as_types.KEY_NOT_FOUND_ERROR)
 }
 
-func (c *goodAerospikeClient) Put(key *as.Key, value string, ttlSeconds int) error {
-	c.record.Bins[binValue] = value
-	return nil
+func (c *goodAerospikeClient) Put(policy *as.WritePolicy, aeKey *as.Key, binMap as.BinMap) error {
+	if aeKey != nil && aeKey.Value() != nil {
+		key := aeKey.Value().String()
+		c.records[key] = &as.Record{
+			Bins: binMap,
+		}
+		return nil
+	}
+	return as_types.NewAerospikeError(as_types.KEY_MISMATCH)
 }
 
 func (c *goodAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
-	return nil, nil
+	return as.NewKey(namespace, setName, key)
 }
 
 func TestNewAerospikeBackend(t *testing.T) {
@@ -88,45 +100,23 @@ func TestNewAerospikeBackend(t *testing.T) {
 	}
 
 	testCases := []struct {
-		desc            string
-		inCfg           config.Aerospike
-		expectPanic     bool
-		expectedLogInfo logEntry
+		desc               string
+		inCfg              config.Aerospike
+		expectPanic        bool
+		expectedLogEntries []logEntry
 	}{
 		{
-			desc: "Empty host logs fatal error",
-			inCfg: config.Aerospike{
-				Host: "",
-				Port: 8080,
-			},
-			expectPanic: false,
-			expectedLogInfo: logEntry{
-				msg: "Cannot connect to empty Aerospike host",
-				lvl: logrus.FatalLevel,
-			},
-		},
-		{
-			desc: "Invalid port logs fatal error",
-			inCfg: config.Aerospike{
-				Host: "http://fakeTestUrl.org",
-				Port: -1,
-			},
-			expectPanic: false,
-			expectedLogInfo: logEntry{
-				msg: "Cannot connect to Aerospike host at port -1",
-				lvl: logrus.FatalLevel,
-			},
-		},
-		{
-			desc: "Unable to connect fakeTestUrlto panic and log fatal error",
+			desc: "Unable to connect fakeTestUrl panic and log fatal error",
 			inCfg: config.Aerospike{
 				Host: "fakeTestUrl.foo",
 				Port: 8888,
 			},
 			expectPanic: true,
-			expectedLogInfo: logEntry{
-				msg: "Connected to Aerospike at fakeTestUrl.foo:8888",
-				lvl: logrus.FatalLevel,
+			expectedLogEntries: []logEntry{
+				{
+					msg: "Aerospike: Failed to connect to host(s): [fakeTestUrl.foo:8888]; error: Connecting to the cluster timed out.",
+					lvl: logrus.FatalLevel,
+				},
 			},
 		},
 	}
@@ -136,17 +126,16 @@ func TestNewAerospikeBackend(t *testing.T) {
 
 	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
-	var fatal bool
-	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	for _, test := range testCases {
-		// Reset the fatal flag to false every test
-		fatal = false
-
 		// Run test
-		if test.expectPanic {
-			assert.Panics(t, func() { NewAerospikeBackend(test.inCfg, nil) }, "Aerospike library's NewClient() fhould have thrown an error and didn't, hence the panic didn't happen")
-			assert.Equal(t, test.expectedLogInfo.lvl == logrus.FatalLevel, fatal, "Test case log level should be 'Fatal' and it wasn't")
+		assert.Panics(t, func() { NewAerospikeBackend(test.inCfg, nil) }, "Aerospike library's NewClient() should have thrown an error and didn't, hence the panic didn't happen")
+		if assert.Len(t, hook.Entries, len(test.expectedLogEntries), test.desc) {
+			for i := 0; i < len(test.expectedLogEntries); i++ {
+				assert.Equal(t, test.expectedLogEntries[i].msg, hook.Entries[i].Message, test.desc)
+				assert.Equal(t, test.expectedLogEntries[i].lvl, hook.Entries[i].Level, test.desc)
+			}
 		}
 
 		//Reset log after every test and assert successful reset
@@ -159,30 +148,32 @@ func TestFormatAerospikeError(t *testing.T) {
 	testCases := []struct {
 		desc        string
 		inErr       error
+		inCaller    string
 		expectedErr error
 	}{
 		{
-			desc:        "Not even an error",
+			desc:        "Nil error",
 			inErr:       nil,
 			expectedErr: nil,
 		},
 		{
-			desc:        "Not an Aerospike error",
-			inErr:       fmt.Errorf("Aerospike client.Get returned nil record"),
-			expectedErr: fmt.Errorf("Aerospike client.Get returned nil record"),
+			desc:        "Non-nil error, print without a caller",
+			inErr:       fmt.Errorf("client.Get returned nil record"),
+			expectedErr: fmt.Errorf("Aerospike: client.Get returned nil record"),
 		},
 		{
 			desc:        "Aerospike error",
 			inErr:       as_types.NewAerospikeError(as_types.SERVER_NOT_AVAILABLE),
+			inCaller:    "TEST_CASE",
 			expectedErr: fmt.Errorf("Aerospike TEST_CASE: Server is not accepting requests."),
 		},
 	}
 	for _, test := range testCases {
-		actualErr := formatAerospikeError(test.inErr, "TEST_CASE")
+		actualErr := formatAerospikeError(test.inErr, test.inCaller)
 		if test.expectedErr == nil {
 			assert.Nil(t, actualErr, "Nil error was expected")
 		} else {
-			assert.Equal(t, strings.Compare(test.expectedErr.Error(), actualErr.Error()), 0, test.desc)
+			assert.Equal(t, test.expectedErr.Error(), actualErr.Error(), test.desc)
 		}
 	}
 }
@@ -209,7 +200,7 @@ func TestClientGet(t *testing.T) {
 			desc:              "AerospikeBackend.Get() throws error when 'client.Get(..)' gets called",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_GET_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "Aerospike GET: Server is not accepting requests.",
+			expectedErrorMsg:  "Aerospike GET: Key not found",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error when 'client.Get(..)' returns a nil record",
@@ -237,22 +228,20 @@ func TestClientGet(t *testing.T) {
 		},
 	}
 
-	//Run tests
-	for i, tt := range testCases {
+	for _, tt := range testCases {
 		// Assign aerospike backend cient
 		aerospikeBackend.client = tt.inAerospikeClient
 
 		// Run test
-		actualValue, actualErr := aerospikeBackend.Get(context.TODO(), "testKey")
+		actualValue, actualErr := aerospikeBackend.Get(context.TODO(), "defaultKey")
 
-		// Assert value
-		assert.Equal(t, tt.expectedValue, actualValue, "Test case %d. Wrong value fetched", i)
+		// Assertions
+		assert.Equal(t, tt.expectedValue, actualValue, tt.desc)
 
-		// Assert error
 		if tt.expectedErrorMsg == "" {
-			assert.Nil(t, actualErr, "Test case %d Nil error was expected", i)
+			assert.Nil(t, actualErr, tt.desc)
 		} else {
-			assert.Equal(t, tt.expectedErrorMsg, actualErr.Error(), "Test case %d. Wrong error message", i)
+			assert.Equal(t, tt.expectedErrorMsg, actualErr.Error(), tt.desc)
 		}
 	}
 }
@@ -311,7 +300,7 @@ func TestClientPut(t *testing.T) {
 			assert.Nil(t, actualErr, "Test case %d Nil error was expected", i)
 
 			// Assert Put() sucessfully logged "not default value" under "testKey":
-			storedValue, getErr := aerospikeBackend.Get(context.TODO(), "testKey")
+			storedValue, getErr := aerospikeBackend.Get(context.TODO(), tt.inKey)
 
 			assert.Nil(t, getErr, "Get() was not expected to throw an error")
 			assert.Equal(t, tt.inValueToStore, storedValue, "Put() stored wrong value")
