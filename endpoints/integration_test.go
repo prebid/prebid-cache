@@ -14,8 +14,8 @@ import (
 )
 
 func init() {
-	//Initialize Stats Server
-	stats.InitStat("127.0.0.1", "8888", "TestHost", "TestDC")
+	stats.InitStat("127.0.0.1", "8888", "TestHost", "TestDC",
+		"8080", 2, 20000, 3, 2, 5, 2, 2, true)
 }
 
 func doMockGet(t *testing.T, router *httprouter.Router, id string) *httptest.ResponseRecorder {

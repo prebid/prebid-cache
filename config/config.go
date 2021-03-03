@@ -23,9 +23,8 @@ func NewConfig() Configuration {
 		logger.Fatal("Failed to unmarshal config: %v", err)
 	}
 	//Initialize Stats Server
-	stats.InitStat(cfg.Stats.StatsHost, cfg.Stats.StatsPort,
-		cfg.Server.ServerName,
-		cfg.Stats.StatsDCName)
+	stats.InitStat(cfg.Stats.StatsHost, cfg.Stats.StatsPort, cfg.Server.ServerName, cfg.Stats.StatsDCName,
+		cfg.Stats.PortTCP, cfg.Stats.PublishInterval, cfg.Stats.PublishThreshold, cfg.Stats.Retries, cfg.Stats.DialTimeout, cfg.Stats.KeepAliveDuration, cfg.Stats.MaxIdleConnections, cfg.Stats.MaxIdleConnectionsPerHost, cfg.Stats.UseTCP)
 
 	var logConf logger.LogConf
 	logConf.LogLevel = cfg.OWLog.LogLevel
@@ -189,12 +188,34 @@ type Stats struct {
 	StatsHost   string `mapstructure:"host"`
 	StatsPort   string `mapstructure:"port"`
 	StatsDCName string `mapstructure:"dc_name"`
+
+	PortTCP                   string `mapstructure:"port_tcp"`
+	PublishInterval           int    `mapstructure:"publish_interval"`
+	PublishThreshold          int    `mapstructure:"publish_threshold"`
+	Retries                   int    `mapstructure:"retries"`
+	DialTimeout               int    `mapstructure:"dial_timeout"`
+	KeepAliveDuration         int    `mapstructure:"keep_alive_duration"`
+	MaxIdleConnections        int    `mapstructure:"max_idle_connections"`
+	MaxIdleConnectionsPerHost int    `mapstructure:"max_idle_connections_per_host"`
+
+	UseTCP bool `mapstructure:"use_tcp"`
 }
 
 func (cfg *Stats) validateAndLog() {
 	logger.Info("config.stats.host: %s", cfg.StatsHost)
 	logger.Info("config.stats.port: %s", cfg.StatsPort)
 	logger.Info("config.stats.dc_name: %s", cfg.StatsDCName)
+
+	logger.Info("config.stats.port_tcp: %s", cfg.PortTCP)
+	logger.Info("config.stats.publisher_interval: %d", cfg.PublishInterval)
+	logger.Info("config.stats.publisher_threshold: %d", cfg.PublishThreshold)
+	logger.Info("config.stats.retries: %d", cfg.Retries)
+	logger.Info("config.stats.dial_timeout: %d", cfg.DialTimeout)
+	logger.Info("config.stats.keep_alive_duration: %d", cfg.KeepAliveDuration)
+	logger.Info("config.stats.max_idle_connections: %d", cfg.MaxIdleConnections)
+	logger.Info("config.stats.max_idle_connections_per_host: %d", cfg.MaxIdleConnectionsPerHost)
+
+	logger.Info("config.stats.use_tcp: %t", cfg.UseTCP)
 }
 
 type Server struct {

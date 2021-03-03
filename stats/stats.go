@@ -1,52 +1,63 @@
 package stats
 
-import (
-	"fmt"
-
-	"github.com/PubMatic-OpenWrap/prebid-cache/constant"
-
-	"git.pubmatic.com/PubMatic/go-common.git/logger"
-	"git.pubmatic.com/PubMatic/go-common.git/stats"
+var (
+	sc iStats
 )
 
-var S *stats.S
+func InitStat(host, udpPort, server, dc string,
 
-func InitStat(statIP, statPort, statServer, dc string) {
-	statURL := statIP + ":" + statPort
-	S = stats.NewStats(statURL, statServer, dc)
-	if S == nil {
-		logger.Error("Falied to Connect Stat Server ")
+	tcpPort string,
+	pubInterval int,
+	pubThreshold int,
+	retries int,
+	dialTimeout int,
+	keepAliveDuration int,
+	maxIdleCons int,
+	maxIdleConsPerHost int,
+
+	useTCP bool) {
+
+	var err error
+	if useTCP {
+		sc, err = initTCPStatsClient(host, tcpPort, server, dc, pubInterval, pubThreshold, retries, dialTimeout, keepAliveDuration, maxIdleCons, maxIdleConsPerHost)
+	} else {
+		sc, err = initUDPStatsClient(host, udpPort, server, dc)
+	}
+
+	if err != nil {
+		sc = noStats{}
 	}
 }
 
+type iStats interface {
+	LogCacheFailedGetStats(errorString string)
+	LogCacheMissStats()
+	LogCacheFailedPutStats(errorString string)
+	LogCacheRequestedGetStats()
+	LogCacheRequestedPutStats()
+	LogAerospikeErrorStats()
+}
+
 func LogCacheFailedGetStats(errorString string) {
-	fmt.Printf(constant.StatsKeyCacheFailedGet, errorString)
-	S.Increment(fmt.Sprintf(constant.StatsKeyCacheFailedGet, errorString),
-		constant.StatsKeyCacheFailedGetCutoff, 1)
+	sc.LogCacheFailedGetStats(errorString)
 }
 
 func LogCacheMissStats() {
-	S.Increment(fmt.Sprintf(constant.StatsKeyCacheMiss),
-		constant.StatsKeyCacheMissCutOff, 1)
+	sc.LogCacheMissStats()
 }
 
 func LogCacheFailedPutStats(errorString string) {
-	S.Increment(fmt.Sprintf(constant.StatsKeyCacheFailedPut, errorString),
-		constant.StatsKeyCacheFailedPutCutoff, 1)
+	sc.LogCacheFailedPutStats(errorString)
 }
 
 func LogCacheRequestedGetStats() {
-	S.Increment(fmt.Sprintf(constant.StatsKeyCacheRequestedGet),
-		constant.StatsKeyCacheRequestedGetCutoff, 1)
+	sc.LogCacheRequestedGetStats()
 }
 
 func LogCacheRequestedPutStats() {
-	S.Increment(fmt.Sprintf(constant.StatsKeyCacheRequestedPut),
-		constant.StatsKeyCacheRequestedPutCutoff, 1)
+	sc.LogCacheRequestedPutStats()
 }
 
 func LogAerospikeErrorStats() {
-	S.Increment(fmt.Sprintf(constant.StatsKeyAerospikeCreationError),
-		constant.StatsKeyAerospikeCreationErrorCutoff, 1)
-
+	sc.LogAerospikeErrorStats()
 }
