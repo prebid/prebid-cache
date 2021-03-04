@@ -171,7 +171,7 @@ func TestFormatAerospikeError(t *testing.T) {
 	for _, test := range testCases {
 		actualErr := formatAerospikeError(test.inErr, test.inCaller)
 		if test.expectedErr == nil {
-			assert.Nil(t, actualErr, "Nil error was expected")
+			assert.Nil(t, actualErr, test.desc)
 		} else {
 			assert.Equal(t, test.expectedErr.Error(), actualErr.Error(), test.desc)
 		}
@@ -286,7 +286,7 @@ func TestClientPut(t *testing.T) {
 		},
 	}
 
-	for i, tt := range testCases {
+	for _, tt := range testCases {
 		// Assign aerospike backend cient
 		aerospikeBackend.client = tt.inAerospikeClient
 
@@ -295,15 +295,15 @@ func TestClientPut(t *testing.T) {
 
 		// Assert Put error
 		if tt.expectedErrorMsg != "" {
-			assert.Equal(t, tt.expectedErrorMsg, actualErr.Error(), "Test case %d. Wrong error message", i)
+			assert.Equal(t, tt.expectedErrorMsg, actualErr.Error(), tt.desc)
 		} else {
-			assert.Nil(t, actualErr, "Test case %d Nil error was expected", i)
+			assert.Nil(t, actualErr, tt.desc)
 
 			// Assert Put() sucessfully logged "not default value" under "testKey":
 			storedValue, getErr := aerospikeBackend.Get(context.TODO(), tt.inKey)
 
-			assert.Nil(t, getErr, "Get() was not expected to throw an error")
-			assert.Equal(t, tt.inValueToStore, storedValue, "Put() stored wrong value")
+			assert.Nil(t, getErr, tt.desc)
+			assert.Equal(t, tt.inValueToStore, storedValue, tt.desc)
 		}
 	}
 }
