@@ -148,7 +148,7 @@ func TestFormatAerospikeError(t *testing.T) {
 	testCases := []struct {
 		desc        string
 		inErr       error
-		inCaller    string
+		inCallers   []string
 		expectedErr error
 	}{
 		{
@@ -162,14 +162,26 @@ func TestFormatAerospikeError(t *testing.T) {
 			expectedErr: fmt.Errorf("Aerospike: client.Get returned nil record"),
 		},
 		{
-			desc:        "Aerospike error",
+			desc:        "Non-nil error, comes with a caller",
+			inErr:       fmt.Errorf("client.Get returned nil record"),
+			inCallers:   []string{"TEST_CASE"},
+			expectedErr: fmt.Errorf("Aerospike TEST_CASE: client.Get returned nil record"),
+		},
+		{
+			desc:        "Non-nil error, comes with more than one callers",
+			inErr:       fmt.Errorf("client.Get returned nil record"),
+			inCallers:   []string{"TEST", "CASE"},
+			expectedErr: fmt.Errorf("Aerospike TEST CASE: client.Get returned nil record"),
+		},
+		{
+			desc:        "Aerospike error, comes with a caller",
 			inErr:       as_types.NewAerospikeError(as_types.SERVER_NOT_AVAILABLE),
-			inCaller:    "TEST_CASE",
+			inCallers:   []string{"TEST_CASE"},
 			expectedErr: fmt.Errorf("Aerospike TEST_CASE: Server is not accepting requests."),
 		},
 	}
 	for _, test := range testCases {
-		actualErr := formatAerospikeError(test.inErr, test.inCaller)
+		actualErr := formatAerospikeError(test.inErr, test.inCallers...)
 		if test.expectedErr == nil {
 			assert.Nil(t, actualErr, test.desc)
 		} else {

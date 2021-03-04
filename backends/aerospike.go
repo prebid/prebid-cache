@@ -109,8 +109,10 @@ func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, tt
 func formatAerospikeError(err error, caller ...string) error {
 	if err != nil {
 		msg := "Aerospike"
-		if len(caller) == 1 && len(caller[0]) > 0 {
-			msg = fmt.Sprintf("%s %s", msg, caller[0])
+		for _, str := range caller {
+			if len(str) > 0 {
+				msg = fmt.Sprintf("%s %s", msg, str)
+			}
 		}
 		return fmt.Errorf("%s: %s", msg, err.Error())
 	}
