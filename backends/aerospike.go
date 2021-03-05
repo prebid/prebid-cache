@@ -3,6 +3,7 @@ package backends
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/prebid/prebid-cache/config"
@@ -13,59 +14,107 @@ import (
 const setName = "uuid"
 const binValue = "value"
 
-type Aerospike struct {
+// Wrapper for the Aerospike client
+type AerospikeDB interface {
+	NewUuidKey(namespace string, key string) (*as.Key, error)
+	Get(key *as.Key) (*as.Record, error)
+	Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error
+}
+
+type AerospikeDBClient struct {
+	client *as.Client
+}
+
+func (db AerospikeDBClient) Get(key *as.Key) (*as.Record, error) {
+	return db.client.Get(nil, key, binValue)
+}
+
+func (db AerospikeDBClient) Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error {
+	return db.client.Put(policy, key, binMap)
+}
+
+func (db *AerospikeDBClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
+	return as.NewKey(namespace, setName, key)
+}
+
+// Instantiates, and configures the Aerospike client, it also performs Get and Put operations and monitors results
+type AerospikeBackend struct {
 	cfg     config.Aerospike
-	client  *as.Client
+	client  AerospikeDB
 	metrics *metrics.Metrics
 }
 
-func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerospike {
+func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *AerospikeBackend {
 	client, err := as.NewClient(cfg.Host, cfg.Port)
 	if err != nil {
-		log.Fatalf("Error creating Aerospike backend: %v", err)
-		panic("Aerospike failure. This shouldn't happen.")
+		log.Fatalf("%v", formatAerospikeError(err).Error())
+		panic("AerospikeBackend failure. This shouldn't happen.")
 	}
 	log.Infof("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
 
-	return &Aerospike{
+	return &AerospikeBackend{
 		cfg:     cfg,
-		client:  client,
+		client:  &AerospikeDBClient{client},
 		metrics: metrics,
 	}
 }
 
-func (a *Aerospike) Get(ctx context.Context, key string) (string, error) {
-	asKey, err := as.NewKey(a.cfg.Namespace, setName, key)
+func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) {
+	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
 	if err != nil {
-		return "", err
+		return "", formatAerospikeError(err, "GET")
 	}
-	rec, err := a.client.Get(nil, asKey, "value")
+	rec, err := a.client.Get(asKey)
 	if err != nil {
-		return "", err
+		return "", formatAerospikeError(err, "GET")
 	}
 	if rec == nil {
-		return "", errors.New("client.Get returned a nil record. Is aerospike configured properly?")
+		return "", formatAerospikeError(errors.New("Nil record"), "GET")
 	}
 	a.metrics.RecordExtraTTLSeconds(float64(rec.Expiration))
-	return rec.Bins[binValue].(string), nil
+
+	value, found := rec.Bins[binValue]
+	if !found {
+		return "", formatAerospikeError(errors.New("No 'value' bucket found"), "GET")
+	}
+
+	str, isString := value.(string)
+	if !isString {
+		return "", formatAerospikeError(errors.New("Unexpected non-string value found"), "GET")
+	}
+
+	return str, nil
 }
 
-func (a *Aerospike) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	asKey, err := as.NewKey(a.cfg.Namespace, setName, key)
+func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
 	if err != nil {
-		return err
+		return formatAerospikeError(err, "PUT")
 	}
+
 	if ttlSeconds == 0 {
 		ttlSeconds = a.cfg.DefaultTTL
 	}
-	bins := as.BinMap{
-		binValue: value,
+
+	bins := as.BinMap{binValue: value}
+	policy := &as.WritePolicy{Expiration: uint32(ttlSeconds)}
+
+	if err := a.client.Put(policy, asKey, bins); err != nil {
+		return formatAerospikeError(err, "PUT")
 	}
-	err = a.client.Put(&as.WritePolicy{
-		Expiration: uint32(ttlSeconds),
-	}, asKey, bins)
-	if err != nil {
-		return err
-	}
+
 	return nil
+}
+
+func formatAerospikeError(err error, caller ...string) error {
+	if err != nil {
+		msg := "Aerospike"
+		for _, str := range caller {
+			if len(str) > 0 {
+				msg = fmt.Sprintf("%s %s", msg, str)
+			}
+		}
+		return fmt.Errorf("%s: %s", msg, err.Error())
+	}
+	return err
 }
