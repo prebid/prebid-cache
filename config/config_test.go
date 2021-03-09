@@ -46,20 +46,18 @@ func TestLogValidateAndLog(t *testing.T) {
 	// Define object to run `validateAndLog()` on
 	configLogObject := Log{
 		Level: Debug,
+		UUID:  false,
 	}
 
-	// run test
+	// Run test
 	configLogObject.validateAndLog()
 
-	// Assert logrus entries
-	if !assert.Equal(t, 1, len(hook.Entries), "No entries were logged to logrus.") {
-		return
-	}
-	if !assert.Equal(t, logrus.InfoLevel, hook.LastEntry().Level) {
-		return
-	}
-	if !assert.Equal(t, "config.log.level: debug", hook.LastEntry().Message) {
-		return
+	if assert.Len(t, hook.Entries, 2, "Logged incorrect number of entries") {
+		for i := 0; i < len(hook.Entries); i++ {
+			assert.Equal(t, logrus.InfoLevel, hook.Entries[i].Level, "Expected info level log")
+		}
+		assert.Equal(t, "config.log.level: debug", hook.Entries[0].Message, "Wrong log message")
+		assert.Equal(t, "config.log.uuid: false", hook.Entries[1].Message, "Wrong log message")
 	}
 
 	// Reset logrus
@@ -936,6 +934,7 @@ func TestConfigurationValidateAndLog(t *testing.T) {
 		{msg: fmt.Sprintf("config.port: %d", expectedConfig.Port), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.admin_port: %d", expectedConfig.AdminPort), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.log.level: %s", expectedConfig.Log.Level), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.log.uuid: %t", expectedConfig.Log.UUID), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.rate_limiter.enabled: %t", expectedConfig.RateLimiting.Enabled), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.rate_limiter.num_requests: %d", expectedConfig.RateLimiting.MaxRequestsPerSecond), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.request_limits.allow_setting_keys: %v", expectedConfig.RequestLimits.AllowSettingKeys), lvl: logrus.InfoLevel},

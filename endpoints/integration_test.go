@@ -63,7 +63,7 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 	backend := backends.NewMemoryBackend()
 
 	router.POST("/cache", NewPutHandler(backend, 10, true))
-	router.GET("/cache", NewGetHandler(backend, true))
+	router.GET("/cache", NewGetHandler(backend, true, true))
 
 	uuid, putTrace := doMockPut(t, router, putBody)
 	if putTrace.Code != http.StatusOK {
@@ -181,9 +181,11 @@ func TestGetHandler(t *testing.T) {
 		allowKeys bool
 	}
 	type testOutput struct {
-		responseCode int
-		responseBody string
-		logEntries   []logEntry
+		responseCode        int
+		uuidResponseBody    string
+		regularResponseBody string
+		uuidLogEntries      []logEntry
+		regularLogEntries   []logEntry
 	}
 
 	testCases := []struct {
@@ -195,9 +197,16 @@ func TestGetHandler(t *testing.T) {
 			"Missing UUID. Return http error but don't interrupt server's execution",
 			testInput{uuid: ""},
 			testOutput{
-				responseCode: http.StatusBadRequest,
-				responseBody: "Missing required parameter uuid\n",
-				logEntries: []logEntry{
+				responseCode:        http.StatusBadRequest,
+				uuidResponseBody:    "Missing required parameter uuid\n",
+				regularResponseBody: "Missing required parameter uuid\n",
+				uuidLogEntries: []logEntry{
+					{
+						msg: "Missing required parameter uuid",
+						lvl: logrus.ErrorLevel,
+					},
+				},
+				regularLogEntries: []logEntry{
 					{
 						msg: "Missing required parameter uuid",
 						lvl: logrus.ErrorLevel,
@@ -209,11 +218,18 @@ func TestGetHandler(t *testing.T) {
 			"Test uses backend that doesn't allow for keys different than 36 char long. Respond with http error and don't interrupt server's execution",
 			testInput{uuid: "non-36-char-key-maps-to-json"},
 			testOutput{
-				responseCode: http.StatusNotFound,
-				responseBody: "uuid=non-36-char-key-maps-to-json: invalid uuid lenght\n",
-				logEntries: []logEntry{
+				responseCode:        http.StatusNotFound,
+				uuidResponseBody:    "uuid=non-36-char-key-maps-to-json: invalid uuid lenght\n",
+				regularResponseBody: "invalid uuid lenght\n",
+				uuidLogEntries: []logEntry{
 					{
 						msg: "uuid=non-36-char-key-maps-to-json: invalid uuid lenght",
+						lvl: logrus.ErrorLevel,
+					},
+				},
+				regularLogEntries: []logEntry{
+					{
+						msg: "invalid uuid lenght",
 						lvl: logrus.ErrorLevel,
 					},
 				},
@@ -226,20 +242,29 @@ func TestGetHandler(t *testing.T) {
 				allowKeys: true,
 			},
 			testOutput{
-				responseCode: http.StatusOK,
-				responseBody: `{"field":"value"}`,
-				logEntries:   []logEntry{},
+				responseCode:        http.StatusOK,
+				uuidResponseBody:    `{"field":"value"}`,
+				regularResponseBody: `{"field":"value"}`,
+				uuidLogEntries:      []logEntry{},
+				regularLogEntries:   []logEntry{},
 			},
 		},
 		{ // 4
 			"Valid 36 char long UUID not found in database. Return http error but don't interrupt server's execution",
 			testInput{uuid: "uuid-not-found-and-links-to-no-value"},
 			testOutput{
-				responseCode: http.StatusNotFound,
-				responseBody: "uuid=uuid-not-found-and-links-to-no-value: Not found in mock backend\n",
-				logEntries: []logEntry{
+				responseCode:        http.StatusNotFound,
+				uuidResponseBody:    "uuid=uuid-not-found-and-links-to-no-value: Not found in mock backend\n",
+				regularResponseBody: "Not found in mock backend\n",
+				uuidLogEntries: []logEntry{
 					{
 						msg: "uuid=uuid-not-found-and-links-to-no-value: Not found in mock backend",
+						lvl: logrus.ErrorLevel,
+					},
+				},
+				regularLogEntries: []logEntry{
+					{
+						msg: "Not found in mock backend",
 						lvl: logrus.ErrorLevel,
 					},
 				},
@@ -249,11 +274,18 @@ func TestGetHandler(t *testing.T) {
 			"Data from backend is not preceeded by 'xml' nor 'json' string. Return http error but don't interrupt server's execution",
 			testInput{uuid: "36-char-key-maps-to-non-xml-nor-json"},
 			testOutput{
-				responseCode: http.StatusInternalServerError,
-				responseBody: "uuid=36-char-key-maps-to-non-xml-nor-json: Cache data was corrupted. Cannot determine type.\n",
-				logEntries: []logEntry{
+				responseCode:        http.StatusInternalServerError,
+				uuidResponseBody:    "uuid=36-char-key-maps-to-non-xml-nor-json: Cache data was corrupted. Cannot determine type.\n",
+				regularResponseBody: "Cache data was corrupted. Cannot determine type.\n",
+				uuidLogEntries: []logEntry{
 					{
 						msg: "uuid=36-char-key-maps-to-non-xml-nor-json: Cache data was corrupted. Cannot determine type.",
+						lvl: logrus.ErrorLevel,
+					},
+				},
+				regularLogEntries: []logEntry{
+					{
+						msg: "Cache data was corrupted. Cannot determine type.",
 						lvl: logrus.ErrorLevel,
 					},
 				},
@@ -263,9 +295,11 @@ func TestGetHandler(t *testing.T) {
 			"Valid 36 char long UUID returns valid XML. Don't return nor log error",
 			testInput{uuid: "36-char-key-maps-to-actual-xml-value"},
 			testOutput{
-				responseCode: http.StatusOK,
-				responseBody: "<tag>xml data here</tag>",
-				logEntries:   []logEntry{},
+				responseCode:        http.StatusOK,
+				uuidResponseBody:    "<tag>xml data here</tag>",
+				regularResponseBody: "<tag>xml data here</tag>",
+				uuidLogEntries:      []logEntry{},
+				regularLogEntries:   []logEntry{},
 			},
 		},
 	}
@@ -281,30 +315,46 @@ func TestGetHandler(t *testing.T) {
 		// Reset the fatal flag to false every test
 		fatal = false
 
-		// Set up test object
-		backend := newMockBackend()
-		router := httprouter.New()
-		router.GET("/cache", NewGetHandler(backend, test.in.allowKeys))
+		//Run tests for both scenarios where logUuids is true and false
+		inLogUuids := false
+		for i := 0; i < 2; i++ {
+			// Set up test object
+			backend := newMockBackend()
+			router := httprouter.New()
+			router.GET("/cache", NewGetHandler(backend, test.in.allowKeys, inLogUuids))
 
-		// Run test
-		getResults := doMockGet(t, router, test.in.uuid)
+			// Run test
+			getResults := doMockGet(t, router, test.in.uuid)
 
-		// Assert server response and status code
-		assert.Equal(t, test.out.responseCode, getResults.Code, test.desc)
-		assert.Equal(t, test.out.responseBody, getResults.Body.String(), test.desc)
-
-		// Assert log entries
-		if assert.Len(t, hook.Entries, len(test.out.logEntries), test.desc) {
-			for i := 0; i < len(test.out.logEntries); i++ {
-				assert.Equal(t, test.out.logEntries[i].msg, hook.Entries[i].Message, test.desc)
-				assert.Equal(t, test.out.logEntries[i].lvl, hook.Entries[i].Level, test.desc)
+			// Assert values
+			var expectedLogEntries []logEntry
+			var responseBody string
+			if inLogUuids {
+				expectedLogEntries = append(expectedLogEntries, test.out.uuidLogEntries...)
+				responseBody = test.out.uuidResponseBody
+			} else {
+				expectedLogEntries = append(expectedLogEntries, test.out.regularLogEntries...)
+				responseBody = test.out.regularResponseBody
 			}
-			// Assert the logger didn't exit the program
-			assert.False(t, fatal, test.desc)
-		}
 
-		// Reset log
-		hook.Reset()
+			// Assert server response and status code
+			assert.Equal(t, test.out.responseCode, getResults.Code, test.desc)
+			assert.Equal(t, responseBody, getResults.Body.String(), test.desc)
+
+			if assert.Len(t, hook.Entries, len(expectedLogEntries), test.desc) {
+				for i := 0; i < len(expectedLogEntries); i++ {
+					assert.Equal(t, expectedLogEntries[i].msg, hook.Entries[i].Message, test.desc)
+					assert.Equal(t, expectedLogEntries[i].lvl, hook.Entries[i].Level, test.desc)
+				}
+				// Assert the logger didn't exit the program
+				assert.False(t, fatal, test.desc)
+			}
+
+			inLogUuids = true
+
+			// Reset log
+			hook.Reset()
+		}
 	}
 }
 
@@ -355,7 +405,7 @@ func TestMultiPutRequestGotStored(t *testing.T) {
 	backend := backends.NewMemoryBackend()
 
 	router.POST("/cache", NewPutHandler(backend, 10, true))
-	router.GET("/cache", NewGetHandler(backend, true))
+	router.GET("/cache", NewGetHandler(backend, true, true))
 
 	rr := httptest.NewRecorder()
 
@@ -454,7 +504,7 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 	backend := backends.NewMemoryBackend()
 
 	router.POST("/cache", NewPutHandler(backend, 10, true))
-	router.GET("/cache", NewGetHandler(backend, true))
+	router.GET("/cache", NewGetHandler(backend, true, true))
 
 	rr := httptest.NewRecorder()
 

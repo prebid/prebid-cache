@@ -13,10 +13,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func NewGetHandler(backend backends.Backend, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewGetHandler(backend backends.Backend, allowKeys bool, logUUIDs bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		id, err, status := parseUUID(r, allowKeys)
 		if err != nil {
+			err = formatGetBackendError(err, logUUIDs, id)
 			respondAndLogError(w, err, status)
 			return
 		}
@@ -26,11 +27,13 @@ func NewGetHandler(backend backends.Backend, allowKeys bool) func(http.ResponseW
 
 		value, err := backend.Get(ctx, id)
 		if err != nil {
-			respondAndLogError(w, fmt.Errorf("uuid=%s: %s", id, err.Error()), http.StatusNotFound)
+			err = formatGetBackendError(err, logUUIDs, id)
+			respondAndLogError(w, err, http.StatusNotFound)
 			return
 		}
 
 		if err, status := writeGetResponse(w, id, value); err != nil {
+			err = formatGetBackendError(err, logUUIDs, id)
 			respondAndLogError(w, err, status)
 			return
 		}
@@ -50,7 +53,7 @@ func parseUUID(r *http.Request, allowKeys bool) (string, error, int) {
 	if len(id) != 36 && (!allowKeys) {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 		// ones before even checking the backend.
-		return "", fmt.Errorf("uuid=%s: invalid uuid lenght", id), http.StatusNotFound
+		return id, fmt.Errorf("invalid uuid lenght"), http.StatusNotFound
 	}
 	return id, nil, http.StatusOK
 }
@@ -63,7 +66,7 @@ func writeGetResponse(w http.ResponseWriter, id string, value string) (error, in
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(value)[len(backends.JSON_PREFIX):])
 	} else {
-		return fmt.Errorf("uuid=%s: Cache data was corrupted. Cannot determine type.", id), http.StatusInternalServerError
+		return fmt.Errorf("Cache data was corrupted. Cannot determine type."), http.StatusInternalServerError
 	}
 	return nil, http.StatusOK
 }
@@ -71,4 +74,13 @@ func writeGetResponse(w http.ResponseWriter, id string, value string) (error, in
 func respondAndLogError(w http.ResponseWriter, err error, status int) {
 	log.Errorf(err.Error())
 	http.Error(w, err.Error(), status)
+}
+
+// Will prefix error messages with "uuid=FAULTY_UUID" if logUUIDs is set to true in the global configuration.
+// Expects non-nil error
+func formatGetBackendError(err error, logUUIDs bool, id string) error {
+	if logUUIDs && id != "" {
+		return fmt.Errorf("uuid=%s: %s", id, err.Error())
+	}
+	return err
 }
