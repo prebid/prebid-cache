@@ -80,10 +80,8 @@ func handleException(w http.ResponseWriter, err error, status int, uuid string) 
 		msg = fmt.Sprintf("GET /cache: %s", err.Error())
 	}
 
-	// Select level
 	level := determineLogLevel(err)
 
-	// Log and send response
 	logAtLevel(level, msg)
 	http.Error(w, msg, status)
 }
