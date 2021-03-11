@@ -1,3 +1,9 @@
 package backends
 
-const GetKeyNotFound string = "Key not found"
+type PBCKeyNotFoundError struct {
+	msg string
+}
+
+func (e PBCKeyNotFoundError) Error() string {
+	return e.msg + "Key not found"
+}

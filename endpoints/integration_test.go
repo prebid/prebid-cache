@@ -196,10 +196,10 @@ func TestGetHandler(t *testing.T) {
 			testInput{uuid: ""},
 			testOutput{
 				responseCode: http.StatusBadRequest,
-				responseBody: "GET /cache Missing required parameter uuid\n",
+				responseBody: "GET /cache: Missing required parameter uuid\n",
 				logEntries: []logEntry{
 					{
-						msg: "GET /cache Missing required parameter uuid",
+						msg: "GET /cache: Missing required parameter uuid",
 						lvl: logrus.ErrorLevel,
 					},
 				},
@@ -210,10 +210,10 @@ func TestGetHandler(t *testing.T) {
 			testInput{uuid: "non-36-char-key-maps-to-json"},
 			testOutput{
 				responseCode: http.StatusNotFound,
-				responseBody: "GET /cache uuid=non-36-char-key-maps-to-json: invalid uuid lenght\n",
+				responseBody: "GET /cache uuid=non-36-char-key-maps-to-json: invalid uuid length\n",
 				logEntries: []logEntry{
 					{
-						msg: "GET /cache uuid=non-36-char-key-maps-to-json: invalid uuid lenght",
+						msg: "GET /cache uuid=non-36-char-key-maps-to-json: invalid uuid length",
 						lvl: logrus.ErrorLevel,
 					},
 				},
@@ -571,7 +571,7 @@ type mockBackend struct {
 func (b *mockBackend) Get(ctx context.Context, key string) (string, error) {
 	v, ok := b.data[key]
 	if !ok {
-		return "", fmt.Errorf(backends.GetKeyNotFound)
+		return "", backends.PBCKeyNotFoundError{}
 	}
 	return v, nil
 }

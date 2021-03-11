@@ -50,7 +50,7 @@ func parseUUID(r *http.Request, allowKeys bool) (string, error, int) {
 	if len(id) != 36 && (!allowKeys) {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 		// ones before even checking the backend.
-		return id, fmt.Errorf("invalid uuid lenght"), http.StatusNotFound
+		return id, fmt.Errorf("invalid uuid length"), http.StatusNotFound
 	}
 	return id, nil, http.StatusOK
 }
@@ -72,23 +72,24 @@ func writeGetResponse(w http.ResponseWriter, id string, value string) (error, in
 // follow with the first element of it in the following fashion: "uuid=FIRST_ELEMENT_ON_UUID_PARAM".
 // Expects non-nil error
 func handleException(w http.ResponseWriter, err error, status int, uuid string) {
-	// Build message
-	msg := "GET /cache"
+
+	var msg string
 	if len(uuid) > 0 {
-		msg = fmt.Sprintf("%s uuid=%s:", msg, uuid)
+		msg = fmt.Sprintf("GET /cache uuid=%s: %s", uuid, err.Error())
+	} else {
+		msg = fmt.Sprintf("GET /cache: %s", err.Error())
 	}
-	msg = fmt.Sprintf("%s %s", msg, err.Error())
 
 	// Select level
-	level := determineLogLevel(msg)
+	level := determineLogLevel(err)
 
 	// Log and send response
 	logAtLevel(level, msg)
 	http.Error(w, msg, status)
 }
 
-func determineLogLevel(errMsg string) log.Level {
-	if strings.HasSuffix(errMsg, backends.GetKeyNotFound) {
+func determineLogLevel(err error) log.Level {
+	if _, isKeyNotFound := err.(backends.PBCKeyNotFoundError); isKeyNotFound {
 		return log.DebugLevel
 	}
 	return log.ErrorLevel
