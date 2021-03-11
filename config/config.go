@@ -136,6 +136,7 @@ func (cfg *Log) validateAndLog() {
 type LogLevel string
 
 const (
+	Trace   LogLevel = "trace":
 	Debug   LogLevel = "debug"
 	Info    LogLevel = "info"
 	Warning LogLevel = "warning"
