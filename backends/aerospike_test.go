@@ -179,6 +179,12 @@ func TestFormatAerospikeError(t *testing.T) {
 			inCallers:   []string{"TEST_CASE"},
 			expectedErr: fmt.Errorf("Aerospike TEST_CASE: Server is not accepting requests."),
 		},
+		{
+			desc:        "Aerospike KEY_NOT_FOUND_ERROR error, attach our GetKeyNotFound constant",
+			inErr:       as_types.NewAerospikeError(as_types.KEY_NOT_FOUND_ERROR),
+			inCallers:   []string{"TEST_CASE"},
+			expectedErr: fmt.Errorf("Aerospike TEST_CASE: Key not found"),
+		},
 	}
 	for _, test := range testCases {
 		actualErr := formatAerospikeError(test.inErr, test.inCallers...)

@@ -13,12 +13,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func NewGetHandler(backend backends.Backend, allowKeys bool, logUUIDs bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewGetHandler(backend backends.Backend, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		id, err, status := parseUUID(r, allowKeys)
 		if err != nil {
-			err = formatGetBackendError(err, logUUIDs, id)
-			respondAndLogError(w, err, status)
+			handleException(w, err, status, id)
 			return
 		}
 
@@ -27,14 +26,12 @@ func NewGetHandler(backend backends.Backend, allowKeys bool, logUUIDs bool) func
 
 		value, err := backend.Get(ctx, id)
 		if err != nil {
-			err = formatGetBackendError(err, logUUIDs, id)
-			respondAndLogError(w, err, http.StatusNotFound)
+			handleException(w, err, http.StatusNotFound, id)
 			return
 		}
 
 		if err, status := writeGetResponse(w, id, value); err != nil {
-			err = formatGetBackendError(err, logUUIDs, id)
-			respondAndLogError(w, err, status)
+			handleException(w, err, status, id)
 			return
 		}
 		return
@@ -71,16 +68,50 @@ func writeGetResponse(w http.ResponseWriter, id string, value string) (error, in
 	return nil, http.StatusOK
 }
 
-func respondAndLogError(w http.ResponseWriter, err error, status int) {
-	log.Errorf(err.Error())
-	http.Error(w, err.Error(), status)
+// Will prefix error messages with "GET /cache" and, if uuid string list is passed, will
+// follow with the first element of it in the following fashion: "uuid=FIRST_ELEMENT_ON_UUID_PARAM".
+// Expects non-nil error
+func handleException(w http.ResponseWriter, err error, status int, uuid string) {
+	// Build message
+	msg := "GET /cache"
+	if len(uuid) > 0 {
+		msg = fmt.Sprintf("%s uuid=%s:", msg, uuid)
+	}
+	msg = fmt.Sprintf("%s %s", msg, err.Error())
+
+	// Select level
+	level := determineLogLevel(msg)
+
+	// Log and send response
+	logAtLevel(level, msg)
+	http.Error(w, msg, status)
 }
 
-// Will prefix error messages with "uuid=FAULTY_UUID" if logUUIDs is set to true in the global configuration.
-// Expects non-nil error
-func formatGetBackendError(err error, logUUIDs bool, id string) error {
-	if logUUIDs && id != "" {
-		return fmt.Errorf("uuid=%s: %s", id, err.Error())
+func determineLogLevel(errMsg string) log.Level {
+	if strings.HasSuffix(errMsg, backends.GetKeyNotFound) {
+		return log.DebugLevel
 	}
-	return err
+	return log.ErrorLevel
+}
+
+func logAtLevel(level log.Level, msg string) {
+	switch level {
+	case log.PanicLevel:
+		log.Panic(msg)
+	case log.FatalLevel:
+		log.Fatal(msg)
+	case log.ErrorLevel:
+		log.Error(msg)
+	case log.WarnLevel:
+		log.Warn(msg)
+	case log.InfoLevel:
+		log.Info(msg)
+	case log.DebugLevel:
+		log.Debug(msg)
+	case log.TraceLevel:
+		log.Trace(msg)
+	default:
+		// Don't log anything if level is not a recognized log Level
+	}
+	return
 }

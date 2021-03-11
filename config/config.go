@@ -43,7 +43,6 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("admin_port", 2525)
 	v.SetDefault("index_response", "This application stores short-term data for use in Prebid.")
 	v.SetDefault("log.level", "info")
-	v.SetDefault("uuid", false)
 	v.SetDefault("backend.type", "memory")
 	v.SetDefault("backend.aerospike.host", "")
 	v.SetDefault("backend.aerospike.port", 0)
@@ -128,12 +127,10 @@ func (cfg *Configuration) ValidateAndLog() {
 
 type Log struct {
 	Level LogLevel `mapstructure:"level"`
-	UUID  bool     `mapstructure:"uuid"`
 }
 
 func (cfg *Log) validateAndLog() {
 	log.Infof("config.log.level: %s", cfg.Level)
-	log.Infof("config.log.uuid: %t", cfg.UUID)
 }
 
 type LogLevel string

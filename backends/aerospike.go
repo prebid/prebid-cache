@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	as "github.com/aerospike/aerospike-client-go"
+	as_types "github.com/aerospike/aerospike-client-go/types"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
 	log "github.com/sirupsen/logrus"
@@ -109,9 +110,16 @@ func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, tt
 func formatAerospikeError(err error, caller ...string) error {
 	if err != nil {
 		msg := "Aerospike"
+
 		for _, str := range caller {
 			if len(str) > 0 {
 				msg = fmt.Sprintf("%s %s", msg, str)
+			}
+		}
+
+		if aerr, ok := err.(as_types.AerospikeError); ok {
+			if aerr.ResultCode() == as_types.KEY_NOT_FOUND_ERROR {
+				return fmt.Errorf("%s: %s", msg, GetKeyNotFound)
 			}
 		}
 		return fmt.Errorf("%s: %s", msg, err.Error())
