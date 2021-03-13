@@ -112,7 +112,7 @@ func formatAerospikeError(err error) error {
 
 		if aerr, ok := err.(as_types.AerospikeError); ok {
 			if aerr.ResultCode() == as_types.KEY_NOT_FOUND_ERROR {
-				return PBCKeyNotFoundError{msg}
+				return KeyNotFoundError{msg}
 			}
 		}
 		return errors.New(msg + err.Error())

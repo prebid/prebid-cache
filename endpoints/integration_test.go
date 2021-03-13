@@ -571,7 +571,7 @@ type mockBackend struct {
 func (b *mockBackend) Get(ctx context.Context, key string) (string, error) {
 	v, ok := b.data[key]
 	if !ok {
-		return "", backends.PBCKeyNotFoundError{}
+		return "", backends.KeyNotFoundError{}
 	}
 	return v, nil
 }

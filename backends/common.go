@@ -1,9 +1,9 @@
 package backends
 
-type PBCKeyNotFoundError struct {
-	msg string
+type KeyNotFoundError struct {
+	msgPrefix string
 }
 
-func (e PBCKeyNotFoundError) Error() string {
-	return e.msg + "Key not found"
+func (e KeyNotFoundError) Error() string {
+	return e.msgPrefix + "Key not found"
 }
