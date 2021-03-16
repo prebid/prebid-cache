@@ -87,7 +87,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 				return
 			}
 
-			logrus.Debugf("Storing value: %s", toCache)
+			//logrus.Debugf("Storing value: %s", toCache)
 			if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
 				http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
 			}
@@ -125,6 +125,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 					}
 					return
 				}
+				logrus.Tracef("PUT /cache uuid=%s", resps.Responses[i].UUID)
 			}
 
 		}
