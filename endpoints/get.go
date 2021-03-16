@@ -45,12 +45,12 @@ type GetResponse struct {
 func parseUUID(r *http.Request, allowKeys bool) (string, error, int) {
 	id := r.URL.Query().Get("uuid")
 	if id == "" {
-		return "", errors.New("Missing required parameter uuid"), http.StatusBadRequest
+		return "", errors.New(" Missing required parameter uuid"), http.StatusBadRequest
 	}
 	if len(id) != 36 && (!allowKeys) {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 		// ones before even checking the backend.
-		return id, errors.New("invalid uuid length"), http.StatusNotFound
+		return id, errors.New(" invalid uuid length"), http.StatusNotFound
 	}
 	return id, nil, http.StatusOK
 }
@@ -63,7 +63,7 @@ func writeGetResponse(w http.ResponseWriter, id string, value string) (error, in
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(value)[len(backends.JSON_PREFIX):])
 	} else {
-		return errors.New("Cache data was corrupted. Cannot determine type."), http.StatusInternalServerError
+		return errors.New(" Cache data was corrupted. Cannot determine type."), http.StatusInternalServerError
 	}
 	return nil, http.StatusOK
 }
@@ -75,9 +75,9 @@ func handleException(w http.ResponseWriter, err error, status int, uuid string) 
 
 	var msg string
 	if len(uuid) > 0 {
-		msg = fmt.Sprintf("GET /cache uuid=%s: %s", uuid, err.Error())
+		msg = fmt.Sprintf("GET /cache uuid=%s:%s", uuid, err.Error())
 	} else {
-		msg = fmt.Sprintf("GET /cache: %s", err.Error())
+		msg = fmt.Sprintf("GET /cache:%s", err.Error())
 	}
 
 	level := determineLogLevel(err)

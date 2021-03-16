@@ -5,5 +5,5 @@ type KeyNotFoundError struct {
 }
 
 func (e KeyNotFoundError) Error() string {
-	return e.msgPrefix + "Key not found"
+	return e.msgPrefix + " Key not found"
 }

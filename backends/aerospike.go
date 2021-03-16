@@ -108,14 +108,12 @@ func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, tt
 
 func formatAerospikeError(err error) error {
 	if err != nil {
-		msg := "Aerospike "
-
 		if aerr, ok := err.(as_types.AerospikeError); ok {
 			if aerr.ResultCode() == as_types.KEY_NOT_FOUND_ERROR {
-				return KeyNotFoundError{msg}
+				return KeyNotFoundError{"Aerospike"}
 			}
 		}
-		return errors.New(msg + err.Error())
+		return errors.New("Aerospike " + err.Error())
 	}
 	return err
 }
