@@ -80,37 +80,15 @@ func handleException(w http.ResponseWriter, err error, status int, uuid string) 
 		msg = fmt.Sprintf("GET /cache: %s", err.Error())
 	}
 
-	level := determineLogLevel(err)
+	logError(err, msg)
 
-	logAtLevel(level, msg)
 	http.Error(w, msg, status)
 }
 
-func determineLogLevel(err error) log.Level {
+func logError(err error, msg string) {
 	if _, isKeyNotFound := err.(backends.KeyNotFoundError); isKeyNotFound {
-		return log.DebugLevel
-	}
-	return log.ErrorLevel
-}
-
-func logAtLevel(level log.Level, msg string) {
-	switch level {
-	case log.PanicLevel:
-		log.Panic(msg)
-	case log.FatalLevel:
-		log.Fatal(msg)
-	case log.ErrorLevel:
-		log.Error(msg)
-	case log.WarnLevel:
-		log.Warn(msg)
-	case log.InfoLevel:
-		log.Info(msg)
-	case log.DebugLevel:
 		log.Debug(msg)
-	case log.TraceLevel:
-		log.Trace(msg)
-	default:
-		// Don't log anything if level is not a recognized log Level
+	} else {
+		log.Error(msg)
 	}
-	return
 }
