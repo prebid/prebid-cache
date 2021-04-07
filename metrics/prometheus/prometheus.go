@@ -121,8 +121,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 			),
 		},
 		Connections: &PrometheusConnectionMetrics{
-			ConnectionsClosed: newSingleCounter(cfg, registry, ConnOpenedKey, "Count the number of closed connections"),
-			ConnectionsOpened: newSingleCounter(cfg, registry, ConnClosedKey, "Count the number of open connections"),
+			ConnectionsClosed: newSingleCounter(cfg, registry, ConnClosedKey, "Count the number of closed connections"),
+			ConnectionsOpened: newSingleCounter(cfg, registry, ConnOpenedKey, "Count the number of open connections"),
 			ConnectionsErrors: newCounterVecWithLabels(cfg, registry,
 				ConnErrorKey,
 				"Count the number of connection accept errors or connection close errors",
