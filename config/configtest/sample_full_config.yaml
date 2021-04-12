@@ -16,8 +16,11 @@ backend:
   aerospike:
     default_ttl_seconds: 3600
     host: "aerospike.prebid.com"
+    hosts: ["aerospike2.prebid.com", "aerospike3.prebid.com"]
     port: 3000
     namespace: "whatever"
+    user: "foo"
+    password: "bar"
   azure:
     account: "azure-account-here"
     key: "azure-key-here"

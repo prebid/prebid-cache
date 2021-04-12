@@ -106,13 +106,51 @@ func TestNewAerospikeBackend(t *testing.T) {
 		expectedLogEntries []logEntry
 	}{
 		{
-			desc: "Unable to connect fakeTestUrl panic and log fatal error",
+			desc: "Unable to connect hosts fakeTestUrl panic and log fatal error when passed additional hosts",
+			inCfg: config.Aerospike{
+				Hosts: []string{"foo.com", "bat.com"},
+				Port:  8888,
+			},
+			expectPanic: true,
+			expectedLogEntries: []logEntry{
+
+				{
+					msg: "Aerospike Failed to connect to host(s): [foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
+					lvl: logrus.FatalLevel,
+				},
+			},
+		},
+		{
+			desc: "Unable to connect host and hosts panic and log fatal error when passed additional hosts",
+			inCfg: config.Aerospike{
+				Host:  "fakeTestUrl.foo",
+				Hosts: []string{"foo.com", "bat.com"},
+				Port:  8888,
+			},
+			expectPanic: true,
+			expectedLogEntries: []logEntry{
+				{
+					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "Aerospike Failed to connect to host(s): [fakeTestUrl.foo:8888 foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
+					lvl: logrus.FatalLevel,
+				},
+			},
+		},
+		{
+			desc: "Unable to connect hoost panic and log fatal error",
 			inCfg: config.Aerospike{
 				Host: "fakeTestUrl.foo",
 				Port: 8888,
 			},
 			expectPanic: true,
 			expectedLogEntries: []logEntry{
+				{
+					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
+					lvl: logrus.InfoLevel,
+				},
 				{
 					msg: "Aerospike Failed to connect to host(s): [fakeTestUrl.foo:8888]; error: Connecting to the cluster timed out.",
 					lvl: logrus.FatalLevel,
@@ -130,7 +168,7 @@ func TestNewAerospikeBackend(t *testing.T) {
 
 	for _, test := range testCases {
 		// Run test
-		assert.Panics(t, func() { NewAerospikeBackend(test.inCfg, nil) }, "Aerospike library's NewClient() should have thrown an error and didn't, hence the panic didn't happen")
+		assert.Panics(t, func() { NewAerospikeBackend(test.inCfg, nil) }, "Aerospike library's NewClientWithPolicyAndHost() should have thrown an error and didn't, hence the panic didn't happen")
 		if assert.Len(t, hook.Entries, len(test.expectedLogEntries), test.desc) {
 			for i := 0; i < len(test.expectedLogEntries); i++ {
 				assert.Equal(t, test.expectedLogEntries[i].msg, hook.Entries[i].Message, test.desc)
