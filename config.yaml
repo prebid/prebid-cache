@@ -16,6 +16,7 @@ backend:
     host: "aerospike.prebid.com"
     port: 3000
     namespace: "whatever"
+    set: "genericset" # defaults to uuid if not specified
   azure:
     account: "azure-account-here"
     key: "azure-key-here"

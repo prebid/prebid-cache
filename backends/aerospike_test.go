@@ -26,7 +26,7 @@ func NewErrorProneAerospikeClient(funcName string) *errorProneAerospikeClient {
 	}
 }
 
-func (c *errorProneAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
+func (c *errorProneAerospikeClient) NewUuidKey(namespace string, set string, key string) (*as.Key, error) {
 	if c.errorThrowingFunction == "TEST_KEY_GEN_ERROR" {
 		return nil, as_types.NewAerospikeError(as_types.NOT_AUTHENTICATED)
 	}
@@ -89,8 +89,8 @@ func (c *goodAerospikeClient) Put(policy *as.WritePolicy, aeKey *as.Key, binMap 
 	return as_types.NewAerospikeError(as_types.KEY_MISMATCH)
 }
 
-func (c *goodAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
-	return as.NewKey(namespace, setName, key)
+func (c *goodAerospikeClient) NewUuidKey(namespace string, set string, key string) (*as.Key, error) {
+	return as.NewKey(namespace, set, key)
 }
 
 func TestNewAerospikeBackend(t *testing.T) {

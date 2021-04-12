@@ -1058,6 +1058,9 @@ func getExpectedDefaultConfig() Configuration {
 			Memcache: Memcache{
 				Hosts: []string{},
 			},
+			Aerospike: Aerospike{
+				Set: "uuid",
+			},
 		},
 		Compression: Compression{
 			Type: CompressionType("snappy"),
@@ -1103,6 +1106,7 @@ func getExpectedFullConfigForTestFile() Configuration {
 				Host:       "aerospike.prebid.com",
 				Port:       3000,
 				Namespace:  "whatever",
+				Set:        "uuid",
 			},
 			Azure: Azure{
 				Account: "azure-account-here",

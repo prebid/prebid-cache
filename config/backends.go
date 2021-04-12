@@ -53,6 +53,7 @@ type Aerospike struct {
 	Host       string `mapstructure:"host"`
 	Port       int    `mapstructure:"port"`
 	Namespace  string `mapstructure:"namespace"`
+	Set        string `mapstructure:"set"`
 }
 
 func (cfg *Aerospike) validateAndLog() error {
@@ -62,10 +63,12 @@ func (cfg *Aerospike) validateAndLog() error {
 	if cfg.Port <= 0 {
 		return fmt.Errorf("Cannot connect to Aerospike host at port %d", cfg.Port)
 	}
+
 	log.Infof("config.backend.aerospike.default_ttl_seconds: %d", cfg.DefaultTTL)
 	log.Infof("config.backend.aerospike.host: %s", cfg.Host)
 	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
 	log.Infof("config.backend.aerospike.namespace: %s", cfg.Namespace)
+	log.Infof("config.backend.aerospike.set: %s", cfg.Set)
 
 	return nil
 }

@@ -11,12 +11,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const setName = "uuid"
 const binValue = "value"
 
 // Wrapper for the Aerospike client
 type AerospikeDB interface {
-	NewUuidKey(namespace string, key string) (*as.Key, error)
+	NewUuidKey(namespace string, set string, key string) (*as.Key, error)
 	Get(key *as.Key) (*as.Record, error)
 	Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error
 }
@@ -33,8 +32,8 @@ func (db AerospikeDBClient) Put(policy *as.WritePolicy, key *as.Key, binMap as.B
 	return db.client.Put(policy, key, binMap)
 }
 
-func (db *AerospikeDBClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
-	return as.NewKey(namespace, setName, key)
+func (db *AerospikeDBClient) NewUuidKey(namespace string, set string, key string) (*as.Key, error) {
+	return as.NewKey(namespace, set, key)
 }
 
 // Instantiates, and configures the Aerospike client, it also performs Get and Put operations and monitors results
@@ -60,7 +59,7 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 }
 
 func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) {
-	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
+	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, a.cfg.Set, key)
 	if err != nil {
 		return "", formatAerospikeError(err, "GET")
 	}
@@ -87,7 +86,7 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 }
 
 func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
+	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, a.cfg.Set, key)
 	if err != nil {
 		return formatAerospikeError(err, "PUT")
 	}
