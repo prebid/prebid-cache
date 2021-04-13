@@ -191,35 +191,35 @@ func TestGetHandler(t *testing.T) {
 		in   testInput
 		out  testOutput
 	}{
-		{ // 1
+		{
 			"Missing UUID. Return http error but don't interrupt server's execution",
 			testInput{uuid: ""},
 			testOutput{
 				responseCode: http.StatusBadRequest,
-				responseBody: "Missing required parameter uuid\n",
+				responseBody: "GET /cache: Missing required parameter uuid\n",
 				logEntries: []logEntry{
 					{
-						msg: "Missing required parameter uuid",
+						msg: "GET /cache: Missing required parameter uuid",
 						lvl: logrus.ErrorLevel,
 					},
 				},
 			},
 		},
-		{ // 2
+		{
 			"Test uses backend that doesn't allow for keys different than 36 char long. Respond with http error and don't interrupt server's execution",
 			testInput{uuid: "non-36-char-key-maps-to-json"},
 			testOutput{
 				responseCode: http.StatusNotFound,
-				responseBody: "uuid=non-36-char-key-maps-to-json: invalid uuid lenght\n",
+				responseBody: "GET /cache uuid=non-36-char-key-maps-to-json: invalid uuid length\n",
 				logEntries: []logEntry{
 					{
-						msg: "uuid=non-36-char-key-maps-to-json: invalid uuid lenght",
+						msg: "GET /cache uuid=non-36-char-key-maps-to-json: invalid uuid length",
 						lvl: logrus.ErrorLevel,
 					},
 				},
 			},
 		},
-		{ // 3
+		{
 			"Test uses backend that allows for different than 36 char long uuids. Since the uuid maps to a value, return it along a 200 status code",
 			testInput{
 				uuid:      "non-36-char-key-maps-to-json",
@@ -231,35 +231,35 @@ func TestGetHandler(t *testing.T) {
 				logEntries:   []logEntry{},
 			},
 		},
-		{ // 4
+		{
 			"Valid 36 char long UUID not found in database. Return http error but don't interrupt server's execution",
 			testInput{uuid: "uuid-not-found-and-links-to-no-value"},
 			testOutput{
 				responseCode: http.StatusNotFound,
-				responseBody: "uuid=uuid-not-found-and-links-to-no-value: Not found in mock backend\n",
+				responseBody: "GET /cache uuid=uuid-not-found-and-links-to-no-value:  Key not found\n",
 				logEntries: []logEntry{
 					{
-						msg: "uuid=uuid-not-found-and-links-to-no-value: Not found in mock backend",
-						lvl: logrus.ErrorLevel,
+						msg: "GET /cache uuid=uuid-not-found-and-links-to-no-value:  Key not found",
+						lvl: logrus.DebugLevel,
 					},
 				},
 			},
 		},
-		{ // 5
+		{
 			"Data from backend is not preceeded by 'xml' nor 'json' string. Return http error but don't interrupt server's execution",
 			testInput{uuid: "36-char-key-maps-to-non-xml-nor-json"},
 			testOutput{
 				responseCode: http.StatusInternalServerError,
-				responseBody: "uuid=36-char-key-maps-to-non-xml-nor-json: Cache data was corrupted. Cannot determine type.\n",
+				responseBody: "GET /cache uuid=36-char-key-maps-to-non-xml-nor-json: Cache data was corrupted. Cannot determine type.\n",
 				logEntries: []logEntry{
 					{
-						msg: "uuid=36-char-key-maps-to-non-xml-nor-json: Cache data was corrupted. Cannot determine type.",
+						msg: "GET /cache uuid=36-char-key-maps-to-non-xml-nor-json: Cache data was corrupted. Cannot determine type.",
 						lvl: logrus.ErrorLevel,
 					},
 				},
 			},
 		},
-		{ // 6
+		{
 			"Valid 36 char long UUID returns valid XML. Don't return nor log error",
 			testInput{uuid: "36-char-key-maps-to-actual-xml-value"},
 			testOutput{
@@ -269,6 +269,9 @@ func TestGetHandler(t *testing.T) {
 			},
 		},
 	}
+
+	// Lower Log Treshold so we can see DebugLevel entries in our mock logrus log
+	logrus.SetLevel(logrus.DebugLevel)
 
 	// Test suite-wide objects
 	hook := test.NewGlobal()
@@ -504,7 +507,7 @@ type mockBackend struct {
 func (b *mockBackend) Get(ctx context.Context, key string) (string, error) {
 	v, ok := b.data[key]
 	if !ok {
-		return "", fmt.Errorf("Not found in mock backend")
+		return "", backends.KeyNotFoundError{}
 	}
 	return v, nil
 }
