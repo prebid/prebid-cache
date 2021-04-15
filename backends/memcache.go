@@ -2,9 +2,11 @@ package backends
 
 import (
 	"context"
+	"time"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/prebid/prebid-cache/config"
+	log "github.com/sirupsen/logrus"
 )
 
 // MemcacheConfig is used to configure the cluster
@@ -20,7 +22,17 @@ type Memcache struct {
 // NewMemcacheBackend create a new memcache backend
 func NewMemcacheBackend(cfg config.Memcache) *Memcache {
 	c := &Memcache{}
-	mc := memcache.New(cfg.Hosts...)
+	var mc *memcache.Client
+	if cfg.ConfigHost != "" {
+		var err error
+		mc, err = memcache.NewDiscoveryClient(cfg.ConfigHost, time.Duration(cfg.PollIntervalSeconds)*time.Second)
+		if err != nil {
+			log.Fatalf("%v", err)
+			panic("Memcache failure. This shouldn't happen.")
+		}
+	} else {
+		mc = memcache.New(cfg.Hosts...)
+	}
 	c.client = mc
 	return c
 }

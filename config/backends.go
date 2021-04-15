@@ -93,11 +93,19 @@ func (cfg *Cassandra) validateAndLog() error {
 }
 
 type Memcache struct {
-	Hosts []string `mapstructure:"hosts"`
+	ConfigHost          string   `mapstructure:"config_host"`
+	PollIntervalSeconds int      `mapstructure:"poll_interval_seconds"`
+	Hosts               []string `mapstructure:"hosts"`
 }
 
 func (cfg *Memcache) validateAndLog() error {
-	log.Infof("config.backend.memcache.hosts: %v", cfg.Hosts)
+	if cfg.ConfigHost != "" {
+		log.Infof("Memcache client will run in auto discovery mode")
+		log.Infof("config.backend.memcache.config_host: %s", cfg.ConfigHost)
+		log.Infof("config.backend.memcache.poll_interval_seconds: %d", cfg.PollIntervalSeconds)
+	} else {
+		log.Infof("config.backend.memcache.hosts: %v", cfg.Hosts)
+	}
 	return nil
 }
 
