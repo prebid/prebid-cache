@@ -45,12 +45,29 @@ type AerospikeBackend struct {
 }
 
 func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *AerospikeBackend {
-	client, err := as.NewClient(cfg.Host, cfg.Port)
+	var hosts []*as.Host
+
+	clientPolicy := as.NewClientPolicy()
+	// cfg.User and cfg.Password are optional parameters
+	// if left blank in the config, they will default to the empty
+	// string and be ignored
+	clientPolicy.User = cfg.User
+	clientPolicy.Password = cfg.Password
+
+	if len(cfg.Host) > 1 {
+		hosts = append(hosts, as.NewHost(cfg.Host, cfg.Port))
+		log.Info("config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts")
+	}
+	for _, host := range cfg.Hosts {
+		hosts = append(hosts, as.NewHost(host, cfg.Port))
+	}
+
+	client, err := as.NewClientWithPolicyAndHost(clientPolicy, hosts...)
 	if err != nil {
 		log.Fatalf("%v", formatAerospikeError(err).Error())
 		panic("AerospikeBackend failure. This shouldn't happen.")
 	}
-	log.Infof("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
+	log.Infof("Connected to Aerospike host(s) %v on port %d", append(cfg.Hosts, cfg.Host), cfg.Port)
 
 	return &AerospikeBackend{
 		cfg:     cfg,

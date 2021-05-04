@@ -49,23 +49,29 @@ const (
 )
 
 type Aerospike struct {
-	DefaultTTL int    `mapstructure:"default_ttl_seconds"`
-	Host       string `mapstructure:"host"`
-	Port       int    `mapstructure:"port"`
-	Namespace  string `mapstructure:"namespace"`
+	DefaultTTL int      `mapstructure:"default_ttl_seconds"`
+	Host       string   `mapstructure:"host"`
+	Hosts      []string `mapstructure:"hosts"`
+	Port       int      `mapstructure:"port"`
+	Namespace  string   `mapstructure:"namespace"`
+	User       string   `mapstructure:"user"`
+	Password   string   `mapstructure:"password"`
 }
 
 func (cfg *Aerospike) validateAndLog() error {
-	if len(cfg.Host) < 1 {
-		return fmt.Errorf("Cannot connect to empty Aerospike host")
+	if len(cfg.Host) < 1 && len(cfg.Hosts) < 1 {
+		return fmt.Errorf("Cannot connect to empty Aerospike host(s)")
 	}
+
 	if cfg.Port <= 0 {
 		return fmt.Errorf("Cannot connect to Aerospike host at port %d", cfg.Port)
 	}
 	log.Infof("config.backend.aerospike.default_ttl_seconds: %d", cfg.DefaultTTL)
 	log.Infof("config.backend.aerospike.host: %s", cfg.Host)
+	log.Infof("config.backend.aerospike.hosts: %v", cfg.Hosts)
 	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
 	log.Infof("config.backend.aerospike.namespace: %s", cfg.Namespace)
+	log.Infof("config.backend.aerospike.user: %s", cfg.User)
 
 	return nil
 }
