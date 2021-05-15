@@ -236,10 +236,10 @@ func TestGetHandler(t *testing.T) {
 			testInput{uuid: "uuid-not-found-and-links-to-no-value"},
 			testOutput{
 				responseCode: http.StatusNotFound,
-				responseBody: "GET /cache uuid=uuid-not-found-and-links-to-no-value:  Key not found\n",
+				responseBody: "GET /cache uuid=uuid-not-found-and-links-to-no-value: Key not found\n",
 				logEntries: []logEntry{
 					{
-						msg: "GET /cache uuid=uuid-not-found-and-links-to-no-value:  Key not found",
+						msg: "GET /cache uuid=uuid-not-found-and-links-to-no-value: Key not found",
 						lvl: logrus.DebugLevel,
 					},
 				},

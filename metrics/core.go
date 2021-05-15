@@ -1,10 +1,11 @@
 package metrics
 
 import (
+	"time"
+
 	"github.com/prebid/prebid-cache/config"
 	influx "github.com/prebid/prebid-cache/metrics/influx"
 	prometheus "github.com/prebid/prebid-cache/metrics/prometheus"
-	"time"
 )
 
 // Metrics provides access to metric engines.
@@ -121,6 +122,18 @@ func (m Metrics) RecordGetBackendError() {
 	}
 }
 
+func (m Metrics) RecordKeyNotFoundError() {
+	for _, me := range m.MetricEngines {
+		me.RecordKeyNotFoundError()
+	}
+}
+
+func (m Metrics) RecordMissingKeyError() {
+	for _, me := range m.MetricEngines {
+		me.RecordMissingKeyError()
+	}
+}
+
 func (m Metrics) RecordConnectionOpen() {
 	for _, me := range m.MetricEngines {
 		me.RecordConnectionOpen()
@@ -191,6 +204,8 @@ type CacheMetrics interface {
 	RecordGetBackendTotal()
 	RecordGetBackendDuration(duration time.Duration)
 	RecordGetBackendError()
+	RecordKeyNotFoundError()
+	RecordMissingKeyError()
 	RecordConnectionOpen()
 	RecordConnectionClosed()
 	RecordCloseConnectionErrors()

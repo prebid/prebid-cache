@@ -22,6 +22,11 @@ func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error
 	if err == nil {
 		b.metrics.RecordGetBackendDuration(time.Since(start))
 	} else {
+		if _, isKeyNotFound := err.(backends.KeyNotFoundError); isKeyNotFound {
+			b.metrics.RecordKeyNotFoundError()
+		} else if _, isMissingUuidError := err.(backends.MissingUuidError); isMissingUuidError {
+			b.metrics.RecordMissingKeyError()
+		}
 		b.metrics.RecordGetBackendError()
 	}
 	return val, err

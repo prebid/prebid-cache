@@ -45,7 +45,7 @@ type GetResponse struct {
 func parseUUID(r *http.Request, allowKeys bool) (string, error, int) {
 	id := r.URL.Query().Get("uuid")
 	if id == "" {
-		return "", errors.New("Missing required parameter uuid"), http.StatusBadRequest
+		return "", backends.MissingUuidError{}, http.StatusBadRequest
 	}
 	if len(id) != 36 && (!allowKeys) {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
@@ -80,12 +80,12 @@ func handleException(w http.ResponseWriter, err error, status int, uuid string) 
 		msg = fmt.Sprintf("GET /cache: %s", err.Error())
 	}
 
-	logError(err, msg)
+	toLogger(err, msg)
 
 	http.Error(w, msg, status)
 }
 
-func logError(err error, msg string) {
+func toLogger(err error, msg string) {
 	if _, isKeyNotFound := err.(backends.KeyNotFoundError); isKeyNotFound {
 		log.Debug(msg)
 	} else {

@@ -119,6 +119,11 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				"Count of total backend get requests to Prebid Server labeled by status.",
 				[]string{StatusKey},
 			),
+			Errors: newCounterVecWithLabels(cfg, registry,
+				"gets_backend",
+				"Count of total backend get requests to Prebid Server labeled by status.",
+				[]string{StatusKey},
+			),
 		},
 		Connections: &PrometheusConnectionMetrics{
 			ConnectionsClosed: newSingleCounter(cfg, registry, ConnOpenedKey, "Count the number of closed connections"),

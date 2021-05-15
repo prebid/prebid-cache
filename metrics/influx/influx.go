@@ -7,7 +7,7 @@ import (
 	"github.com/prebid/prebid-cache/config"
 	"github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
-	"github.com/vrischmann/go-metrics-influxdb"
+	influxdb "github.com/vrischmann/go-metrics-influxdb"
 )
 
 var TenSeconds time.Duration = time.Second * 10
@@ -20,6 +20,7 @@ type InfluxMetrics struct {
 	Gets        *InfluxMetricsEntry
 	PutsBackend *InfluxMetricsEntryByFormat
 	GetsBackend *InfluxMetricsEntry
+	GetsBackErr *InfluxMetricsGetErrors
 	Connections *InfluxConnectionMetrics
 	ExtraTTL    *InfluxExtraTTL
 	MetricsName string
@@ -51,6 +52,18 @@ type InfluxConnectionMetrics struct {
 }
 type InfluxExtraTTL struct {
 	ExtraTTLSeconds metrics.Histogram
+}
+
+type InfluxMetricsGetErrors struct {
+	KeyNotFoundErrors metrics.Meter
+	MissingKeyErrors  metrics.Meter
+}
+
+func NewInfluxGetErrorMetrics(name string, r metrics.Registry) *InfluxMetricsGetErrors {
+	return &InfluxMetricsGetErrors{
+		KeyNotFoundErrors: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.key_not_found", name), r),
+		MissingKeyErrors:  metrics.GetOrRegisterMeter(fmt.Sprintf("%s.missing_key", name), r),
+	}
 }
 
 func NewInfluxMetricsEntry(name string, r metrics.Registry) *InfluxMetricsEntry {
@@ -92,6 +105,7 @@ func CreateInfluxMetrics() *InfluxMetrics {
 		Gets:        NewInfluxMetricsEntry("gets.current_url", r),
 		PutsBackend: NewInfluxMetricsEntryBackendPuts("puts.backend", r),
 		GetsBackend: NewInfluxMetricsEntry("gets.backend", r),
+		GetsBackErr: NewInfluxGetErrorMetrics("gets.backend_error", r),
 		Connections: NewInfluxConnectionMetrics(r),
 		ExtraTTL:    &InfluxExtraTTL{ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000))},
 		MetricsName: MetricsInfluxDB,
@@ -200,6 +214,14 @@ func (m *InfluxMetrics) RecordGetBackendDuration(duration time.Duration) {
 
 func (m *InfluxMetrics) RecordGetBackendError() {
 	m.GetsBackend.Errors.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordKeyNotFoundError() {
+	m.GetsBackErr.KeyNotFoundErrors.Mark(1)
+}
+
+func (m *InfluxMetrics) RecordMissingKeyError() {
+	m.GetsBackErr.MissingKeyErrors.Mark(1)
 }
 
 func (m *InfluxMetrics) RecordConnectionOpen() {

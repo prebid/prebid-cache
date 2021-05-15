@@ -40,6 +40,9 @@ func TestGetErrorMetrics(t *testing.T) {
 
 	assert.Equal(t, int64(1), metricstest.MockCounters["gets.backends.request.error"], "Failed get backend request should have been accounted under the error label")
 	assert.Equal(t, int64(1), metricstest.MockCounters["gets.backends.request.total"], "Failed get backend request should have been accounted in the request totals")
+
+	assert.Equal(t, int64(1), metricstest.MockCounters["gets.backend_error.key_not_found"], "Failed get backend request should have been accounted as a key not found error")
+	assert.Equal(t, int64(1), metricstest.MockCounters["gets.backend_error.missing_key"], "Failed get backend request should have been accounted as a missing key (uuid) error")
 }
 
 func TestPutSuccessMetrics(t *testing.T) {
