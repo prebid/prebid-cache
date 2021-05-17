@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -179,6 +180,38 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 	}
 }
 
+func TestGetsBackendErrorsByType(t *testing.T) {
+
+	m := createPrometheusMetricsForTesting()
+
+	testCaseArray := []struct {
+		description          string
+		expKeyNotFoundErrors float64
+		expMissingKeyErrors  float64
+		recordMetric         func(pm *PrometheusMetrics)
+	}{
+		{
+			description:          "Add to the get backend key not found error counter",
+			expKeyNotFoundErrors: 1,
+			expMissingKeyErrors:  0,
+			recordMetric:         func(pm *PrometheusMetrics) { pm.RecordKeyNotFoundError() },
+		},
+		{
+			description:          "Add to the get backend missing key error",
+			expKeyNotFoundErrors: 1,
+			expMissingKeyErrors:  1,
+			recordMetric:         func(pm *PrometheusMetrics) { pm.RecordMissingKeyError() },
+		},
+	}
+
+	for _, test := range testCaseArray {
+		test.recordMetric(m)
+
+		assertCounterVecValue(t, test.description, m.GetsBackend.ErrorsByType, test.expKeyNotFoundErrors, prometheus.Labels{TypeKey: KeyNotFoundVal})
+		assertCounterVecValue(t, test.description, m.GetsBackend.ErrorsByType, test.expMissingKeyErrors, prometheus.Labels{TypeKey: MissingKeyVal})
+	}
+}
+
 func TestPutBackendMetrics(t *testing.T) {
 	m := createPrometheusMetricsForTesting()
 
@@ -349,23 +382,143 @@ func TestExtraTTLMetrics(t *testing.T) {
 }
 
 func TestMetricCountGatekeeping(t *testing.T) {
-	m := createPrometheusMetricsForTesting()
+	expectedCardinalityCount := 26
+	actualCardinalityCount := 0
 
-	// Gather All Metrics
+	// Run test
+	m := createPrometheusMetricsForTesting()
 	metricFamilies, err := m.Registry.Gather()
 	assert.NoError(t, err, "gather metics")
 
-	// Summarize By Adapter Cardinality
-	// - This requires metrics to be preloaded. We don't preload account metrics, so we can't test those.
-	generalCardinalityCount := 0
-
+	// Assertions
 	for _, metricFamily := range metricFamilies {
-		generalCardinalityCount += len(metricFamily.GetMetric())
+		actualCardinalityCount += len(metricFamily.GetMetric())
 	}
 
-	// Verify General Cardinality
-	// - This assertion provides a warning for newly added high-cardinality non-adapter specific metrics. The hardcoded limit
+	// This assertion provides a warning for newly added high-cardinality non-adapter specific metrics. The hardcoded limit
 	//   is an arbitrary soft ceiling. Thought should be given as to the value of the new metrics if you find yourself
 	//   needing to increase this number.
-	assert.True(t, generalCardinalityCount <= 100, fmt.Sprintf("General Cardinality. Expected to hace less than 24 metrics, we have: %d \n", generalCardinalityCount))
+	assert.True(t, actualCardinalityCount <= expectedCardinalityCount, "General Cardinality doesn't match")
+}
+
+func TestListedMetrics(t *testing.T) {
+	type metricData struct {
+		metricDesc        string
+		metricLabelValues []string
+	}
+	expectedMetricList := map[string]metricData{
+		//Puts metrics
+		PutRequestMet: metricData{
+			metricDesc: "Count of total requests to Prebid Server labeled by status.",
+			metricLabelValues: []string{
+				StatusKey + " = " + BadRequestVal,
+				StatusKey + " = " + ErrorVal,
+				StatusKey + " = " + TotalsVal,
+			},
+		},
+		PutReqDurMet: metricData{
+			metricDesc: "Duration in seconds Prebid Cache takes to process put requests.",
+		},
+
+		//Gets metrics
+		GetRequestMet: metricData{
+			metricDesc: "Count of total get requests to Prebid Server labeled by status.",
+			metricLabelValues: []string{
+				StatusKey + " = " + BadRequestVal,
+				StatusKey + " = " + ErrorVal,
+				StatusKey + " = " + TotalsVal,
+			},
+		},
+		GetReqDurMet: metricData{
+			metricDesc: "Duration in seconds Prebid Cache takes to process get requests.",
+		},
+
+		//PutsBackend metrics
+		PutBackendMet: metricData{
+			metricDesc: "Count of total requests to Prebid Cache labeled by format, status and whether or not it comes with TTL",
+			metricLabelValues: []string{
+				FormatKey + " = " + DefinesTTLVal,
+				FormatKey + " = " + ErrorVal,
+				FormatKey + " = " + InvFormatVal,
+				FormatKey + " = " + JsonVal,
+				FormatKey + " = " + XmlVal,
+			},
+		},
+		PutBackDurMet: metricData{
+			metricDesc: "Duration in seconds Prebid Cache takes to process backend put requests.",
+		},
+		PutBackSizeMet: metricData{
+			metricDesc: "Size in bytes of a backend put request.",
+		},
+
+		//GetsBackend metrics
+		GetBackendMet: metricData{
+			metricDesc: "Count of total backend get requests to Prebid Server labeled by status.",
+			metricLabelValues: []string{
+				StatusKey + " = " + BadRequestVal,
+				StatusKey + " = " + ErrorVal,
+				StatusKey + " = " + TotalsVal,
+			},
+		},
+		GetBackendErr: metricData{
+			metricDesc: "Account for the most frequent type of get errors in the backend",
+			metricLabelValues: []string{
+				TypeKey + " = " + KeyNotFoundVal,
+				TypeKey + " = " + MissingKeyVal,
+			},
+		},
+		GetBackDurMet: metricData{
+			metricDesc: "Duration in seconds Prebid Cache takes to process backend get requests.",
+		},
+
+		//Connections metrics
+		ConnClosedMet: metricData{
+			metricDesc: "Count the number of closed connections",
+		},
+		ConnErrorKey: metricData{
+			metricDesc: "Count the number of connection accept errors or connection close errors",
+			metricLabelValues: []string{
+				ConnErrorKey + " = accept",
+				ConnErrorKey + " = close",
+			},
+		},
+		ConnOpenedMet: metricData{
+			metricDesc: "Count the number of open connections",
+		},
+
+		//ExtraTTL metrics
+		ExtraTTLMet: metricData{
+			metricDesc: "Extra time to live in seconds specified",
+		},
+	}
+
+	// Run test
+	m := createPrometheusMetricsForTesting()
+
+	// Assert results
+	metricFamilies, err := m.Registry.Gather()
+	assert.NoError(t, err, "gather metics")
+
+	for _, metricFamily := range metricFamilies {
+		metName := strings.TrimPrefix(metricFamily.GetName(), "prebid_cache_")
+		mData, found := expectedMetricList[metName]
+
+		if assert.True(t, found, "Metric %s not found in the actual metric list", metName) {
+			assert.Equal(t, mData.metricDesc, metricFamily.GetHelp(), "Metric %s help data does not match.", metName)
+		}
+
+		if len(mData.metricLabelValues) > 0 {
+			metrics := metricFamily.GetMetric()
+			actualMetricList := []string{}
+
+			for _, metric := range metrics {
+				metricLabels := metric.GetLabel()
+
+				for _, labelPair := range metricLabels {
+					actualMetricList = append(actualMetricList, fmt.Sprintf("%s = %s", labelPair.GetName(), labelPair.GetValue()))
+				}
+			}
+			assert.ElementsMatch(t, mData.metricLabelValues, actualMetricList, "Metric %s. Label list does not match expected", metName)
+		}
+	}
 }

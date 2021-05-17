@@ -2,7 +2,7 @@ package decorators
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/prebid/prebid-cache/backends"
@@ -10,14 +10,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type failedBackend struct{}
+type failedBackend struct {
+	returnError error
+}
 
 func (b *failedBackend) Get(ctx context.Context, key string) (string, error) {
-	return "", fmt.Errorf("Failure")
+	return "", b.returnError
 }
 
 func (b *failedBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	return fmt.Errorf("Failure")
+	return b.returnError
 }
 
 func TestGetSuccessMetrics(t *testing.T) {
@@ -34,15 +36,66 @@ func TestGetSuccessMetrics(t *testing.T) {
 
 func TestGetErrorMetrics(t *testing.T) {
 
+	type testCase struct {
+		desc         string
+		inMetricName string
+		outError     error
+	}
+	testGroups := []struct {
+		groupName string
+		tests     []testCase
+	}{
+		{
+			"Any other error",
+			[]testCase{
+				{
+					"Failed get backend request should be accounted under the error label",
+					"gets.backends.request.error",
+					errors.New("Other backend error"),
+				},
+			},
+		},
+		{
+			"Special errors",
+			[]testCase{
+				{
+					"Failed get backend request should be accounted as a key not found error",
+					"gets.backend_error.key_not_found",
+					backends.KeyNotFoundError{},
+				},
+				{
+					"Failed get backend request should be accounted as a missing key (uuid) error",
+					"gets.backend_error.missing_key",
+					backends.MissingUuidError{},
+				},
+			},
+		},
+	}
+
+	// Create metrics
 	m := metricstest.CreateMockMetrics()
-	backend := LogMetrics(&failedBackend{}, m)
-	backend.Get(context.Background(), "foo")
 
-	assert.Equal(t, int64(1), metricstest.MockCounters["gets.backends.request.error"], "Failed get backend request should have been accounted under the error label")
-	assert.Equal(t, int64(1), metricstest.MockCounters["gets.backends.request.total"], "Failed get backend request should have been accounted in the request totals")
+	errsTotal := 0
+	for _, group := range testGroups {
+		for _, test := range group.tests {
+			// Create backend, assign metrics and defective test backend
+			backend := LogMetrics(&failedBackend{test.outError}, m)
 
-	assert.Equal(t, int64(1), metricstest.MockCounters["gets.backend_error.key_not_found"], "Failed get backend request should have been accounted as a key not found error")
-	assert.Equal(t, int64(1), metricstest.MockCounters["gets.backend_error.missing_key"], "Failed get backend request should have been accounted as a missing key (uuid) error")
+			// Run test
+			backend.Get(context.Background(), "foo")
+			errsTotal++
+
+			// Assert
+			if group.groupName == "Special errors" {
+				assert.Equal(t, int64(1), metricstest.MockCounters[test.inMetricName], test.desc)
+			}
+			assert.Equal(t, int64(errsTotal), metricstest.MockCounters["gets.backends.request.error"], test.desc)
+			assert.Equal(t, int64(errsTotal), metricstest.MockCounters["gets.backends.request.total"], test.desc)
+		}
+	}
+	//assert.Equal(t, int64(1), metricstest.MockCounters["gets.backends.request.error"], "Failed get backend request should have been accounted under the error label")
+	//assert.Equal(t, int64(1), metricstest.MockCounters["gets.backend_error.key_not_found"], "Failed get backend request should have been accounted as a key not found error")
+	//assert.Equal(t, int64(1), metricstest.MockCounters["gets.backend_error.missing_key"], "Failed get backend request should have been accounted as a missing key (uuid) error")
 }
 
 func TestPutSuccessMetrics(t *testing.T) {
@@ -68,7 +121,7 @@ func TestTTLDefinedMetrics(t *testing.T) {
 func TestPutErrorMetrics(t *testing.T) {
 
 	m := metricstest.CreateMockMetrics()
-	backend := LogMetrics(&failedBackend{}, m)
+	backend := LogMetrics(&failedBackend{errors.New("Failure")}, m)
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
 
 	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.xml"], "An xml request should have been logged.")

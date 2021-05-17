@@ -9,6 +9,7 @@ func preloadLabelValues(m *PrometheusMetrics) {
 	preloadLabelValuesForCounter(m.Gets.RequestStatus, map[string][]string{StatusKey: {ErrorVal, BadRequestVal, TotalsVal}})
 	preloadLabelValuesForCounter(m.PutsBackend.PutBackendRequests, map[string][]string{FormatKey: {XmlVal, JsonVal, InvFormatVal, DefinesTTLVal, ErrorVal}})
 	preloadLabelValuesForCounter(m.GetsBackend.RequestStatus, map[string][]string{StatusKey: {ErrorVal, BadRequestVal, TotalsVal}})
+	preloadLabelValuesForCounter(m.GetsBackend.ErrorsByType, map[string][]string{TypeKey: {KeyNotFoundVal, MissingKeyVal}})
 	preloadLabelValuesForCounter(m.Connections.ConnectionsErrors, map[string][]string{ConnErrorKey: {CloseVal, AcceptVal}})
 }
 
