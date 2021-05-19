@@ -12,6 +12,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -196,10 +197,10 @@ func TestGetHandler(t *testing.T) {
 			testInput{uuid: ""},
 			testOutput{
 				responseCode: http.StatusBadRequest,
-				responseBody: "GET /cache: Missing required parameter uuid\n",
+				responseBody: "GET /cache: missing required parameter uuid\n",
 				logEntries: []logEntry{
 					{
-						msg: "GET /cache: Missing required parameter uuid",
+						msg: "GET /cache: missing required parameter uuid",
 						lvl: logrus.ErrorLevel,
 					},
 				},
@@ -507,7 +508,7 @@ type mockBackend struct {
 func (b *mockBackend) Get(ctx context.Context, key string) (string, error) {
 	v, ok := b.data[key]
 	if !ok {
-		return "", backends.KeyNotFoundError{}
+		return "", utils.KeyNotFoundError{}
 	}
 	return v, nil
 }

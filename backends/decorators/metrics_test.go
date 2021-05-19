@@ -7,6 +7,7 @@ import (
 
 	"github.com/prebid/prebid-cache/backends"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
+	"github.com/prebid/prebid-cache/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,12 +62,12 @@ func TestGetErrorMetrics(t *testing.T) {
 				{
 					"Failed get backend request should be accounted as a key not found error",
 					"gets.backend_error.key_not_found",
-					backends.KeyNotFoundError{},
+					utils.KeyNotFoundError{},
 				},
 				{
 					"Failed get backend request should be accounted as a missing key (uuid) error",
 					"gets.backend_error.missing_key",
-					backends.MissingUuidError{},
+					utils.MissingKeyError{},
 				},
 			},
 		},
@@ -93,9 +94,6 @@ func TestGetErrorMetrics(t *testing.T) {
 			assert.Equal(t, int64(errsTotal), metricstest.MockCounters["gets.backends.request.total"], test.desc)
 		}
 	}
-	//assert.Equal(t, int64(1), metricstest.MockCounters["gets.backends.request.error"], "Failed get backend request should have been accounted under the error label")
-	//assert.Equal(t, int64(1), metricstest.MockCounters["gets.backend_error.key_not_found"], "Failed get backend request should have been accounted as a key not found error")
-	//assert.Equal(t, int64(1), metricstest.MockCounters["gets.backend_error.missing_key"], "Failed get backend request should have been accounted as a missing key (uuid) error")
 }
 
 func TestPutSuccessMetrics(t *testing.T) {

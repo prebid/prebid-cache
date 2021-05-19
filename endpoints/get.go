@@ -10,6 +10,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -45,12 +46,12 @@ type GetResponse struct {
 func parseUUID(r *http.Request, allowKeys bool) (string, error, int) {
 	id := r.URL.Query().Get("uuid")
 	if id == "" {
-		return "", backends.MissingUuidError{}, http.StatusBadRequest
+		return "", utils.MissingKeyError{}, http.StatusBadRequest
 	}
 	if len(id) != 36 && (!allowKeys) {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 		// ones before even checking the backend.
-		return id, errors.New("invalid uuid length"), http.StatusNotFound
+		return id, utils.KeyLengthError{}, http.StatusNotFound
 	}
 	return id, nil, http.StatusOK
 }
@@ -86,7 +87,7 @@ func handleException(w http.ResponseWriter, err error, status int, uuid string) 
 }
 
 func toLogger(err error, msg string) {
-	if _, isKeyNotFound := err.(backends.KeyNotFoundError); isKeyNotFound {
+	if _, isKeyNotFound := err.(utils.KeyNotFoundError); isKeyNotFound {
 		log.Debug(msg)
 	} else {
 		log.Error(msg)
