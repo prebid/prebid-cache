@@ -127,10 +127,10 @@ func formatAerospikeError(err error) error {
 	if err != nil {
 		if aerr, ok := err.(as_types.AerospikeError); ok {
 			if aerr.ResultCode() == as_types.KEY_NOT_FOUND_ERROR {
-				return KeyNotFoundError{"Aerospike"}
+				return KeyNotFoundError{}
 			}
 		}
-		return errors.New("Aerospike " + err.Error())
+		return errors.New(err.Error())
 	}
 	return err
 }
