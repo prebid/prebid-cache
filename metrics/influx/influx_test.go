@@ -1,7 +1,9 @@
 package metrics
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/rcrowley/go-metrics"
 	"github.com/stretchr/testify/assert"
@@ -66,5 +68,236 @@ func TestRegisteredInfluxMetrics(t *testing.T) {
 			_, correctMetricType = actualMetricObject.(metrics.Histogram)
 		}
 		assert.True(t, correctMetricType, "Metric %s was expected to be of type %s but it isn't", test.metricName, test.expectedMetricObject)
+	}
+}
+
+func TestRecordExtraTTLSeconds(t *testing.T) {
+	testCases := []struct {
+		description      string
+		inTtlSeconds     float64
+		outRecordedTtl   int64
+		outElemsInBucket int64
+	}{
+		{
+			description:    "First update, five time-to-live seconds",
+			inTtlSeconds:   float64(5),
+			outRecordedTtl: int64(5),
+		},
+		{
+			description:    "second update, zero time-to-live seconds",
+			inTtlSeconds:   float64(0),
+			outRecordedTtl: int64(0),
+		},
+		{
+			description:    "third update, five time-to-live seconds again",
+			inTtlSeconds:   float64(5),
+			outRecordedTtl: int64(5),
+		},
+	}
+
+	for _, test := range testCases {
+		m := CreateInfluxMetrics()
+
+		//Run test
+		m.RecordExtraTTLSeconds(test.inTtlSeconds)
+
+		//Assertions
+		assert.Equal(t, test.outRecordedTtl, m.ExtraTTL.ExtraTTLSeconds.Sum(), test.description)
+	}
+}
+
+func TestDurationRecorders(t *testing.T) {
+	var fiveSeconds time.Duration = time.Second * 5
+
+	m := CreateInfluxMetrics()
+
+	type testCase struct {
+		description    string
+		runTest        func(im *InfluxMetrics)
+		metricToAssert interface{}
+	}
+
+	testGroups := []struct {
+		groupDesc string
+		testCases []testCase
+	}{
+		{
+			"m.Puts",
+			[]testCase{
+				{
+					description:    "Five second RecordPutDuration",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutDuration(fiveSeconds) },
+					metricToAssert: m.Puts.Duration,
+				},
+				{
+					description:    "record a generic put error with RecordPutError",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutError() },
+					metricToAssert: m.Puts.Errors,
+				},
+				{
+					description:    "record an incoming bad put request with RecordPutBadRequest",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutBadRequest() },
+					metricToAssert: m.Puts.BadRequest,
+				},
+				{
+					description:    "record an incoming non-bad put request with RecordPutTotal",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutTotal() },
+					metricToAssert: m.Puts.Request,
+				},
+			},
+		},
+		{
+			"m.Gets",
+			[]testCase{
+				{
+					description:    "Five second RecordGetDuration",
+					runTest:        func(im *InfluxMetrics) { im.RecordGetDuration(fiveSeconds) },
+					metricToAssert: m.Gets.Duration,
+				},
+				{
+					description:    "record a generic put error with RecordGetError",
+					runTest:        func(im *InfluxMetrics) { im.RecordGetError() },
+					metricToAssert: m.Gets.Errors,
+				},
+				{
+					description:    "record an incoming bad put request with RecordGetBadRequest",
+					runTest:        func(im *InfluxMetrics) { im.RecordGetBadRequest() },
+					metricToAssert: m.Gets.BadRequest,
+				},
+				{
+					description:    "record an incoming non-bad put request with RecordGetTotal",
+					runTest:        func(im *InfluxMetrics) { im.RecordGetTotal() },
+					metricToAssert: m.Gets.Request,
+				},
+			},
+		},
+		{
+			"m.PutsBackend",
+			[]testCase{
+				{
+					description:    "Five second RecordPutBackendDuration",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendDuration(fiveSeconds) },
+					metricToAssert: m.PutsBackend.Duration,
+				},
+				{
+					description:    "record a generic put error with RecordPutBackendError",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendError() },
+					metricToAssert: m.PutsBackend.Errors,
+				},
+				{
+					description:    "record a valid XML put request with RecordPutBackendXml",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendXml() },
+					metricToAssert: m.PutsBackend.XmlRequest,
+				},
+				{
+					description:    "record a valid JSON put request with RecordPutBackendJson",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendJson() },
+					metricToAssert: m.PutsBackend.JsonRequest,
+				},
+				{
+					description:    "record an invalid put request with RecordPutBackendInvalid",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendInvalid() },
+					metricToAssert: m.PutsBackend.InvalidRequest,
+				},
+				{
+					description:    "valid put request specifies its time to live with RecordPutBackendDefTTL",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendDefTTL() },
+					metricToAssert: m.PutsBackend.DefinesTTL,
+				},
+				{
+					description:    "valid put request specifies its size in bytes with RecordPutBackendSize",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendSize(float64(1)) },
+					metricToAssert: m.PutsBackend.RequestLength,
+				},
+			},
+		},
+		{
+			"m.GetsBackend",
+			[]testCase{
+				{
+					description:    "Five second RecordGetBackendDuration",
+					runTest:        func(im *InfluxMetrics) { im.RecordGetBackendDuration(fiveSeconds) },
+					metricToAssert: m.GetsBackend.Duration,
+				},
+				{
+					description:    "record a generic get error with RecordGetBackendError",
+					runTest:        func(im *InfluxMetrics) { im.RecordGetBackendError() },
+					metricToAssert: m.GetsBackend.Errors,
+				},
+				{
+					description:    "record an incoming, valid get request with RecordGetBackendTotal",
+					runTest:        func(im *InfluxMetrics) { im.RecordGetBackendTotal() },
+					metricToAssert: m.GetsBackend.Request,
+				},
+			},
+		},
+		{
+			"m.GetsBackErr",
+			[]testCase{
+				{
+					description:    "record a key not found get request error with RecordKeyNotFoundError",
+					runTest:        func(im *InfluxMetrics) { im.RecordKeyNotFoundError() },
+					metricToAssert: m.GetsBackErr.KeyNotFoundErrors,
+				},
+				{
+					description:    "record a missing key, get request error with RecordMissingKeyError",
+					runTest:        func(im *InfluxMetrics) { im.RecordMissingKeyError() },
+					metricToAssert: m.GetsBackErr.MissingKeyErrors,
+				},
+			},
+		},
+		{
+			"m.Connections",
+			[]testCase{
+				{
+					description:    "Increase counter when a connection opens",
+					runTest:        func(im *InfluxMetrics) { im.RecordConnectionOpen() },
+					metricToAssert: m.Connections.ActiveConnections,
+				},
+				{
+					description:    "Decrease counter when a connection closes",
+					runTest:        func(im *InfluxMetrics) { im.RecordConnectionClosed() },
+					metricToAssert: m.Connections.ActiveConnections,
+				},
+				{
+					description:    "record a connection that suddenly closed with an error",
+					runTest:        func(im *InfluxMetrics) { im.RecordCloseConnectionErrors() },
+					metricToAssert: m.Connections.ConnectionCloseErrors,
+				},
+			},
+		},
+		{
+			"m.ExtraTTL",
+			[]testCase{
+				{
+					description:    "Increase counter when a connection opens",
+					runTest:        func(im *InfluxMetrics) { im.RecordExtraTTLSeconds(float64(1)) },
+					metricToAssert: m.ExtraTTL.ExtraTTLSeconds,
+				},
+			},
+		},
+	}
+	for _, group := range testGroups {
+		for _, test := range group.testCases {
+			test.runTest(m)
+
+			// In order to assert, find out what's the type of Influx metric
+			if timer, isTimer := test.metricToAssert.(metrics.Timer); isTimer {
+				assert.Equal(t, fiveSeconds.Nanoseconds(), timer.Sum(), "Group '%s'. Desc: %s", group.groupDesc, test.description)
+
+			} else if meter, isMeter := test.metricToAssert.(metrics.Meter); isMeter {
+				assert.Equal(t, int64(1), meter.Count(), "Group '%s'. Desc: %s", group.groupDesc, test.description)
+
+			} else if histogram, isHistogram := test.metricToAssert.(metrics.Histogram); isHistogram {
+				assert.Equal(t, int64(1), histogram.Sum(), "Group '%s'. Desc: %s", group.groupDesc, test.description)
+
+			} else if counter, isCounter := test.metricToAssert.(metrics.Counter); isCounter {
+				if strings.HasPrefix(test.description, "Increase") {
+					assert.Equal(t, int64(1), counter.Count(), "Group '%s'. Desc: %s", group.groupDesc, test.description)
+				} else {
+					assert.Equal(t, int64(0), counter.Count(), "Group '%s'. Desc: %s", group.groupDesc, test.description)
+				}
+			}
+		}
 	}
 }
