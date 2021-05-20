@@ -95,12 +95,8 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			defer cancel()
 			// Only allow setting a provided key if configured (and ensure a key is provided).
 			if allowKeys && len(p.Key) > 0 {
-				s, err := backend.Get(ctx, p.Key)
-				if err != nil || len(s) == 0 {
-					resps.Responses[i].UUID = p.Key
-				} else {
-					resps.Responses[i].UUID = ""
-				}
+				resps.Responses[i].UUID = p.Key
+				// Record put that comes with a Key
 			}
 			// If we have a blank UUID, don't store anything.
 			// Eventually we may want to provide error details, but as of today this is the only non-fatal error
