@@ -4,7 +4,7 @@ This application stores short-term data for use in Prebid Server and Prebid.js, 
 
 ## Installation
 
-First install Go version 1.14 or newer.
+First install Go version 1.15 or newer.
 
 Note that prebid-cache is using Go modules. We officially support the most recent two major versions of the Go runtime. However, if you'd like to use a version <1.13 and are inside `GOPATH` `GO111MODULE` needs to be set to `GO111MODULE=on`.
 

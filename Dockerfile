@@ -2,10 +2,10 @@ FROM ubuntu:18.04 AS build
 RUN apt-get update && \
     apt-get -y upgrade && \
     apt-get install -y wget
+ENV GO_INSTALLER=go1.16.4.linux-amd64.tar.gz
 RUN cd /tmp && \
-    wget https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz && \
-    tar -xf go1.14.2.linux-amd64.tar.gz && \
-    mv go /usr/local
+    wget https://dl.google.com/go/$GO_INSTALLER && \
+    tar -C /usr/local -xzf $GO_INSTALLER
 RUN mkdir -p /app/prebid-cache/
 WORKDIR /app/prebid-cache/
 ENV GOROOT=/usr/local/go
