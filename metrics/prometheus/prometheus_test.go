@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const TenSeconds time.Duration = time.Second * 10
+
 func createPrometheusMetricsForTesting() *PrometheusMetrics {
 	return CreatePrometheusMetrics(config.PrometheusMetrics{
 		Port:      8080,
@@ -67,8 +69,6 @@ func TestPrometheusGetEngineRegistry(t *testing.T) {
 }
 
 func TestPrometheusRequestStatusMetric(t *testing.T) {
-	var TenSeconds time.Duration = time.Second * 10
-
 	m := createPrometheusMetricsForTesting()
 
 	type testCaseObject struct {
@@ -180,7 +180,6 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 }
 
 func TestPutBackendMetrics(t *testing.T) {
-	var TenSeconds time.Duration = time.Second * 10
 	m := createPrometheusMetricsForTesting()
 
 	type testCaseObject struct {
