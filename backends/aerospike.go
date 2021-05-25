@@ -3,9 +3,9 @@ package backends
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	as "github.com/aerospike/aerospike-client-go"
+	as_types "github.com/aerospike/aerospike-client-go/types"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
 	log "github.com/sirupsen/logrus"
@@ -45,12 +45,29 @@ type AerospikeBackend struct {
 }
 
 func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *AerospikeBackend {
-	client, err := as.NewClient(cfg.Host, cfg.Port)
+	var hosts []*as.Host
+
+	clientPolicy := as.NewClientPolicy()
+	// cfg.User and cfg.Password are optional parameters
+	// if left blank in the config, they will default to the empty
+	// string and be ignored
+	clientPolicy.User = cfg.User
+	clientPolicy.Password = cfg.Password
+
+	if len(cfg.Host) > 1 {
+		hosts = append(hosts, as.NewHost(cfg.Host, cfg.Port))
+		log.Info("config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts")
+	}
+	for _, host := range cfg.Hosts {
+		hosts = append(hosts, as.NewHost(host, cfg.Port))
+	}
+
+	client, err := as.NewClientWithPolicyAndHost(clientPolicy, hosts...)
 	if err != nil {
 		log.Fatalf("%v", formatAerospikeError(err).Error())
 		panic("AerospikeBackend failure. This shouldn't happen.")
 	}
-	log.Infof("Connected to Aerospike at %s:%d", cfg.Host, cfg.Port)
+	log.Infof("Connected to Aerospike host(s) %v on port %d", append(cfg.Hosts, cfg.Host), cfg.Port)
 
 	return &AerospikeBackend{
 		cfg:     cfg,
@@ -62,25 +79,25 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) {
 	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
 	if err != nil {
-		return "", formatAerospikeError(err, "GET")
+		return "", formatAerospikeError(err)
 	}
 	rec, err := a.client.Get(asKey)
 	if err != nil {
-		return "", formatAerospikeError(err, "GET")
+		return "", formatAerospikeError(err)
 	}
 	if rec == nil {
-		return "", formatAerospikeError(errors.New("Nil record"), "GET")
+		return "", formatAerospikeError(errors.New("Nil record"))
 	}
 	a.metrics.RecordExtraTTLSeconds(float64(rec.Expiration))
 
 	value, found := rec.Bins[binValue]
 	if !found {
-		return "", formatAerospikeError(errors.New("No 'value' bucket found"), "GET")
+		return "", formatAerospikeError(errors.New("No 'value' bucket found"))
 	}
 
 	str, isString := value.(string)
 	if !isString {
-		return "", formatAerospikeError(errors.New("Unexpected non-string value found"), "GET")
+		return "", formatAerospikeError(errors.New("Unexpected non-string value found"))
 	}
 
 	return str, nil
@@ -89,7 +106,7 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
 	if err != nil {
-		return formatAerospikeError(err, "PUT")
+		return formatAerospikeError(err)
 	}
 
 	if ttlSeconds == 0 {
@@ -100,21 +117,20 @@ func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, tt
 	policy := &as.WritePolicy{Expiration: uint32(ttlSeconds)}
 
 	if err := a.client.Put(policy, asKey, bins); err != nil {
-		return formatAerospikeError(err, "PUT")
+		return formatAerospikeError(err)
 	}
 
 	return nil
 }
 
-func formatAerospikeError(err error, caller ...string) error {
+func formatAerospikeError(err error) error {
 	if err != nil {
-		msg := "Aerospike"
-		for _, str := range caller {
-			if len(str) > 0 {
-				msg = fmt.Sprintf("%s %s", msg, str)
+		if aerr, ok := err.(as_types.AerospikeError); ok {
+			if aerr.ResultCode() == as_types.KEY_NOT_FOUND_ERROR {
+				return KeyNotFoundError{}
 			}
 		}
-		return fmt.Errorf("%s: %s", msg, err.Error())
+		return errors.New(err.Error())
 	}
 	return err
 }

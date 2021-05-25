@@ -106,7 +106,41 @@ func TestNewAerospikeBackend(t *testing.T) {
 		expectedLogEntries []logEntry
 	}{
 		{
-			desc: "Unable to connect fakeTestUrl panic and log fatal error",
+			desc: "Unable to connect hosts fakeTestUrl panic and log fatal error when passed additional hosts",
+			inCfg: config.Aerospike{
+				Hosts: []string{"foo.com", "bat.com"},
+				Port:  8888,
+			},
+			expectPanic: true,
+			expectedLogEntries: []logEntry{
+
+				{
+					msg: "Failed to connect to host(s): [foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
+					lvl: logrus.FatalLevel,
+				},
+			},
+		},
+		{
+			desc: "Unable to connect host and hosts panic and log fatal error when passed additional hosts",
+			inCfg: config.Aerospike{
+				Host:  "fakeTestUrl.foo",
+				Hosts: []string{"foo.com", "bat.com"},
+				Port:  8888,
+			},
+			expectPanic: true,
+			expectedLogEntries: []logEntry{
+				{
+					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "Failed to connect to host(s): [fakeTestUrl.foo:8888 foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
+					lvl: logrus.FatalLevel,
+				},
+			},
+		},
+		{
+			desc: "Unable to connect hoost panic and log fatal error",
 			inCfg: config.Aerospike{
 				Host: "fakeTestUrl.foo",
 				Port: 8888,
@@ -114,7 +148,11 @@ func TestNewAerospikeBackend(t *testing.T) {
 			expectPanic: true,
 			expectedLogEntries: []logEntry{
 				{
-					msg: "Aerospike: Failed to connect to host(s): [fakeTestUrl.foo:8888]; error: Connecting to the cluster timed out.",
+					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "Failed to connect to host(s): [fakeTestUrl.foo:8888]; error: Connecting to the cluster timed out.",
 					lvl: logrus.FatalLevel,
 				},
 			},
@@ -130,7 +168,7 @@ func TestNewAerospikeBackend(t *testing.T) {
 
 	for _, test := range testCases {
 		// Run test
-		assert.Panics(t, func() { NewAerospikeBackend(test.inCfg, nil) }, "Aerospike library's NewClient() should have thrown an error and didn't, hence the panic didn't happen")
+		assert.Panics(t, func() { NewAerospikeBackend(test.inCfg, nil) }, "Aerospike library's NewClientWithPolicyAndHost() should have thrown an error and didn't, hence the panic didn't happen")
 		if assert.Len(t, hook.Entries, len(test.expectedLogEntries), test.desc) {
 			for i := 0; i < len(test.expectedLogEntries); i++ {
 				assert.Equal(t, test.expectedLogEntries[i].msg, hook.Entries[i].Message, test.desc)
@@ -148,7 +186,6 @@ func TestFormatAerospikeError(t *testing.T) {
 	testCases := []struct {
 		desc        string
 		inErr       error
-		inCallers   []string
 		expectedErr error
 	}{
 		{
@@ -159,29 +196,31 @@ func TestFormatAerospikeError(t *testing.T) {
 		{
 			desc:        "Non-nil error, print without a caller",
 			inErr:       fmt.Errorf("client.Get returned nil record"),
-			expectedErr: fmt.Errorf("Aerospike: client.Get returned nil record"),
+			expectedErr: fmt.Errorf("client.Get returned nil record"),
 		},
 		{
 			desc:        "Non-nil error, comes with a caller",
 			inErr:       fmt.Errorf("client.Get returned nil record"),
-			inCallers:   []string{"TEST_CASE"},
-			expectedErr: fmt.Errorf("Aerospike TEST_CASE: client.Get returned nil record"),
+			expectedErr: fmt.Errorf("client.Get returned nil record"),
 		},
 		{
 			desc:        "Non-nil error, comes with more than one callers",
 			inErr:       fmt.Errorf("client.Get returned nil record"),
-			inCallers:   []string{"TEST", "CASE"},
-			expectedErr: fmt.Errorf("Aerospike TEST CASE: client.Get returned nil record"),
+			expectedErr: fmt.Errorf("client.Get returned nil record"),
 		},
 		{
 			desc:        "Aerospike error, comes with a caller",
 			inErr:       as_types.NewAerospikeError(as_types.SERVER_NOT_AVAILABLE),
-			inCallers:   []string{"TEST_CASE"},
-			expectedErr: fmt.Errorf("Aerospike TEST_CASE: Server is not accepting requests."),
+			expectedErr: fmt.Errorf("Server is not accepting requests."),
+		},
+		{
+			desc:        "Aerospike KEY_NOT_FOUND_ERROR error, attach our GetKeyNotFound constant",
+			inErr:       as_types.NewAerospikeError(as_types.KEY_NOT_FOUND_ERROR),
+			expectedErr: fmt.Errorf("Key not found"),
 		},
 	}
 	for _, test := range testCases {
-		actualErr := formatAerospikeError(test.inErr, test.inCallers...)
+		actualErr := formatAerospikeError(test.inErr)
 		if test.expectedErr == nil {
 			assert.Nil(t, actualErr, test.desc)
 		} else {
@@ -206,31 +245,31 @@ func TestClientGet(t *testing.T) {
 			desc:              "AerospikeBackend.Get() throws error when trying to generate new key",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_KEY_GEN_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "Aerospike GET: Not authenticated",
+			expectedErrorMsg:  "Not authenticated",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error when 'client.Get(..)' gets called",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_GET_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "Aerospike GET: Key not found",
+			expectedErrorMsg:  "Key not found",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error when 'client.Get(..)' returns a nil record",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_NIL_RECORD_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "Aerospike GET: Nil record",
+			expectedErrorMsg:  "Nil record",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error no BIN_VALUE bucket is found",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_NO_BUCKET_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "Aerospike GET: No 'value' bucket found",
+			expectedErrorMsg:  "No 'value' bucket found",
 		},
 		{
 			desc:              "AerospikeBackend.Get() returns a record that does not store a string",
 			inAerospikeClient: NewErrorProneAerospikeClient("TEST_NON_STRING_VALUE_ERROR"),
 			expectedValue:     "",
-			expectedErrorMsg:  "Aerospike GET: Unexpected non-string value found",
+			expectedErrorMsg:  "Unexpected non-string value found",
 		},
 		{
 			desc:              "AerospikeBackend.Get() does not throw error",
@@ -278,7 +317,7 @@ func TestClientPut(t *testing.T) {
 			inKey:             "testKey",
 			inValueToStore:    "not default value",
 			expectedStoredVal: "",
-			expectedErrorMsg:  "Aerospike PUT: Not authenticated",
+			expectedErrorMsg:  "Not authenticated",
 		},
 		{
 			desc:              "AerospikeBackend.Put() throws error when 'client.Put(..)' gets called",
@@ -286,7 +325,7 @@ func TestClientPut(t *testing.T) {
 			inKey:             "testKey",
 			inValueToStore:    "not default value",
 			expectedStoredVal: "",
-			expectedErrorMsg:  "Aerospike PUT: Key already exists",
+			expectedErrorMsg:  "Key already exists",
 		},
 		{
 			desc:              "AerospikeBackend.Put() does not throw error",

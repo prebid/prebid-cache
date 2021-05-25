@@ -17,7 +17,7 @@ func NewGetHandler(backend backends.Backend, allowKeys bool) func(http.ResponseW
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		id, err, status := parseUUID(r, allowKeys)
 		if err != nil {
-			respondAndLogError(w, err, status)
+			handleException(w, err, status, id)
 			return
 		}
 
@@ -26,12 +26,12 @@ func NewGetHandler(backend backends.Backend, allowKeys bool) func(http.ResponseW
 
 		value, err := backend.Get(ctx, id)
 		if err != nil {
-			respondAndLogError(w, fmt.Errorf("uuid=%s: %s", id, err.Error()), http.StatusNotFound)
+			handleException(w, err, http.StatusNotFound, id)
 			return
 		}
 
 		if err, status := writeGetResponse(w, id, value); err != nil {
-			respondAndLogError(w, err, status)
+			handleException(w, err, status, id)
 			return
 		}
 		return
@@ -50,7 +50,7 @@ func parseUUID(r *http.Request, allowKeys bool) (string, error, int) {
 	if len(id) != 36 && (!allowKeys) {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 		// ones before even checking the backend.
-		return "", fmt.Errorf("uuid=%s: invalid uuid lenght", id), http.StatusNotFound
+		return id, errors.New("invalid uuid length"), http.StatusNotFound
 	}
 	return id, nil, http.StatusOK
 }
@@ -63,12 +63,32 @@ func writeGetResponse(w http.ResponseWriter, id string, value string) (error, in
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(value)[len(backends.JSON_PREFIX):])
 	} else {
-		return fmt.Errorf("uuid=%s: Cache data was corrupted. Cannot determine type.", id), http.StatusInternalServerError
+		return errors.New("Cache data was corrupted. Cannot determine type."), http.StatusInternalServerError
 	}
 	return nil, http.StatusOK
 }
 
-func respondAndLogError(w http.ResponseWriter, err error, status int) {
-	log.Errorf(err.Error())
-	http.Error(w, err.Error(), status)
+// handleException will prefix error messages with "GET /cache" and, if uuid string list is passed, will
+// follow with the first element of it in the following fashion: "uuid=FIRST_ELEMENT_ON_UUID_PARAM".
+// Expects non-nil error
+func handleException(w http.ResponseWriter, err error, status int, uuid string) {
+
+	var msg string
+	if len(uuid) > 0 {
+		msg = fmt.Sprintf("GET /cache uuid=%s: %s", uuid, err.Error())
+	} else {
+		msg = fmt.Sprintf("GET /cache: %s", err.Error())
+	}
+
+	logError(err, msg)
+
+	http.Error(w, msg, status)
+}
+
+func logError(err error, msg string) {
+	if _, isKeyNotFound := err.(backends.KeyNotFoundError); isKeyNotFound {
+		log.Debug(msg)
+	} else {
+		log.Error(msg)
+	}
 }
