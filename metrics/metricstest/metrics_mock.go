@@ -7,6 +7,8 @@ import (
 	"github.com/prebid/prebid-cache/metrics"
 )
 
+const mockDuration time.Duration = time.Second
+
 var MockHistograms map[string]float64
 var MockCounters map[string]int64
 
@@ -74,7 +76,7 @@ func (m *MockMetrics) RecordPutTotal() {
 	MockCounters["puts.current_url.request.total"] = MockCounters["puts.current_url.request.total"] + 1
 }
 func (m *MockMetrics) RecordPutDuration(duration time.Duration) {
-	MockHistograms["puts.current_url.duration"] = duration.Seconds()
+	MockHistograms["puts.current_url.duration"] = mockDuration.Seconds()
 }
 func (m *MockMetrics) RecordGetError() {
 	MockCounters["gets.current_url.request.error"] = MockCounters["gets.current_url.request.error"] + 1
@@ -86,7 +88,7 @@ func (m *MockMetrics) RecordGetTotal() {
 	MockCounters["gets.current_url.request.total"] = MockCounters["gets.current_url.request.total"] + 1
 }
 func (m *MockMetrics) RecordGetDuration(duration time.Duration) {
-	MockHistograms["gets.current_url.duration"] = duration.Seconds()
+	MockHistograms["gets.current_url.duration"] = mockDuration.Seconds()
 }
 func (m *MockMetrics) RecordPutBackendXml() {
 	MockCounters["puts.backends.xml"] = MockCounters["puts.backends.xml"] + 1
@@ -101,7 +103,7 @@ func (m *MockMetrics) RecordPutBackendDefTTL() {
 	MockCounters["puts.backends.defines_ttl"] = MockCounters["puts.backends.defines_ttl"] + 1
 }
 func (m *MockMetrics) RecordPutBackendDuration(duration time.Duration) {
-	MockHistograms["puts.backends.request_duration"] = duration.Seconds()
+	MockHistograms["puts.backends.request_duration"] = mockDuration.Seconds()
 }
 func (m *MockMetrics) RecordPutBackendError() {
 	MockCounters["puts.backends.request.error"] = MockCounters["puts.backends.request.error"] + 1
@@ -110,7 +112,7 @@ func (m *MockMetrics) RecordPutBackendSize(sizeInBytes float64) {
 	MockHistograms["puts.backends.request_size_bytes"] = sizeInBytes
 }
 func (m *MockMetrics) RecordGetBackendDuration(duration time.Duration) {
-	MockHistograms["gets.backends.duration"] = duration.Seconds()
+	MockHistograms["gets.backends.duration"] = mockDuration.Seconds()
 }
 func (m *MockMetrics) RecordGetBackendTotal() {
 	MockCounters["gets.backends.request.total"] = MockCounters["gets.backends.request.total"] + 1
