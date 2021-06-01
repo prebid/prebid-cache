@@ -9,13 +9,12 @@ import (
 )
 
 const (
+	// Label keys
 	StatusKey    string = "status"
 	FormatKey    string = "format"
 	ConnErrorKey string = "connection_error"
 
-	ConnOpenedKey string = "connection_opened"
-	ConnClosedKey string = "connection_closed"
-
+	// Label values
 	TotalsVal     string = "total"
 	ErrorVal      string = "error"
 	BadRequestVal string = "bad_request"
@@ -25,6 +24,20 @@ const (
 	InvFormatVal  string = "invalid_format"
 	CloseVal      string = "close"
 	AcceptVal     string = "accept"
+
+	// Metric names
+	PutRequestMet  string = "puts_request"
+	PutReqDurMet   string = "puts_request_duration"
+	GetRequestMet  string = "gets_request"
+	GetReqDurMet   string = "gets_request_duration"
+	PutBackendMet  string = "puts_backend"
+	PutBackDurMet  string = "puts_backend_duration"
+	PutBackSizeMet string = "puts_backend_request_size_bytes"
+	GetBackendMet  string = "gets_backend"
+	GetBackDurMet  string = "gets_backend_duration"
+	ConnOpenedMet  string = "connection_opened"
+	ConnClosedMet  string = "connection_closed"
+	ExtraTTLMet    string = "extra_ttl_seconds"
 
 	MetricsPrometheus = "Prometheus"
 )
@@ -69,60 +82,60 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 		Registry: registry,
 		Puts: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
-				"puts_request_duration",
+				PutReqDurMet,
 				"Duration in seconds Prebid Cache takes to process put requests.",
 				timeBuckets,
 			),
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
-				"puts_request",
+				PutRequestMet,
 				"Count of total requests to Prebid Server labeled by status.",
 				[]string{StatusKey},
 			),
 		},
 		Gets: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
-				"gets_request_duration",
+				GetReqDurMet,
 				"Duration in seconds Prebid Cache takes to process get requests.",
 				timeBuckets,
 			),
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
-				"gets_request",
+				GetRequestMet,
 				"Count of total get requests to Prebid Server labeled by status.",
 				[]string{StatusKey},
 			),
 		},
 		PutsBackend: &PrometheusRequestStatusMetricByFormat{
 			Duration: newHistogram(cfg, registry,
-				"puts_backend_duration",
+				PutBackDurMet,
 				"Duration in seconds Prebid Cache takes to process backend put requests.",
 				timeBuckets,
 			),
 			PutBackendRequests: newCounterVecWithLabels(cfg, registry,
-				"puts_backend",
+				PutBackendMet,
 				"Count of total requests to Prebid Cache labeled by format, status and whether or not it comes with TTL",
 				[]string{FormatKey},
 			),
 			RequestLength: newHistogram(cfg, registry,
-				"puts_backend_request_size_bytes",
+				PutBackSizeMet,
 				"Size in bytes of a backend put request.",
 				requestSizeBuckets,
 			),
 		},
 		GetsBackend: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
-				"gets_backend_duration",
+				GetBackDurMet,
 				"Duration in seconds Prebid Cache takes to process backend get requests.",
 				timeBuckets,
 			),
 			RequestStatus: newCounterVecWithLabels(cfg, registry,
-				"gets_backend",
+				GetBackendMet,
 				"Count of total backend get requests to Prebid Server labeled by status.",
 				[]string{StatusKey},
 			),
 		},
 		Connections: &PrometheusConnectionMetrics{
-			ConnectionsClosed: newSingleCounter(cfg, registry, ConnOpenedKey, "Count the number of closed connections"),
-			ConnectionsOpened: newSingleCounter(cfg, registry, ConnClosedKey, "Count the number of open connections"),
+			ConnectionsClosed: newSingleCounter(cfg, registry, ConnClosedMet, "Count the number of closed connections"),
+			ConnectionsOpened: newSingleCounter(cfg, registry, ConnOpenedMet, "Count the number of open connections"),
 			ConnectionsErrors: newCounterVecWithLabels(cfg, registry,
 				ConnErrorKey,
 				"Count the number of connection accept errors or connection close errors",
@@ -131,7 +144,7 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 		},
 		ExtraTTL: &PrometheusExtraTTLMetrics{
 			ExtraTTLSeconds: newHistogram(cfg, registry,
-				"extra_ttl_seconds",
+				ExtraTTLMet,
 				"Extra time to live in seconds specified",
 				timeBuckets,
 			),

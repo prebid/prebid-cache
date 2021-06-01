@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -349,23 +348,21 @@ func TestExtraTTLMetrics(t *testing.T) {
 }
 
 func TestMetricCountGatekeeping(t *testing.T) {
-	m := createPrometheusMetricsForTesting()
+	expectedCardinalityCount := 100
+	actualCardinalityCount := 0
 
-	// Gather All Metrics
+	// Run test
+	m := createPrometheusMetricsForTesting()
 	metricFamilies, err := m.Registry.Gather()
 	assert.NoError(t, err, "gather metics")
 
-	// Summarize By Adapter Cardinality
-	// - This requires metrics to be preloaded. We don't preload account metrics, so we can't test those.
-	generalCardinalityCount := 0
-
+	// Assertions
 	for _, metricFamily := range metricFamilies {
-		generalCardinalityCount += len(metricFamily.GetMetric())
+		actualCardinalityCount += len(metricFamily.GetMetric())
 	}
 
-	// Verify General Cardinality
-	// - This assertion provides a warning for newly added high-cardinality non-adapter specific metrics. The hardcoded limit
-	//   is an arbitrary soft ceiling. Thought should be given as to the value of the new metrics if you find yourself
-	//   needing to increase this number.
-	assert.True(t, generalCardinalityCount <= 100, fmt.Sprintf("General Cardinality. Expected to hace less than 24 metrics, we have: %d \n", generalCardinalityCount))
+	// This assertion provides a warning for newly added high-cardinality non-adapter specific metrics. The hardcoded limit
+	// is an arbitrary soft ceiling. Thought should be given as to the value of the new metrics if you find yourself
+	// needing to increase this number.
+	assert.True(t, actualCardinalityCount <= expectedCardinalityCount, "General Cardinality doesn't match")
 }
