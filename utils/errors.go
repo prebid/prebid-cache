@@ -20,7 +20,7 @@ func (e MissingKeyError) Error() string {
 	return "missing required parameter uuid"
 }
 
-// Invalid UUID lenght
+// Invalid UUID length
 type KeyLengthError struct{}
 
 func (e KeyLengthError) Error() string {

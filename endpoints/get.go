@@ -81,12 +81,12 @@ func handleException(w http.ResponseWriter, err error, status int, uuid string) 
 		msg = fmt.Sprintf("GET /cache: %s", err.Error())
 	}
 
-	toLogger(err, msg)
+	logError(err, msg)
 
 	http.Error(w, msg, status)
 }
 
-func toLogger(err error, msg string) {
+func logError(err error, msg string) {
 	if _, isKeyNotFound := err.(utils.KeyNotFoundError); isKeyNotFound {
 		log.Debug(msg)
 	} else {

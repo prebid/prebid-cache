@@ -394,7 +394,7 @@ func TestMetricCountGatekeeping(t *testing.T) {
 	}
 
 	// This assertion provides a warning for newly added high-cardinality non-adapter specific metrics. The hardcoded limit
-	//   is an arbitrary soft ceiling. Thought should be given as to the value of the new metrics if you find yourself
-	//   needing to increase this number.
+	// is an arbitrary soft ceiling. Thought should be given as to the value of the new metrics if you find yourself
+	// needing to increase this number.
 	assert.True(t, actualCardinalityCount <= expectedCardinalityCount, "General Cardinality doesn't match")
 }
