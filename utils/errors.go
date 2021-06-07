@@ -1,5 +1,7 @@
 package utils
 
+import "fmt"
+
 /**************************/
 /* Get errors			  */
 /**************************/
@@ -20,9 +22,29 @@ func (e MissingKeyError) Error() string {
 	return "missing required parameter uuid"
 }
 
-// Invalid UUID lenght
+// Invalid UUID length
 type KeyLengthError struct{}
 
 func (e KeyLengthError) Error() string {
 	return "invalid uuid length"
+}
+
+/**************************/
+/* Put errors			  */
+/**************************/
+type PutBadRequestError struct {
+	Body []byte
+}
+
+func (e PutBadRequestError) Error() string {
+	return "Request body " + string(e.Body) + " is not valid JSON."
+}
+
+// Surpassed the number of elemets allowed to be put
+type PutMaxNumValuesError struct {
+	NumValues, MaxNumValues int
+}
+
+func (e PutMaxNumValuesError) Error() string {
+	return fmt.Sprintf("Incoming number of keys %d is more than allowed: %d", e.NumValues, e.MaxNumValues)
 }
