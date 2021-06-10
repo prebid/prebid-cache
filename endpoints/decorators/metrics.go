@@ -13,25 +13,25 @@ const (
 )
 
 type metricsFunctions struct {
-	LogSuccess    func()
-	LogDuration   func(duration time.Duration)
-	LogBadRequest func()
-	LogError      func()
+	RecordTotal    func()
+	RecordDuration   func(duration time.Duration)
+	RecordBadRequest func()
+	RecordError      func()
 }
 
 func assignMetricsFunctions(m *metrics.Metrics, method int) *metricsFunctions {
 	metrics := &metricsFunctions{}
 	switch method {
 	case PostMethod:
-		metrics.LogSuccess = m.RecordPutTotal
-		metrics.LogDuration = m.RecordPutDuration
-		metrics.LogBadRequest = m.RecordPutBadRequest
-		metrics.LogError = m.RecordPutError
+		metrics.RecordTotal = m.RecordPutTotal
+		metrics.RecordDuration = m.RecordPutDuration
+		metrics.RecordBadRequest = m.RecordPutBadRequest
+		metrics.RecordError = m.RecordPutError
 	case GetMethod:
-		metrics.LogSuccess = m.RecordGetTotal
-		metrics.LogDuration = m.RecordGetDuration
-		metrics.LogBadRequest = m.RecordGetBadRequest
-		metrics.LogError = m.RecordGetError
+		metrics.RecordTotal = m.RecordGetTotal
+		metrics.RecordDuration = m.RecordGetDuration
+		metrics.RecordBadRequest = m.RecordGetBadRequest
+		metrics.RecordError = m.RecordGetError
 	}
 	return metrics
 }
@@ -60,7 +60,7 @@ func (w *writerWithStatus) Header() http.Header {
 func MonitorHttp(handler httprouter.Handle, m *metrics.Metrics, method int) httprouter.Handle {
 	return httprouter.Handle(func(resp http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		mf := assignMetricsFunctions(m, method)
-		mf.LogSuccess()
+		mf.RecordTotal()
 		wrapper := writerWithStatus{
 			delegate: resp,
 		}
@@ -70,11 +70,11 @@ func MonitorHttp(handler httprouter.Handle, m *metrics.Metrics, method int) http
 		respCode := wrapper.statusCode
 		// If the calling function never calls WriterHeader explicitly, Go auto-fills it with a 200
 		if respCode == 0 || respCode >= 200 && respCode < 300 {
-			mf.LogDuration(time.Since(start))
+			mf.RecordDuration(time.Since(start))
 		} else if respCode >= 400 && respCode < 500 {
-			mf.LogBadRequest()
+			mf.RecordBadRequest()
 		} else {
-			mf.LogError()
+			mf.RecordError()
 		}
 	})
 }

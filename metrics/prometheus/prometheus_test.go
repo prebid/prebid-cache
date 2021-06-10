@@ -178,6 +178,38 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 	}
 }
 
+func TestGetsBackendErrorsByType(t *testing.T) {
+
+	m := createPrometheusMetricsForTesting()
+
+	testCaseArray := []struct {
+		description          string
+		expKeyNotFoundErrors float64
+		expMissingKeyErrors  float64
+		recordMetric         func(pm *PrometheusMetrics)
+	}{
+		{
+			description:          "Add to the get backend key not found error counter",
+			expKeyNotFoundErrors: 1,
+			expMissingKeyErrors:  0,
+			recordMetric:         func(pm *PrometheusMetrics) { pm.RecordKeyNotFoundError() },
+		},
+		{
+			description:          "Add to the get backend missing key error",
+			expKeyNotFoundErrors: 1,
+			expMissingKeyErrors:  1,
+			recordMetric:         func(pm *PrometheusMetrics) { pm.RecordMissingKeyError() },
+		},
+	}
+
+	for _, test := range testCaseArray {
+		test.recordMetric(m)
+
+		assertCounterVecValue(t, test.description, m.GetsBackend.ErrorsByType, test.expKeyNotFoundErrors, prometheus.Labels{TypeKey: KeyNotFoundVal})
+		assertCounterVecValue(t, test.description, m.GetsBackend.ErrorsByType, test.expMissingKeyErrors, prometheus.Labels{TypeKey: MissingKeyVal})
+	}
+}
+
 func TestPutBackendMetrics(t *testing.T) {
 	m := createPrometheusMetricsForTesting()
 

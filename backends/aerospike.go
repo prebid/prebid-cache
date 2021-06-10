@@ -8,6 +8,7 @@ import (
 	as_types "github.com/aerospike/aerospike-client-go/types"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -127,7 +128,7 @@ func formatAerospikeError(err error) error {
 	if err != nil {
 		if aerr, ok := err.(as_types.AerospikeError); ok {
 			if aerr.ResultCode() == as_types.KEY_NOT_FOUND_ERROR {
-				return KeyNotFoundError{}
+				return utils.KeyNotFoundError{}
 			}
 		}
 		return errors.New(err.Error())

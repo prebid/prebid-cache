@@ -13,17 +13,20 @@ const (
 	StatusKey    string = "status"
 	FormatKey    string = "format"
 	ConnErrorKey string = "connection_error"
+	TypeKey      string = "type"
 
 	// Label values
-	TotalsVal     string = "total"
-	ErrorVal      string = "error"
-	BadRequestVal string = "bad_request"
-	JsonVal       string = "json"
-	XmlVal        string = "xml"
-	DefinesTTLVal string = "defines_ttl"
-	InvFormatVal  string = "invalid_format"
-	CloseVal      string = "close"
-	AcceptVal     string = "accept"
+	TotalsVal      string = "total"
+	ErrorVal       string = "error"
+	KeyNotFoundVal string = "key_not_found"
+	MissingKeyVal  string = "missing_key"
+	BadRequestVal  string = "bad_request"
+	JsonVal        string = "json"
+	XmlVal         string = "xml"
+	DefinesTTLVal  string = "defines_ttl"
+	InvFormatVal   string = "invalid_format"
+	CloseVal       string = "close"
+	AcceptVal      string = "accept"
 
 	// Metric names
 	PutRequestMet  string = "puts_request"
@@ -34,6 +37,7 @@ const (
 	PutBackDurMet  string = "puts_backend_duration"
 	PutBackSizeMet string = "puts_backend_request_size_bytes"
 	GetBackendMet  string = "gets_backend"
+	GetBackendErr  string = "gets_backend_error"
 	GetBackDurMet  string = "gets_backend_duration"
 	ConnOpenedMet  string = "connection_opened"
 	ConnClosedMet  string = "connection_closed"
@@ -56,6 +60,7 @@ type PrometheusMetrics struct {
 type PrometheusRequestStatusMetric struct {
 	Duration      prometheus.Histogram
 	RequestStatus *prometheus.CounterVec
+	ErrorsByType  *prometheus.CounterVec
 }
 
 type PrometheusRequestStatusMetricByFormat struct {
@@ -131,6 +136,11 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				GetBackendMet,
 				"Count of total backend get requests to Prebid Server labeled by status.",
 				[]string{StatusKey},
+			),
+			ErrorsByType: newCounterVecWithLabels(cfg, registry,
+				GetBackendErr,
+				"Account for the most frequent type of get errors in the backend",
+				[]string{TypeKey},
 			),
 		},
 		Connections: &PrometheusConnectionMetrics{
@@ -286,6 +296,14 @@ func (m *PrometheusMetrics) RecordGetBackendError() {
 
 func (m *PrometheusMetrics) RecordGetBackendBadRequest() {
 	m.GetsBackend.RequestStatus.With(prometheus.Labels{StatusKey: BadRequestVal}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordKeyNotFoundError() {
+	m.GetsBackend.ErrorsByType.With(prometheus.Labels{TypeKey: KeyNotFoundVal}).Inc()
+}
+
+func (m *PrometheusMetrics) RecordMissingKeyError() {
+	m.GetsBackend.ErrorsByType.With(prometheus.Labels{TypeKey: MissingKeyVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordConnectionOpen() {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/prebid/prebid-cache/backends"
 	"github.com/prebid/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/utils"
 )
 
 type backendWithMetrics struct {
@@ -22,6 +23,11 @@ func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error
 	if err == nil {
 		b.metrics.RecordGetBackendDuration(time.Since(start))
 	} else {
+		if _, isKeyNotFound := err.(utils.KeyNotFoundError); isKeyNotFound {
+			b.metrics.RecordKeyNotFoundError()
+		} else if _, isMissingUuidError := err.(utils.MissingKeyError); isMissingUuidError {
+			b.metrics.RecordMissingKeyError()
+		}
 		b.metrics.RecordGetBackendError()
 	}
 	return val, err

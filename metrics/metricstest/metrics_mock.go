@@ -39,6 +39,8 @@ func CreateMockMetrics() *metrics.Metrics {
 	MockCounters["gets.backends.request.total"] = 0
 	MockCounters["gets.backends.request.error"] = 0
 	MockCounters["gets.backends.request.bad_request"] = 0
+	MockCounters["gets.backend_error.key_not_found"] = 0
+	MockCounters["gets.backend_error.missing_key"] = 0
 	MockCounters["connections.connection_error.accept"] = 0
 	MockCounters["connections.connection_error.close"] = 0
 
@@ -117,6 +119,12 @@ func (m *MockMetrics) RecordGetBackendTotal() {
 }
 func (m *MockMetrics) RecordGetBackendError() {
 	MockCounters["gets.backends.request.error"] = MockCounters["gets.backends.request.error"] + 1
+}
+func (m *MockMetrics) RecordKeyNotFoundError() {
+	MockCounters["gets.backend_error.key_not_found"] = MockCounters["gets.backend_error.key_not_found"] + 1
+}
+func (m *MockMetrics) RecordMissingKeyError() {
+	MockCounters["gets.backend_error.missing_key"] = MockCounters["gets.backend_error.missing_key"] + 1
 }
 func (m *MockMetrics) RecordConnectionOpen() {
 	MockHistograms["connections.connections_opened"] = MockHistograms["connections.connections_opened"] + 1
