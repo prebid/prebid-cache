@@ -237,12 +237,12 @@ func TestDurationRecorders(t *testing.T) {
 				{
 					description:    "record a key not found get request error with RecordKeyNotFoundError",
 					runTest:        func(im *InfluxMetrics) { im.RecordKeyNotFoundError() },
-					metricToAssert: m.GetsBackErr.KeyNotFoundErrors,
+					metricToAssert: m.GetsErr.KeyNotFoundErrors,
 				},
 				{
 					description:    "record a missing key, get request error with RecordMissingKeyError",
 					runTest:        func(im *InfluxMetrics) { im.RecordMissingKeyError() },
-					metricToAssert: m.GetsBackErr.MissingKeyErrors,
+					metricToAssert: m.GetsErr.MissingKeyErrors,
 				},
 			},
 		},

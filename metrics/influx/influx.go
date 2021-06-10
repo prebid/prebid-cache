@@ -20,7 +20,7 @@ type InfluxMetrics struct {
 	Gets        *InfluxMetricsEntry
 	PutsBackend *InfluxMetricsEntryByFormat
 	GetsBackend *InfluxMetricsEntry
-	GetsBackErr *InfluxMetricsGetErrors
+	GetsErr     *InfluxMetricsGetErrors
 	Connections *InfluxConnectionMetrics
 	ExtraTTL    *InfluxExtraTTL
 	MetricsName string
@@ -105,7 +105,7 @@ func CreateInfluxMetrics() *InfluxMetrics {
 		Gets:        NewInfluxMetricsEntry("gets.current_url", r),
 		PutsBackend: NewInfluxMetricsEntryBackendPuts("puts.backend", r),
 		GetsBackend: NewInfluxMetricsEntry("gets.backend", r),
-		GetsBackErr: NewInfluxGetErrorMetrics("gets.backend_error", r),
+		GetsErr:     NewInfluxGetErrorMetrics("gets.backend_error", r),
 		Connections: NewInfluxConnectionMetrics(r),
 		ExtraTTL:    &InfluxExtraTTL{ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000))},
 		MetricsName: MetricsInfluxDB,
@@ -217,11 +217,11 @@ func (m *InfluxMetrics) RecordGetBackendError() {
 }
 
 func (m *InfluxMetrics) RecordKeyNotFoundError() {
-	m.GetsBackErr.KeyNotFoundErrors.Mark(1)
+	m.GetsErr.KeyNotFoundErrors.Mark(1)
 }
 
 func (m *InfluxMetrics) RecordMissingKeyError() {
-	m.GetsBackErr.MissingKeyErrors.Mark(1)
+	m.GetsErr.MissingKeyErrors.Mark(1)
 }
 
 func (m *InfluxMetrics) RecordConnectionOpen() {

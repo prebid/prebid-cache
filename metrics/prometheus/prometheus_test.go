@@ -380,7 +380,7 @@ func TestExtraTTLMetrics(t *testing.T) {
 }
 
 func TestMetricCountGatekeeping(t *testing.T) {
-	expectedCardinalityCount := 26
+	expectedCardinalityCount := 100
 	actualCardinalityCount := 0
 
 	// Run test
