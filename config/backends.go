@@ -88,13 +88,19 @@ func (cfg *Azure) validateAndLog() error {
 }
 
 type Cassandra struct {
-	Hosts    string `mapstructure:"hosts"`
-	Keyspace string `mapstructure:"keyspace"`
+	Hosts      string `mapstructure:"hosts"`
+	Keyspace   string `mapstructure:"keyspace"`
+	DefaultTTL int    `mapstructure:"default_ttl_seconds"`
 }
 
 func (cfg *Cassandra) validateAndLog() error {
 	log.Infof("config.backend.cassandra.hosts: %s", cfg.Hosts)
 	log.Infof("config.backend.cassandra.keyspace: %s", cfg.Keyspace)
+	if cfg.DefaultTTL <= 0 {
+		cfg.DefaultTTL = 2400
+	}
+	log.Infof("config.backend.cassandra.default_ttl_seconds: %d", cfg.DefaultTTL)
+
 	return nil
 }
 

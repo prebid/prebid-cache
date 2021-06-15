@@ -1,40 +1,21 @@
 package backends
 
-import (
-	"context"
-	"fmt"
-	"testing"
-
-	as "github.com/aerospike/aerospike-client-go"
-	as_types "github.com/aerospike/aerospike-client-go/types"
-	"github.com/prebid/prebid-cache/config"
-	"github.com/prebid/prebid-cache/metrics/metricstest"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
-
-	"github.com/stretchr/testify/assert"
-)
-
-// Mock Aerospike client that always throws an error
-type errorProneAerospikeClient struct {
-	errorThrowingFunction string
+// Mock Redis client that always throws an error
+type errorProneRedisClient struct {
+	errorToThrow error
 }
 
-func NewErrorProneAerospikeClient(funcName string) *errorProneAerospikeClient {
-	return &errorProneAerospikeClient{
-		errorThrowingFunction: funcName,
-	}
+/*
+func NewErrorProneRedisClient(errorToThrow error) *errorProneRedisClient {
+	return &errorProneRedisClient{errorToThrow}
 }
 
-func (c *errorProneAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
-	if c.errorThrowingFunction == "TEST_KEY_GEN_ERROR" {
-		return nil, as_types.NewAerospikeError(as_types.NOT_AUTHENTICATED)
-	}
-	return nil, nil
+func (c *errorProneRedisClient) Init() error {
+	return errors.New("init error")
 }
 
-func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
-	if c.errorThrowingFunction == "TEST_GET_ERROR" {
+func (c *errorProneRedisClient) Get(ctx context.Context, key string) (string, error) {
+	if c.errorToThrow == "TEST_GET_ERROR" {
 		return nil, as_types.NewAerospikeError(as_types.KEY_NOT_FOUND_ERROR)
 	} else if c.errorThrowingFunction == "TEST_NO_BUCKET_ERROR" {
 		return &as.Record{Bins: as.BinMap{"AnyKey": "any_value"}}, nil
@@ -44,7 +25,7 @@ func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
 	return nil, nil
 }
 
-func (c *errorProneAerospikeClient) Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error {
+func (c *errorProneRedisClient) Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error {
 	if c.errorThrowingFunction == "TEST_PUT_ERROR" {
 		return as_types.NewAerospikeError(as_types.KEY_EXISTS_ERROR)
 	}
@@ -220,7 +201,7 @@ func TestFormatAerospikeError(t *testing.T) {
 		},
 	}
 	for _, test := range testCases {
-		actualErr := classifyError(test.inErr)
+		actualErr := formatAerospikeError(test.inErr)
 		if test.expectedErr == nil {
 			assert.Nil(t, actualErr, test.desc)
 		} else {
@@ -358,3 +339,4 @@ func TestClientPut(t *testing.T) {
 		}
 	}
 }
+*/
