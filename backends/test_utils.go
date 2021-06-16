@@ -6,6 +6,7 @@ import (
 
 	as "github.com/aerospike/aerospike-client-go"
 	as_types "github.com/aerospike/aerospike-client-go/types"
+	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/prebid/prebid-cache/utils"
 )
 
@@ -177,6 +178,51 @@ func (gc *goodRedisClient) Get(key string) (string, error) {
 }
 
 func (gc *goodRedisClient) Put(key string, value string, ttlSeconds int) error {
+	if gc.key != key {
+		gc.key = key
+	}
+	gc.value = value
+
+	return nil
+}
+
+//------------------------------------------------------------------------
+
+// Mock Memcache that always throws an error
+type errorProneMemcache struct {
+	errorToThrow error
+}
+
+func NewErrorProneMemcache(errorToThrow error) *errorProneMemcache {
+	return &errorProneMemcache{errorToThrow}
+}
+
+func (ec *errorProneMemcache) Get(key string) (*memcache.Item, error) {
+	return nil, ec.errorToThrow
+}
+
+func (ec *errorProneMemcache) Put(key string, value string, ttlSeconds int) error {
+	return ec.errorToThrow
+}
+
+// Mock Memcache client that does not throw errors
+type goodMemcache struct {
+	key   string
+	value string
+}
+
+func NewGoodMemcache(key string, value string) *goodMemcache {
+	return &goodMemcache{key, value}
+}
+
+func (gc *goodMemcache) Get(key string) (*memcache.Item, error) {
+	if key == gc.key {
+		return &memcache.Item{Key: gc.key, Value: []byte(gc.value)}, nil
+	}
+	return nil, utils.KeyNotFoundError{}
+}
+
+func (gc *goodMemcache) Put(key string, value string, ttlSeconds int) error {
 	if gc.key != key {
 		gc.key = key
 	}

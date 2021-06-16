@@ -12,12 +12,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// RedisDB is a wrapper for the Redis client
 type RedisDB interface {
 	Get(key string) (string, error)
 	Put(key string, value string, ttlSeconds int) error
 }
 
+// RedisDBClient is a wrapper for the Redis client that implements
+// the RedisDB interface
 type RedisDBClient struct {
 	client *redis.Client
 }
@@ -33,7 +34,7 @@ func (db RedisDBClient) Put(key string, value string, ttlSeconds int) error {
 //------------------------------------------------------------------------------
 
 // Instantiates, and configures the Redis client, it also performs Get
-// and Put operations and monitors results
+// and Put operations and monitors results. Implements the Backend interface
 type RedisBackend struct {
 	cfg    config.Redis
 	client RedisDB

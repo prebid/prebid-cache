@@ -9,15 +9,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// CassandraDB is a wrapper for the Cassandra client
 type CassandraDB interface {
 	Get(ctx context.Context, key string) (string, error)
 	Put(ctx context.Context, key string, value string, ttlSeconds int) error
 	Init() error
 }
 
-// CassandraDBClient contains the Cassandra client fields, configuration and
-// interacts with the Cassandra server
+// CassandraDBClient is a wrapper for the Cassandra client that
+// interacts with the Cassandra server and implements the CassandraDB client
 type CassandraDBClient struct {
 	cfg     config.Cassandra
 	cluster *gocql.ClusterConfig
