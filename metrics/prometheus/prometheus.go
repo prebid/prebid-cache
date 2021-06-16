@@ -24,6 +24,7 @@ const (
 	JsonVal        string = "json"
 	XmlVal         string = "xml"
 	DefinesTTLVal  string = "defines_ttl"
+	CustomKey      string = "custom_key"
 	InvFormatVal   string = "invalid_format"
 	CloseVal       string = "close"
 	AcceptVal      string = "accept"
@@ -236,6 +237,10 @@ func (m *PrometheusMetrics) RecordPutTotal() {
 
 func (m *PrometheusMetrics) RecordPutDuration(duration time.Duration) {
 	m.Puts.Duration.Observe(duration.Seconds())
+}
+
+func (m *PrometheusMetrics) RecordPutKeyProvided() {
+	m.Puts.RequestStatus.With(prometheus.Labels{StatusKey: CustomKey}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordGetError() {

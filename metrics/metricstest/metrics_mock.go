@@ -26,6 +26,7 @@ func CreateMockMetrics() *metrics.Metrics {
 	MockCounters["puts.current_url.request.total"] = 0
 	MockCounters["puts.current_url.request.error"] = 0
 	MockCounters["puts.current_url.request.bad_request"] = 0
+	MockCounters["puts.current_url.request.custom_key"] = 0
 	MockCounters["gets.current_url.request.total"] = 0
 	MockCounters["gets.current_url.request.error"] = 0
 	MockCounters["gets.current_url.request.bad_request"] = 0
@@ -77,6 +78,9 @@ func (m *MockMetrics) RecordPutTotal() {
 }
 func (m *MockMetrics) RecordPutDuration(duration time.Duration) {
 	MockHistograms["puts.current_url.duration"] = mockDuration.Seconds()
+}
+func (m *MockMetrics) RecordPutKeyProvided() {
+	MockCounters["puts.current_url.request.custom_key"] = MockCounters["puts.current_url.request.custom_key"] + 1
 }
 func (m *MockMetrics) RecordGetError() {
 	MockCounters["gets.current_url.request.error"] = MockCounters["gets.current_url.request.error"] + 1

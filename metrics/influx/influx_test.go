@@ -21,6 +21,7 @@ func TestRegisteredInfluxMetrics(t *testing.T) {
 		{"puts.current_url.error_count", "Meter"},
 		{"puts.current_url.bad_request_count", "Meter"},
 		{"puts.current_url.request_count", "Meter"},
+		{"puts.current_url.updated_key_count", "Meter"},
 		// Gets:
 		{"gets.current_url.request_duration", "Timer"},
 		{"gets.current_url.error_count", "Meter"},
@@ -106,7 +107,7 @@ func TestRecordExtraTTLSeconds(t *testing.T) {
 	}
 }
 
-func TestDurationRecorders(t *testing.T) {
+func TestAllRecorders(t *testing.T) {
 	var fiveSeconds time.Duration = time.Second * 5
 
 	m := CreateInfluxMetrics()
@@ -143,6 +144,11 @@ func TestDurationRecorders(t *testing.T) {
 					description:    "record an incoming non-bad put request with RecordPutTotal",
 					runTest:        func(im *InfluxMetrics) { im.RecordPutTotal() },
 					metricToAssert: m.Puts.Request,
+				},
+				{
+					description:    "record an incoming put request that defines its own custom key",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutKeyProvided() },
+					metricToAssert: m.Puts.Update,
 				},
 			},
 		},

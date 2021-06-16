@@ -31,6 +31,7 @@ type InfluxMetricsEntry struct {
 	Errors     metrics.Meter
 	BadRequest metrics.Meter
 	Request    metrics.Meter
+	Update     metrics.Meter
 }
 
 type InfluxMetricsEntryByFormat struct {
@@ -66,12 +67,26 @@ func NewInfluxGetErrorMetrics(name string, r metrics.Registry) *InfluxMetricsGet
 	}
 }
 
-func NewInfluxMetricsEntry(name string, r metrics.Registry) *InfluxMetricsEntry {
+// NewInfluxMetricsEntryGet initializes all the metrics of InfluxMetricsEntry except for
+// Update which makes no sense in the context of a Get call
+func NewInfluxMetricsEntryGet(name string, r metrics.Registry) *InfluxMetricsEntry {
 	return &InfluxMetricsEntry{
 		Duration:   metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
 		Errors:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
 		BadRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
 		Request:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.request_count", name), r),
+	}
+}
+
+// NewInfluxMetricsEntryEndpointPuts initializes all the metrics of InfluxMetricsEntry including
+// Update which will account for the Put requests that come with their own Key to store the value in.
+func NewInfluxMetricsEntryEndpointPuts(name string, r metrics.Registry) *InfluxMetricsEntry {
+	return &InfluxMetricsEntry{
+		Duration:   metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
+		Errors:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
+		BadRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
+		Request:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.request_count", name), r),
+		Update:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.updated_key_count", name), r),
 	}
 }
 
@@ -101,10 +116,10 @@ func CreateInfluxMetrics() *InfluxMetrics {
 	r := metrics.NewPrefixedRegistry("prebidcache.")
 	m := &InfluxMetrics{
 		Registry:    r,
-		Puts:        NewInfluxMetricsEntry("puts.current_url", r),
-		Gets:        NewInfluxMetricsEntry("gets.current_url", r),
+		Puts:        NewInfluxMetricsEntryEndpointPuts("puts.current_url", r),
+		Gets:        NewInfluxMetricsEntryGet("gets.current_url", r),
 		PutsBackend: NewInfluxMetricsEntryBackendPuts("puts.backend", r),
-		GetsBackend: NewInfluxMetricsEntry("gets.backend", r),
+		GetsBackend: NewInfluxMetricsEntryGet("gets.backend", r),
 		GetsErr:     NewInfluxGetErrorMetrics("gets.backend_error", r),
 		Connections: NewInfluxConnectionMetrics(r),
 		ExtraTTL:    &InfluxExtraTTL{ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000))},
@@ -158,6 +173,10 @@ func (m *InfluxMetrics) RecordPutTotal() {
 
 func (m *InfluxMetrics) RecordPutDuration(duration time.Duration) {
 	m.Puts.Duration.Update(duration)
+}
+
+func (m *InfluxMetrics) RecordPutKeyProvided() {
+	m.Puts.Update.Mark(1)
 }
 
 func (m *InfluxMetrics) RecordGetError() {

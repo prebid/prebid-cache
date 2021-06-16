@@ -12,6 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	endpointDecorators "github.com/prebid/prebid-cache/endpoints/decorators"
 	"github.com/prebid/prebid-cache/utils"
 	"github.com/sirupsen/logrus"
 )
@@ -96,7 +97,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			// Only allow setting a provided key if configured (and ensure a key is provided).
 			if allowKeys && len(p.Key) > 0 {
 				resps.Responses[i].UUID = p.Key
-				// Record put that comes with a Key
+				w.WriteHeader(endpointDecorators.CacheUpdate)
 			}
 			// If we have a blank UUID, don't store anything.
 			// Eventually we may want to provide error details, but as of today this is the only non-fatal error
