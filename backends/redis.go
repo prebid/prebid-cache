@@ -15,7 +15,7 @@ import (
 // RedisDB is a wrapper for the Redis client
 type RedisDB interface {
 	Get(key string) (string, error)
-	Put(key string, value string, ttlSeconds int)
+	Put(key string, value string, ttlSeconds int) error
 }
 
 type RedisDBClient struct {
@@ -36,7 +36,7 @@ func (db RedisDBClient) Put(key string, value string, ttlSeconds int) error {
 // and Put operations and monitors results
 type RedisBackend struct {
 	cfg    config.Redis
-	client RedisDBClient
+	client RedisDB
 }
 
 func NewRedisBackend(cfg config.Redis) *RedisBackend {
@@ -82,7 +82,7 @@ func (back *RedisBackend) Get(ctx context.Context, key string) (string, error) {
 		err = utils.KeyNotFoundError{}
 	}
 
-	return string(res), nil
+	return res, err
 }
 
 func (back *RedisBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {

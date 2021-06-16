@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	as "github.com/aerospike/aerospike-client-go"
 	as_types "github.com/aerospike/aerospike-client-go/types"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
@@ -14,84 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
-// Mock Aerospike client that always throws an error
-type errorProneAerospikeClient struct {
-	errorThrowingFunction string
-}
-
-func NewErrorProneAerospikeClient(funcName string) *errorProneAerospikeClient {
-	return &errorProneAerospikeClient{
-		errorThrowingFunction: funcName,
-	}
-}
-
-func (c *errorProneAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
-	if c.errorThrowingFunction == "TEST_KEY_GEN_ERROR" {
-		return nil, as_types.NewAerospikeError(as_types.NOT_AUTHENTICATED)
-	}
-	return nil, nil
-}
-
-func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
-	if c.errorThrowingFunction == "TEST_GET_ERROR" {
-		return nil, as_types.NewAerospikeError(as_types.KEY_NOT_FOUND_ERROR)
-	} else if c.errorThrowingFunction == "TEST_NO_BUCKET_ERROR" {
-		return &as.Record{Bins: as.BinMap{"AnyKey": "any_value"}}, nil
-	} else if c.errorThrowingFunction == "TEST_NON_STRING_VALUE_ERROR" {
-		return &as.Record{Bins: as.BinMap{binValue: 0.0}}, nil
-	}
-	return nil, nil
-}
-
-func (c *errorProneAerospikeClient) Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error {
-	if c.errorThrowingFunction == "TEST_PUT_ERROR" {
-		return as_types.NewAerospikeError(as_types.KEY_EXISTS_ERROR)
-	}
-	return nil
-}
-
-// Mock Aerospike client that does not throw errors
-type goodAerospikeClient struct {
-	records map[string]*as.Record
-}
-
-func NewGoodAerospikeClient() *goodAerospikeClient {
-	return &goodAerospikeClient{
-		records: map[string]*as.Record{
-			"defaultKey": &as.Record{
-				Bins: as.BinMap{binValue: "Default value"},
-			},
-		},
-	}
-}
-
-func (c *goodAerospikeClient) Get(aeKey *as.Key) (*as.Record, error) {
-	if aeKey != nil && aeKey.Value() != nil {
-
-		key := aeKey.Value().String()
-
-		if rec, found := c.records[key]; found {
-			return rec, nil
-		}
-	}
-	return nil, as_types.NewAerospikeError(as_types.KEY_NOT_FOUND_ERROR)
-}
-
-func (c *goodAerospikeClient) Put(policy *as.WritePolicy, aeKey *as.Key, binMap as.BinMap) error {
-	if aeKey != nil && aeKey.Value() != nil {
-		key := aeKey.Value().String()
-		c.records[key] = &as.Record{
-			Bins: binMap,
-		}
-		return nil
-	}
-	return as_types.NewAerospikeError(as_types.KEY_MISMATCH)
-}
-
-func (c *goodAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
-	return as.NewKey(namespace, setName, key)
-}
 
 func TestNewAerospikeBackend(t *testing.T) {
 	type logEntry struct {
@@ -220,7 +141,7 @@ func TestFormatAerospikeError(t *testing.T) {
 		},
 	}
 	for _, test := range testCases {
-		actualErr := classifyError(test.inErr)
+		actualErr := classifyAerospikeError(test.inErr)
 		if test.expectedErr == nil {
 			assert.Nil(t, actualErr, test.desc)
 		} else {

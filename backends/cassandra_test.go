@@ -11,59 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Mock Cassandra client that always throws an error
-type errorProneCassandraClient struct {
-	errorToThrow error
-}
-
-func NewErrorProneCassandraClient(errorToThrow error) *errorProneCassandraClient {
-	return &errorProneCassandraClient{errorToThrow}
-}
-
-func (ec *errorProneCassandraClient) Init() error {
-	return errors.New("init error")
-}
-
-func (ec *errorProneCassandraClient) Get(ctx context.Context, key string) (string, error) {
-	return "", ec.errorToThrow
-}
-
-func (ec *errorProneCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	return ec.errorToThrow
-}
-
-// Mock Cassandra client that does not throw errors
-type goodCassandraClient struct {
-	key   string
-	value string
-}
-
-func NewGoodCassandraClient(key string, value string) *goodCassandraClient {
-	return &goodCassandraClient{key, value}
-}
-
-func (gc *goodCassandraClient) Init() error {
-	return nil
-}
-
-func (gc *goodCassandraClient) Get(ctx context.Context, key string) (string, error) {
-	if key == gc.key {
-		return gc.value, nil
-	}
-	return "", utils.KeyNotFoundError{}
-}
-
-func (gc *goodCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	if gc.key != key {
-		gc.key = key
-	}
-	gc.value = value
-
-	return nil
-}
-
-//------------------------------------------------------------------------
-
 func TestCassandraClientGet(t *testing.T) {
 	cassandraBackend := &CassandraBackend{}
 
