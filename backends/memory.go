@@ -2,8 +2,9 @@ package backends
 
 import (
 	"context"
-	"fmt"
 	"sync"
+
+	"github.com/prebid/prebid-cache/utils"
 )
 
 type MemoryBackend struct {
@@ -17,7 +18,7 @@ func (b *MemoryBackend) Get(ctx context.Context, key string) (string, error) {
 
 	v, ok := b.db[key]
 	if !ok {
-		return "", fmt.Errorf("Not found")
+		return "", utils.KeyNotFoundError{}
 	}
 
 	return v, nil
