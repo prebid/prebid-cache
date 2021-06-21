@@ -88,17 +88,17 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 				return
 			}
 
-			if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
+			// Only allow setting a provided key if configured (and ensure a key is provided).
+			if allowKeys && len(p.Key) > 0 {
+				resps.Responses[i].UUID = p.Key
+				w.WriteHeader(endpointDecorators.CacheUpdate)
+			} else if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
 				http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
-			// Only allow setting a provided key if configured (and ensure a key is provided).
-			if allowKeys && len(p.Key) > 0 {
-				resps.Responses[i].UUID = p.Key
-				w.WriteHeader(endpointDecorators.CacheUpdate)
-			}
+
 			// If we have a blank UUID, don't store anything.
 			// Eventually we may want to provide error details, but as of today this is the only non-fatal error
 			// Future error details could go into a second property of the Responses object, such as "errors"
