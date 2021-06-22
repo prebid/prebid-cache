@@ -2,6 +2,7 @@ module github.com/prebid/prebid-cache
 
 go 1.13
 
+replace github.com/bradfitz/gomemcache => github.com/google/gomemcache v0.0.0-20200326162346-94281991662a
 require (
 	github.com/aerospike/aerospike-client-go v4.0.0+incompatible
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737
