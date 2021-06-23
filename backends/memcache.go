@@ -2,10 +2,12 @@ package backends
 
 import (
 	"context"
+	"time"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/utils"
+	log "github.com/sirupsen/logrus"
 )
 
 type MemcacheDataStore interface {
@@ -34,20 +36,30 @@ func (mc *Memcache) Put(key string, value string, ttlSeconds int) error {
 
 // MemcacheBackend implements the Backend interface
 type MemcacheBackend struct {
-	client MemcacheDataStore
+	memcache MemcacheDataStore
 }
 
 // NewMemcacheBackend create a new memcache backend
 func NewMemcacheBackend(cfg config.Memcache) *MemcacheBackend {
+	var mc *memcache.Client
+	if cfg.ConfigHost != "" {
+		var err error
+		mc, err = memcache.NewDiscoveryClient(cfg.ConfigHost, time.Duration(cfg.PollIntervalSeconds)*time.Second)
+		if err != nil {
+			log.Fatalf("%v", err)
+			panic("Memcache failure. This shouldn't happen.")
+		}
+	} else {
+		mc = memcache.New(cfg.Hosts...)
+	}
+
 	return &MemcacheBackend{
-		client: &Memcache{
-			memcache.New(cfg.Hosts...),
-		},
+		memcache: &Memcache{mc},
 	}
 }
 
 func (mc *MemcacheBackend) Get(ctx context.Context, key string) (string, error) {
-	res, err := mc.client.Get(key)
+	res, err := mc.memcache.Get(key)
 
 	if err != nil {
 		if err == memcache.ErrCacheMiss {
@@ -63,5 +75,5 @@ func (mc *MemcacheBackend) Get(ctx context.Context, key string) (string, error) 
 // opposed to Add, that writes the given item only if no value already exists or
 // Replace, that writes only if the server already holds data for this key
 func (mc *MemcacheBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	return mc.client.Put(key, value, ttlSeconds)
+	return mc.memcache.Put(key, value, ttlSeconds)
 }
