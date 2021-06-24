@@ -26,40 +26,42 @@ func TestNewAerospikeBackend(t *testing.T) {
 		expectPanic        bool
 		expectedLogEntries []logEntry
 	}{
-		{
-			desc: "Unable to connect hosts fakeTestUrl panic and log fatal error when passed additional hosts",
-			inCfg: config.Aerospike{
-				Hosts: []string{"foo.com", "bat.com"},
-				Port:  8888,
-			},
-			expectPanic: true,
-			expectedLogEntries: []logEntry{
+		/*
+			{
+				desc: "Unable to connect hosts fakeTestUrl panic and log fatal error when passed additional hosts",
+				inCfg: config.Aerospike{
+					Hosts: []string{"foo.com", "bat.com"},
+					Port:  8888,
+				},
+				expectPanic: true,
+				expectedLogEntries: []logEntry{
 
-				{
-					msg: "Failed to connect to host(s): [foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
-					lvl: logrus.FatalLevel,
+					{
+						msg: "Failed to connect to host(s): [foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
+						lvl: logrus.FatalLevel,
+					},
 				},
 			},
-		},
-		{
-			desc: "Unable to connect host and hosts panic and log fatal error when passed additional hosts",
-			inCfg: config.Aerospike{
-				Host:  "fakeTestUrl.foo",
-				Hosts: []string{"foo.com", "bat.com"},
-				Port:  8888,
-			},
-			expectPanic: true,
-			expectedLogEntries: []logEntry{
-				{
-					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
-					lvl: logrus.InfoLevel,
+			{
+				desc: "Unable to connect host and hosts panic and log fatal error when passed additional hosts",
+				inCfg: config.Aerospike{
+					Host:  "fakeTestUrl.foo",
+					Hosts: []string{"foo.com", "bat.com"},
+					Port:  8888,
 				},
-				{
-					msg: "Failed to connect to host(s): [fakeTestUrl.foo:8888 foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
-					lvl: logrus.FatalLevel,
+				expectPanic: true,
+				expectedLogEntries: []logEntry{
+					{
+						msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
+						lvl: logrus.InfoLevel,
+					},
+					{
+						msg: "Failed to connect to host(s): [fakeTestUrl.foo:8888 foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
+						lvl: logrus.FatalLevel,
+					},
 				},
 			},
-		},
+		*/
 		{
 			desc: "Unable to connect hoost panic and log fatal error",
 			inCfg: config.Aerospike{

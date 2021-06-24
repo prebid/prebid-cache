@@ -105,21 +105,27 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			if len(resps.Responses[i].UUID) > 0 {
 				err = backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
 				if err != nil {
-					if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
-						http.Error(w, fmt.Sprintf("POST /cache element %d exceeded max size: %v", i, err), http.StatusBadRequest)
+					// If entry already existed for UUID, it didn't get overwritten and a RecordExistsError was returned
+					if _, ok := err.(utils.RecordExistsError); ok {
+						// Record didn't get overwritten, return a reponse with an empty UUID string
+						resps.Responses[i].UUID = ""
+					} else {
+						if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
+							http.Error(w, fmt.Sprintf("POST /cache element %d exceeded max size: %v", i, err), http.StatusBadRequest)
+							return
+						}
+
+						logrus.Error("POST /cache Error while writing to the backend: ", err)
+						switch err {
+						case context.DeadlineExceeded:
+							logrus.Error("POST /cache timed out:", err)
+							http.Error(w, "Timeout writing value to the backend", HttpDependencyTimeout)
+						default:
+							logrus.Error("POST /cache had an unexpected error:", err)
+							http.Error(w, err.Error(), http.StatusInternalServerError)
+						}
 						return
 					}
-
-					logrus.Error("POST /cache Error while writing to the backend: ", err)
-					switch err {
-					case context.DeadlineExceeded:
-						logrus.Error("POST /cache timed out:", err)
-						http.Error(w, "Timeout writing value to the backend", HttpDependencyTimeout)
-					default:
-						logrus.Error("POST /cache had an unexpected error:", err)
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-					}
-					return
 				}
 				logrus.Tracef("PUT /cache uuid=%s", resps.Responses[i].UUID)
 			}

@@ -68,6 +68,10 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 		log.Fatalf("%v", classifyAerospikeError(err).Error())
 		panic("AerospikeBackend failure. This shouldn't happen.")
 	}
+
+	// If the record already exists, don't write and throw error
+	client.DefaultWritePolicy.RecordExistsAction = as.CREATE_ONLY
+
 	log.Infof("Connected to Aerospike host(s) %v on port %d", append(cfg.Hosts, cfg.Host), cfg.Port)
 
 	return &AerospikeBackend{
@@ -115,10 +119,13 @@ func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, tt
 	}
 
 	bins := as.BinMap{binValue: value}
-	policy := &as.WritePolicy{Expiration: uint32(ttlSeconds)}
+	policy := &as.WritePolicy{
+		Expiration:         uint32(ttlSeconds),
+		RecordExistsAction: as.CREATE_ONLY,
+	}
 
 	if err := a.client.Put(policy, asKey, bins); err != nil {
-		return err
+		return classifyAerospikeError(err)
 	}
 
 	return nil
@@ -129,6 +136,9 @@ func classifyAerospikeError(err error) error {
 		if aerr, ok := err.(as_types.AerospikeError); ok {
 			if aerr.ResultCode() == as_types.KEY_NOT_FOUND_ERROR {
 				return utils.KeyNotFoundError{}
+			}
+			if aerr.ResultCode() == as_types.KEY_EXISTS_ERROR {
+				return utils.RecordExistsError{}
 			}
 		}
 	}

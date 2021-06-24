@@ -28,6 +28,11 @@ func (b *MemoryBackend) Put(ctx context.Context, key string, value string, ttlSe
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	// If the record already exists, don't write and throw error
+	if _, ok := b.db[key]; ok {
+		return utils.RecordExistsError{}
+	}
+
 	b.db[key] = value
 	return nil
 }

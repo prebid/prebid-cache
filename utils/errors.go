@@ -26,3 +26,13 @@ type KeyLengthError struct{}
 func (e KeyLengthError) Error() string {
 	return "invalid uuid length"
 }
+
+/**************************/
+/* Get errors			  */
+/**************************/
+
+type RecordExistsError struct{}
+
+func (e RecordExistsError) Error() string {
+	return "A record already exists under provided key."
+}

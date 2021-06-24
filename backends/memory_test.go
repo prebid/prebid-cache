@@ -32,6 +32,18 @@ func TestMemoryBackend(t *testing.T) {
 			expected: testExpectedValues{err: nil},
 		},
 		{
+			desc:    "Put returns a RecordExistsError",
+			backend: NewMemoryBackend(),
+			setup: func(b *MemoryBackend) {
+				b.Put(context.TODO(), "someKey", "someValue", 0)
+			},
+			run: func(b *MemoryBackend) (string, error) {
+				err := b.Put(context.TODO(), "someKey", "someValye", 0)
+				return "", err
+			},
+			expected: testExpectedValues{"", utils.RecordExistsError{}},
+		},
+		{
 			desc:    "succesful get",
 			backend: NewMemoryBackend(),
 			setup: func(b *MemoryBackend) {

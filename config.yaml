@@ -1,21 +1,22 @@
 port: 2424
 admin_port: 2525
 log:
-  level: "info"
+  level: "trace"
 rate_limiter:
   enabled: true
   num_requests: 100
 request_limits:
-  allow_setting_keys: false
+  allow_setting_keys: true
   max_size_bytes: 10240 # 10K
   max_num_values: 10
   max_ttl_seconds: 3600
 backend:
-  type: "memory" # Can also be "aerospike", "azure", "cassandra", "memcache" or "redis"
+  type: "aerospike" # Can also be "aerospike", "azure", "cassandra", "memcache" or "redis"
   aerospike:
-    host: "aerospike.prebid.com"
+    host: "aerospike-bids.prod.lax1.adnxs.net" # "01-aerospike-rc.envnxs.net"
     port: 3000
-    namespace: "whatever"
+    namespace: "prebid"
+    default_ttl_seconds: 3600
   azure:
     account: "azure-account-here"
     key: "azure-key-here"
