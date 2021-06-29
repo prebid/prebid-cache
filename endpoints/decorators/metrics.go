@@ -11,9 +11,9 @@ import (
 const (
 	PostMethod = 1
 	GetMethod  = 2
-
-	CacheUpdate = 1001
 )
+
+const CacheUpdateCode = 1001
 
 type metricsFunctions struct {
 	RecordTotal       func()
@@ -49,7 +49,7 @@ type writerWithStatus struct {
 }
 
 func (w *writerWithStatus) WriteHeader(statusCode int) {
-	if statusCode == CacheUpdate {
+	if statusCode == CacheUpdateCode {
 		w.wasKeyProvided = true
 		return
 	}

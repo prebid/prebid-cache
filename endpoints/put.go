@@ -65,7 +65,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 				return
 			}
 			if p.TTLSeconds < 0 {
-				http.Error(w, fmt.Sprintf("request.puts[%d].ttlseconds must not be negative.", p.TTLSeconds), http.StatusBadRequest)
+				http.Error(w, "Error request ttlseconds value must not be negative.", http.StatusBadRequest)
 				return
 			}
 
@@ -91,7 +91,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			// Only allow setting a provided key if configured (and ensure a key is provided).
 			if allowKeys && len(p.Key) > 0 {
 				resps.Responses[i].UUID = p.Key
-				w.WriteHeader(endpointDecorators.CacheUpdate)
+				w.WriteHeader(endpointDecorators.CacheUpdateCode)
 			} else if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
 				http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
 			}
@@ -105,7 +105,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			if len(resps.Responses[i].UUID) > 0 {
 				err = backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
 				if err != nil {
-					// If entry already existed for UUID, it didn't get overwritten and a RecordExistsError was returned
+					// If entry already existed for UUID, it shouldn't get overwritten and a RecordExistsError is expected
 					if _, ok := err.(utils.RecordExistsError); ok {
 						// Record didn't get overwritten, return a reponse with an empty UUID string
 						resps.Responses[i].UUID = ""
@@ -129,7 +129,6 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 				}
 				logrus.Tracef("PUT /cache uuid=%s", resps.Responses[i].UUID)
 			}
-
 		}
 
 		bytes, err := json.Marshal(resps)

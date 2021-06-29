@@ -68,7 +68,7 @@ func TestCustomKeyPutRequestMetrics(t *testing.T) {
 		{
 			desc: "A put request that comes with its own custom key and Put endpoint throws no error",
 			inHandler: func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-				w.WriteHeader(CacheUpdate)
+				w.WriteHeader(CacheUpdateCode)
 				w.WriteHeader(200)
 			},
 			expectedCounterValues: testExpectedValues{
@@ -80,7 +80,7 @@ func TestCustomKeyPutRequestMetrics(t *testing.T) {
 		{
 			desc: "A put request that comes with its own custom key and Put endpoint throws error",
 			inHandler: func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-				w.WriteHeader(CacheUpdate)
+				w.WriteHeader(CacheUpdateCode)
 				w.WriteHeader(400)
 			},
 			expectedCounterValues: testExpectedValues{

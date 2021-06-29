@@ -11,7 +11,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
-	"github.com/prebid/prebid-cache/utils"
+	"github.com/stretchr/testify/mock"
 )
 
 func doMockGet(t *testing.T, router *httprouter.Router, id string) *httptest.ResponseRecorder {
@@ -121,29 +121,26 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 	}
 }
 
-type mockBackend struct {
-	data map[string]string
+func newMockBackend() *backends.MemoryBackend {
+	backend := backends.NewMemoryBackend()
+
+	backend.Put(context.TODO(), "non-36-char-key-maps-to-json", `json{"field":"value"}`, 0)
+	backend.Put(context.TODO(), "36-char-key-maps-to-non-xml-nor-json", `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`, 0)
+	backend.Put(context.TODO(), "36-char-key-maps-to-actual-xml-value", "xml<tag>xml data here</tag>", 0)
+
+	return backend
 }
 
-func (b *mockBackend) Get(ctx context.Context, key string) (string, error) {
-	v, ok := b.data[key]
-	if !ok {
-		return "", utils.KeyNotFoundError{}
-	}
-	return v, nil
+type faultyRequestBodyReader struct {
+	mock.Mock
 }
 
-func (b *mockBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	b.data[key] = value
-	return nil
+func (b *faultyRequestBodyReader) Read(p []byte) (n int, err error) {
+	args := b.Called(p)
+	return args.Int(0), args.Error(1)
 }
 
-func newMockBackend() *mockBackend {
-	return &mockBackend{
-		data: map[string]string{
-			"non-36-char-key-maps-to-json":         `json{"field":"value"}`,
-			"36-char-key-maps-to-non-xml-nor-json": `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`,
-			"36-char-key-maps-to-actual-xml-value": "xml<tag>xml data here</tag>",
-		},
-	}
+func (b *faultyRequestBodyReader) Close() error {
+	args := b.Called()
+	return args.Error(0)
 }

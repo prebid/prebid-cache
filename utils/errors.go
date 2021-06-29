@@ -28,7 +28,7 @@ func (e KeyLengthError) Error() string {
 }
 
 /**************************/
-/* Get errors			  */
+/* Put errors			  */
 /**************************/
 
 type RecordExistsError struct{}
