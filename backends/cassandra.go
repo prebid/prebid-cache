@@ -35,9 +35,15 @@ func (c *CassandraDBClient) Get(ctx context.Context, key string) (string, error)
 }
 
 func (c *CassandraDBClient) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	return c.session.Query(`INSERT INTO cache (key, value) VALUES (?, ?) USING TTL ?`, key, value, ttlSeconds).
+	var insertedKey, insertedValue string
+	applied, err := c.session.Query(`INSERT INTO cache (key, value) VALUES (?, ?) IF NOT EXISTS USING TTL ?`, key, value, ttlSeconds).
 		WithContext(ctx).
-		Exec()
+		ScanCAS(&insertedKey, &insertedValue)
+
+	if !applied {
+		return utils.RecordExistsError{}
+	}
+	return err
 }
 
 // Init initializes cassandra cluster and session with the configuration
