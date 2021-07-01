@@ -40,7 +40,7 @@ func (c *CassandraDBClient) Put(ctx context.Context, key string, value string, t
 		WithContext(ctx).
 		ScanCAS(&insertedKey, &insertedValue)
 
-	if err == nil && !success && insertedKey != key {
+	if !success {
 		return utils.RecordExistsError{}
 	}
 	return err

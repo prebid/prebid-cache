@@ -14,7 +14,7 @@ import (
 
 type RedisDB interface {
 	Get(key string) (string, error)
-	Put(key string, value string, ttlSeconds int) error
+	Put(key string, value string, ttlSeconds int) (bool, error)
 }
 
 // RedisDBClient is a wrapper for the Redis client that implements
@@ -27,12 +27,8 @@ func (db RedisDBClient) Get(key string) (string, error) {
 	return db.client.Get(key).Result()
 }
 
-func (db RedisDBClient) Put(key string, value string, ttlSeconds int) error {
-	success, err := db.client.SetNX(key, value, time.Duration(ttlSeconds)*time.Second).Result()
-	if err == nil && !success {
-		return utils.RecordExistsError{}
-	}
-	return err
+func (db RedisDBClient) Put(key string, value string, ttlSeconds int) (bool, error) {
+	return db.client.SetNX(key, value, time.Duration(ttlSeconds)*time.Second).Result()
 }
 
 //------------------------------------------------------------------------------
@@ -95,5 +91,9 @@ func (back *RedisBackend) Put(ctx context.Context, key string, value string, ttl
 		ttlSeconds = back.cfg.Expiration * 60
 	}
 
-	return back.client.Put(key, value, ttlSeconds)
+	success, err := back.client.Put(key, value, ttlSeconds)
+	if err == nil && !success {
+		return utils.RecordExistsError{}
+	}
+	return err
 }
