@@ -36,11 +36,11 @@ func (c *CassandraDBClient) Get(ctx context.Context, key string) (string, error)
 
 func (c *CassandraDBClient) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	var insertedKey, insertedValue string
-	applied, err := c.session.Query(`INSERT INTO cache (key, value) VALUES (?, ?) IF NOT EXISTS USING TTL ?`, key, value, ttlSeconds).
+	success, err := c.session.Query(`INSERT INTO cache (key, value) VALUES (?, ?) IF NOT EXISTS USING TTL ?`, key, value, ttlSeconds).
 		WithContext(ctx).
 		ScanCAS(&insertedKey, &insertedValue)
 
-	if !applied {
+	if err == nil && !success && insertedKey != key {
 		return utils.RecordExistsError{}
 	}
 	return err

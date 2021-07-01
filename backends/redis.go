@@ -28,7 +28,11 @@ func (db RedisDBClient) Get(key string) (string, error) {
 }
 
 func (db RedisDBClient) Put(key string, value string, ttlSeconds int) error {
-	return db.client.Set(key, value, time.Duration(ttlSeconds)*time.Second).Err()
+	success, err := db.client.SetNX(key, value, time.Duration(ttlSeconds)*time.Second).Result()
+	if err == nil && !success {
+		return utils.RecordExistsError{}
+	}
+	return err
 }
 
 //------------------------------------------------------------------------------
