@@ -91,7 +91,7 @@ func formattedRequestTime() string {
 func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, resp *fasthttp.Response, resourceType string, resourceId string) error {
 	date := formattedRequestTime()
 	req.Header.Add("x-ms-date", date)
-	req.Header.Add("x-ms-version", "2017-01-19")
+	req.Header.Add("x-ms-version", "2018-12-31")
 	req.Header.Add("Authorization", c.signReq(string(req.Header.Method()), resourceType, resourceId, date))
 
 	deadline, ok := ctx.Deadline()
@@ -178,6 +178,7 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string, t
 	req.SetBody(b)
 
 	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(partitionKey))
+	req.Header.Add("x-ms-documentdb-is-upsert", "false")
 	if err != nil {
 		return err
 	}

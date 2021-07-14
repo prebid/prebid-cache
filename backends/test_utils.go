@@ -156,8 +156,8 @@ func (ec *errorProneRedisClient) Get(key string) (string, error) {
 	return "", ec.errorToThrow
 }
 
-func (ec *errorProneRedisClient) Put(key string, value string, ttlSeconds int) error {
-	return ec.errorToThrow
+func (ec *errorProneRedisClient) Put(key string, value string, ttlSeconds int) (bool, error) {
+	return false, ec.errorToThrow
 }
 
 // Mock Redis client client that does not throw errors
@@ -177,13 +177,13 @@ func (gc *goodRedisClient) Get(key string) (string, error) {
 	return "", utils.KeyNotFoundError{}
 }
 
-func (gc *goodRedisClient) Put(key string, value string, ttlSeconds int) error {
+func (gc *goodRedisClient) Put(key string, value string, ttlSeconds int) (bool, error) {
 	if gc.key != key {
 		gc.key = key
 	}
 	gc.value = value
 
-	return nil
+	return true, nil
 }
 
 //------------------------------------------------------------------------
