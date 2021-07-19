@@ -82,8 +82,18 @@ type Azure struct {
 }
 
 func (cfg *Azure) validateAndLog() error {
+	// Verify azure configuration parameters are not empty
+	if len(cfg.Account) == 0 {
+		return fmt.Errorf("Azure account was not provided in Prebid Cache configuration values, cannot connect to CosmosDB Collection Document storage server")
+	}
+	if len(cfg.Key) == 0 {
+		return fmt.Errorf("Azure account accesibility key was not provided in Prebid Cache configuration values, cannot connect to CosmosDB Collection Document server")
+	}
+
+	// Log provided parameters
 	log.Infof("config.backend.azure.account: %s", cfg.Account)
 	log.Infof("config.backend.azure.key: %s", cfg.Key)
+
 	return nil
 }
 
