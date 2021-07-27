@@ -1,13 +1,11 @@
 package utils
 
 /**************************/
-/* Get errors			  */
+/* Get errors             */
 /**************************/
 
 // Key not found
-type KeyNotFoundError struct {
-	msgPrefix string
-}
+type KeyNotFoundError struct{}
 
 func (e KeyNotFoundError) Error() string {
 	return "Key not found"
@@ -28,7 +26,7 @@ func (e KeyLengthError) Error() string {
 }
 
 /**************************/
-/* Put errors			  */
+/* Put errors             */
 /**************************/
 
 type RecordExistsError struct{}

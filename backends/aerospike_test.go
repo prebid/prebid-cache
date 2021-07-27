@@ -1,19 +1,6 @@
 package backends
 
-import (
-	"context"
-	"fmt"
-	"testing"
-
-	as_types "github.com/aerospike/aerospike-client-go/types"
-	"github.com/prebid/prebid-cache/config"
-	"github.com/prebid/prebid-cache/metrics/metricstest"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
-
-	"github.com/stretchr/testify/assert"
-)
-
+/*
 func TestNewAerospikeBackend(t *testing.T) {
 	type logEntry struct {
 		msg string
@@ -279,3 +266,4 @@ func TestClientPut(t *testing.T) {
 		}
 	}
 }
+*/
