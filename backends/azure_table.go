@@ -55,7 +55,6 @@ func NewAzureBackend(account string, key string) *AzureTableBackend {
 			WriteTimeout:        15 * time.Second,
 			ReadTimeout:         15 * time.Second,
 		},
-		// Probably fmt.Sprintf("https://%s.documents.azure.com/dbs/%s/colls/%s/docs", account, dbID, collectionID),
 		uri: fmt.Sprintf("https://%s.documents.azure.com/%s", account, "dbs/prebidcache/colls/cache/docs"),
 
 		partitionKeyPool: sync.Pool{
@@ -92,17 +91,12 @@ func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error)
 	}
 
 	// Interpret response as success or error
-	value, azureError := interpretAzureGetResponse(resp)
-	if azureError != nil {
-		return "", azureError
-	}
-
-	return value, nil
+	return interpretAzureGetResponse(resp)
 }
 
 func validateGetArgs(key string) error {
 	if key == "" {
-		return fmt.Errorf("Invalid Key")
+		return errors.New("Invalid Key")
 	}
 	return nil
 }
@@ -118,7 +112,10 @@ func (c *AzureTableBackend) buildGetRequest(key string) *fasthttp.Request {
 	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(c.makePartitionKey(key)))
 	req.Header.Add("x-ms-date", date)
 	req.Header.Add("x-ms-version", "2018-12-31")
-	req.Header.Add("Authorization", createEncodedSignature(c.Key, date, METHOD_GET, key))
+
+	signature := createSignature(date, METHOD_GET, key)
+
+	req.Header.Add("Authorization", encodeString(signature, c.Key))
 
 	return req
 }
@@ -145,15 +142,11 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string, t
 	}
 
 	// Interpret response as success or error
-	if azureError := interpretAzurePutResponse(resp); azureError != nil {
-		return azureError
-	}
-
-	return nil
+	return interpretAzurePutResponse(resp)
 }
 
-// interpretAzureGetResponse checks the response object to verify whether the
-// GET request was successful or not
+// interpretAzureGetResponse checks the response object to verify whether the GET
+// request was successful or not
 func interpretAzureGetResponse(resp *fasthttp.Response) (string, error) {
 	var rv string = ""
 	var re error = nil
@@ -225,8 +218,8 @@ type AzureErrorDesc struct {
 	Errors []string `json:"Errors"`
 }
 
-// interpretAzurePutResponse checks the response object to verify whether the
-// POST request was successful or not
+// interpretAzurePutResponse checks the response object to verify whether the POST
+// request was successful or not
 func interpretAzurePutResponse(resp *fasthttp.Response) error {
 
 	if resp == nil {
@@ -298,7 +291,10 @@ func (c *AzureTableBackend) buildPutRequest(key string, value string) (*fasthttp
 	req.Header.Add("x-ms-documentdb-is-upsert", "false")
 	req.Header.Add("x-ms-date", date)
 	req.Header.Add("x-ms-version", "2018-12-31")
-	req.Header.Add("Authorization", createEncodedSignature(c.Key, date, METHOD_POST, key))
+
+	signature := createSignature(date, METHOD_POST, key)
+
+	req.Header.Add("Authorization", encodeString(signature, c.Key))
 
 	return req, nil
 }
@@ -313,7 +309,7 @@ func newPutValue(key string, value string, partitionKey string) ([]byte, error) 
 	return json.Marshal(&av)
 }
 
-func createEncodedSignature(azureAuthorizationKey, date, requestMethod, elemKey string) string {
+func createSignature(date, requestMethod, elemKey string) string {
 	var resourceLink string
 
 	switch requestMethod {
@@ -323,14 +319,12 @@ func createEncodedSignature(azureAuthorizationKey, date, requestMethod, elemKey 
 		resourceLink = "dbs/prebidcache/colls/cache"
 	}
 
-	signatureString := fmt.Sprintf("%s\n%s\n%s\n%s\n\n",
+	return fmt.Sprintf("%s\n%s\n%s\n%s\n\n",
 		strings.ToLower(requestMethod),
 		"docs",
 		resourceLink,
 		strings.ToLower(date),
 	)
-
-	return encodeString(signatureString, azureAuthorizationKey)
 }
 
 func encodeString(signature, authorizationString string) string {

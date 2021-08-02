@@ -309,3 +309,195 @@ func TestNewPutValue(t *testing.T) {
 		assert.Equalf(t, tc.expectedMarshalErr, outMarshalError, tc.desc)
 	}
 }
+
+func TestValidateGetArgs(t *testing.T) {
+	testCases := []struct {
+		desc        string
+		inKey       string
+		expectedErr error
+	}{
+		{
+			desc:        "empty key",
+			inKey:       "",
+			expectedErr: errors.New("Invalid Key"),
+		},
+		{
+			desc:        "non-empty key",
+			inKey:       "someKey",
+			expectedErr: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		outValidationError := validateGetArgs(tc.inKey)
+		assert.Equalf(t, tc.expectedErr, outValidationError, tc.desc)
+	}
+}
+
+func TestCreateSignature(t *testing.T) {
+	date := "Mon, 02 Jan 2006 15:04:05 GMT"
+	elemKey := "someKey"
+
+	testCases := []struct {
+		desc, inRequestMethod, expectedSignature string
+	}{
+		{
+			desc:              "Get method signature",
+			inRequestMethod:   METHOD_GET,
+			expectedSignature: "get\ndocs\ndbs/prebidcache/colls/cache/docs/someKey\nmon, 02 jan 2006 15:04:05 gmt\n\n",
+		},
+		{
+			desc:              "Put method signature",
+			inRequestMethod:   METHOD_POST,
+			expectedSignature: "post\ndocs\ndbs/prebidcache/colls/cache\nmon, 02 jan 2006 15:04:05 gmt\n\n",
+		},
+	}
+	for _, tc := range testCases {
+		// run
+		outSignature := createSignature(date, tc.inRequestMethod, elemKey)
+
+		// assertions
+		assert.Equalf(t, tc.expectedSignature, outSignature, tc.desc)
+	}
+}
+
+func TestBuildPutRequest(t *testing.T) {
+	// Expected return values
+	expectedPutRequestUri := []uint8("https://someAccount.documents.azure.com/dbs/prebidcache/colls/cache/docs")
+	expectedPutRequestBody := `{"id":"someKey","value":"someValue","uuid":"some"}`
+
+	// Test object
+	azureClient := NewAzureBackend("someAccount", "someAzureSecurityKey")
+
+	// Run test
+	outPutReq, outErr := azureClient.buildPutRequest("someKey", "someValue")
+
+	// Assert the request URI, method and body
+	assert.Equal(t, expectedPutRequestUri, outPutReq.RequestURI())
+	assert.Equal(t, []uint8(METHOD_POST), outPutReq.Header.Method())
+	assert.Equal(t, expectedPutRequestBody, string(outPutReq.Body()))
+
+	// Assert values of some important headers
+	assert.Equal(t, []uint8(`["some"]`), outPutReq.Header.Peek("x-ms-documentdb-partitionkey"))
+	assert.Equal(t, []byte(`false`), outPutReq.Header.Peek("x-ms-documentdb-is-upsert"))
+
+	// Assert the existance of other important headers
+	assert.True(t, len(outPutReq.Header.Peek("x-ms-date")) > 0)
+	assert.True(t, len(outPutReq.Header.Peek("x-ms-version")) > 0)
+	assert.True(t, len(outPutReq.Header.Peek("Authorization")) > 0)
+
+	// Assert nil error when creating new request
+	assert.Nil(t, outErr)
+}
+
+func TestBuildGetRequest(t *testing.T) {
+	// Expected return values
+	expectedGetRequestUri := []uint8("https://someAccount.documents.azure.com/dbs/prebidcache/colls/cache/docs/someKey")
+
+	// Test object
+	azureClient := NewAzureBackend("someAccount", "someAzureSecurityKey")
+
+	// Run test
+	outPutReq := azureClient.buildGetRequest("someKey")
+
+	// Assertions
+	// 	Assert the request URI, method and empty body
+	assert.Equal(t, expectedGetRequestUri, outPutReq.RequestURI())
+	assert.Equal(t, []uint8(METHOD_GET), outPutReq.Header.Method())
+	assert.Equal(t, []byte{}, outPutReq.Body())
+
+	// 	Assert values of some important headers
+	assert.Equal(t, []uint8(`["some"]`), outPutReq.Header.Peek("x-ms-documentdb-partitionkey"))
+
+	//  Assert the existence of other important headers
+	assert.True(t, len(outPutReq.Header.Peek("x-ms-date")) > 0)
+	assert.True(t, len(outPutReq.Header.Peek("x-ms-version")) > 0)
+	assert.True(t, len(outPutReq.Header.Peek("Authorization")) > 0)
+}
+
+func TestInterpretAzureGetResponse(t *testing.T) {
+	type testExpectedValues struct {
+		value string
+		err   error
+	}
+
+	testCases := []struct {
+		desc         string
+		getTestInput func() *fasthttp.Response
+		expected     testExpectedValues
+	}{
+		{
+			"Nil response, expect internal server error",
+			func() *fasthttp.Response { return nil },
+			testExpectedValues{
+				value: "",
+				err:   errors.New(http.StatusText(http.StatusInternalServerError)),
+			},
+		},
+		{
+			"http.StatusNotFound response. Expect empty value and key not found error",
+			func() *fasthttp.Response {
+				resp := &fasthttp.Response{}
+				resp.SetStatusCode(http.StatusNotFound)
+
+				return resp
+			},
+			testExpectedValues{
+				value: "",
+				err:   utils.KeyNotFoundError{},
+			},
+		},
+		{
+			"Response comes with a different status code, expect empty value",
+			func() *fasthttp.Response {
+				resp := &fasthttp.Response{}
+				resp.SetStatusCode(http.StatusBadRequest)
+
+				return resp
+			},
+			testExpectedValues{
+				value: "",
+				err:   errors.New(http.StatusText(http.StatusBadRequest)),
+			},
+		},
+		{
+			"Successful GET response with a malformed response. Expect unmarshal error and a empty return value",
+			func() *fasthttp.Response {
+				resp := &fasthttp.Response{}
+				resp.SetStatusCode(http.StatusOK)
+				resp.AppendBodyString(`{"malformed"}`)
+
+				return resp
+			},
+			testExpectedValues{
+				value: "",
+				err:   errors.New("Failed to decode request body into JSON"),
+			},
+		},
+		{
+			"Successful GET response with an valid response value. Expect nil error and a valid return value",
+			func() *fasthttp.Response {
+				resp := &fasthttp.Response{}
+				resp.SetStatusCode(http.StatusOK)
+				resp.AppendBodyString(`{"id":"someKey","value":"someValue","uuid":"some"}`)
+
+				return resp
+			},
+			testExpectedValues{
+				value: "someValue",
+				err:   nil,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		// set test
+		in := tc.getTestInput()
+
+		// run
+		outValue, outError := interpretAzureGetResponse(in)
+
+		// assertions
+		assert.Equal(t, tc.expected.value, outValue, tc.desc)
+		assert.Equal(t, tc.expected.err, outError, tc.desc)
+	}
+}
