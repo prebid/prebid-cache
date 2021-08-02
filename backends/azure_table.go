@@ -116,6 +116,7 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, res
 	return err
 }
 
+// Current function working
 //func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error) {
 //	/* validate get args */
 //	if key == "" {
@@ -129,7 +130,7 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, res
 //	defer fasthttp.ReleaseResponse(resp)
 //	date := time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
 //
-//	/* Get headers */
+//	/* Request headers */
 //	req.Header.SetMethod(METHOD_GET)
 //	req.SetRequestURI(fmt.Sprintf("%s/%s", c.uri, key))
 //	req.SetBodyString("")
@@ -154,6 +155,7 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, res
 //	encodedSignature := base64.StdEncoding.EncodeToString(sha256.Sum(nil))
 //	u := url.QueryEscape(fmt.Sprintf("type=master&ver=1.0&sig=%s", encodedSignature))
 //	req.Header.Add("Authorization", u)
+//	log.Infof("%v \n", req)
 //
 //	/* Do request */
 //	deadline, ok := ctx.Deadline()
@@ -186,6 +188,10 @@ func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, res
 //}
 
 func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error) {
+	// validate get args
+	if err := validateGetArgs(key); err != nil {
+		return "", err
+	}
 
 	// Make put request
 	req := c.buildGetRequest(key)
@@ -199,11 +205,12 @@ func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error)
 	}
 
 	// Interpret response as success or error
-	if azureError := interpretAzureGetResponse(resp); azureError != nil {
+	value, azureError := interpretAzureGetResponse(resp)
+	if azureError != nil {
 		return "", azureError
 	}
 
-	return "", nil
+	return value, nil
 }
 
 func validateGetArgs(key string) error {
@@ -214,8 +221,8 @@ func validateGetArgs(key string) error {
 }
 
 func (c *AzureTableBackend) buildGetRequest(key string) *fasthttp.Request {
-	req := fasthttp.AcquireRequest()
 	date := time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
+	req := fasthttp.AcquireRequest()
 
 	// Set headers
 	req.Header.SetMethod(METHOD_GET)
@@ -343,15 +350,28 @@ func (c *AzureTableBackend) Put(ctx context.Context, key string, value string, t
 
 // interpretAzureGetResponse checks the response object to verify whether the
 // GET request was successful or not
-func interpretAzureGetResponse(resp *fasthttp.Response) error {
-	if resp.StatusCode() != http.StatusOK {
-		ae, err := unmarshallAzureErrorResponse(resp.Body())
-		if err != nil {
-			return errors.New("Could not unmarshal azure cosmoDB server response")
-		}
-		return errors.New(string(ae.Errors[0]))
+func interpretAzureGetResponse(resp *fasthttp.Response) (string, error) {
+	var rv string = ""
+	var re error = nil
+
+	if resp == nil {
+		return "", errors.New(http.StatusText(http.StatusInternalServerError))
 	}
-	return nil
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		av := AzureValue{}
+		if err := json.Unmarshal(resp.Body(), &av); err != nil {
+			return "", errors.New("Failed to decode request body into JSON")
+		}
+		rv = av.Value
+	case http.StatusNotFound:
+		re = utils.KeyNotFoundError{}
+	default:
+		re = errors.New(http.StatusText(resp.StatusCode()))
+	}
+
+	return rv, re
 }
 
 func unmarshallAzureErrorResponse(respBody []byte) (*AzureErrorDesc, error) {
