@@ -75,120 +75,7 @@ func NewAzureBackend(account string, key string) *AzureTableBackend {
 	return c
 }
 
-func (c *AzureTableBackend) signReq(verb, resourceType, resourceLink, date string) string {
-
-	strToSign := fmt.Sprintf("%s\n%s\n%s\n%s\n\n",
-		strings.ToLower(verb),
-		resourceType,
-		resourceLink,
-		strings.ToLower(date),
-	)
-
-	decodedKey, _ := base64.StdEncoding.DecodeString(c.Key)
-	sha256 := hmac.New(sha256.New, []byte(decodedKey))
-	sha256.Write([]byte(strToSign))
-
-	signature := base64.StdEncoding.EncodeToString(sha256.Sum(nil))
-	u := url.QueryEscape(fmt.Sprintf("type=master&ver=1.0&sig=%s", signature))
-
-	return u
-}
-
-func formattedRequestTime() string {
-	t := time.Now().UTC()
-	return t.Format("Mon, 02 Jan 2006 15:04:05 GMT")
-}
-
-func (c *AzureTableBackend) Send(ctx context.Context, req *fasthttp.Request, resp *fasthttp.Response, resourceType string, resourceId string) error {
-	date := formattedRequestTime()
-	req.Header.Add("x-ms-date", date)
-	req.Header.Add("x-ms-version", "2018-12-31")
-	req.Header.Add("Authorization", c.signReq(string(req.Header.Method()), resourceType, resourceId, date))
-
-	deadline, ok := ctx.Deadline()
-	var err error = nil
-	if ok {
-		err = c.Client.DoDeadline(req, resp, deadline)
-	} else {
-		err = c.Client.Do(req, resp)
-	}
-
-	return err
-}
-
-// Current function working
-//func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error) {
-//	/* validate get args */
-//	if key == "" {
-//		return "", fmt.Errorf("Invalid Key")
-//	}
-//
-//	/* Create fasthttp request and response */
-//	req := fasthttp.AcquireRequest()
-//	defer fasthttp.ReleaseRequest(req)
-//	var resp = fasthttp.AcquireResponse()
-//	defer fasthttp.ReleaseResponse(resp)
-//	date := time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
-//
-//	/* Request headers */
-//	req.Header.SetMethod(METHOD_GET)
-//	req.SetRequestURI(fmt.Sprintf("%s/%s", c.uri, key))
-//	req.SetBodyString("")
-//	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(c.makePartitionKey(key)))
-//
-//	////err := c.Send(ctx, req, resp, "docs", resourceLink[1:])
-//	//err := c.Send(ctx, req, resp, "docs", fmt.Sprintf("dbs/prebidcache/colls/cache/docs/%s", key))
-//	req.Header.Add("x-ms-date", date)
-//	req.Header.Add("x-ms-version", "2018-12-31")
-//	//req.Header.Add("Authorization", c.signReq(string(req.Header.Method()), resourceType, resourceId, date))
-//	signatureString := fmt.Sprintf("%s\n%s\n%s\n%s\n\n",
-//		strings.ToLower("GET"),
-//		"docs",
-//		fmt.Sprintf("dbs/prebidcache/colls/cache/docs/%s", key),
-//		strings.ToLower(date),
-//	)
-//
-//	decodedKey, _ := base64.StdEncoding.DecodeString(c.Key)
-//	sha256 := hmac.New(sha256.New, []byte(decodedKey))
-//	sha256.Write([]byte(signatureString))
-//
-//	encodedSignature := base64.StdEncoding.EncodeToString(sha256.Sum(nil))
-//	u := url.QueryEscape(fmt.Sprintf("type=master&ver=1.0&sig=%s", encodedSignature))
-//	req.Header.Add("Authorization", u)
-//	log.Infof("%v \n", req)
-//
-//	/* Do request */
-//	deadline, ok := ctx.Deadline()
-//	var err error = nil
-//	if ok {
-//		err = c.Client.DoDeadline(req, resp, deadline)
-//	} else {
-//		err = c.Client.Do(req, resp)
-//	}
-//
-//	if err != nil {
-//		log.Debugf("Failed to make request")
-//		return "", err
-//	}
-//
-//	/* Build prebid-cache response */
-//	av := AzureValue{}
-//	err = json.Unmarshal(resp.Body(), &av)
-//	if err != nil {
-//		log.Debugf("Failed to decode request body into JSON")
-//		return "", err
-//	}
-//
-//	if av.Value == "" {
-//		log.Debugf("Response had empty value: %v", av)
-//		return "", utils.KeyNotFoundError{}
-//	}
-//
-//	return av.Value, nil
-//}
-
 func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error) {
-	// validate get args
 	if err := validateGetArgs(key); err != nil {
 		return "", err
 	}
@@ -235,89 +122,6 @@ func (c *AzureTableBackend) buildGetRequest(key string) *fasthttp.Request {
 
 	return req
 }
-
-//func (c *AzureTableBackend) Get(ctx context.Context, key string) (string, error) {
-//
-//	if key == "" {
-//		return "", fmt.Errorf("Invalid Key")
-//	}
-//
-//	// Full key for the stupid gets
-//	//resourceLink := fmt.Sprintf("/dbs/prebidcache/colls/cache/docs/%s", key)
-//	req := fasthttp.AcquireRequest()
-//	defer fasthttp.ReleaseRequest(req)
-//	var resp = fasthttp.AcquireResponse()
-//	defer fasthttp.ReleaseResponse(resp)
-//
-//	req.Header.SetMethod("GET")
-//	//req.SetRequestURI(fmt.Sprintf("%s%s", c.URI, resourceLink))
-//	req.SetRequestURI(fmt.Sprintf("%s/%s", c.uri, key))
-//	req.SetBodyString("")
-//
-//	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(c.makePartitionKey(key)))
-//	//err := c.Send(ctx, req, resp, "docs", resourceLink[1:])
-//	err := c.Send(ctx, req, resp, "docs", fmt.Sprintf("dbs/prebidcache/colls/cache/docs/%s", key))
-//	if err != nil {
-//		log.Debugf("Failed to make request")
-//		return "", err
-//	}
-//
-//	av := AzureValue{}
-//	err = json.Unmarshal(resp.Body(), &av)
-//	if err != nil {
-//		log.Debugf("Failed to decode request body into JSON")
-//		return "", err
-//	}
-//
-//	if av.Value == "" {
-//		log.Debugf("Response had empty value: %v", av)
-//		return "", fmt.Errorf("Key not found")
-//	}
-//
-//	return av.Value, nil
-//}
-
-//func (c *AzureTableBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-//
-//	if key == "" {
-//		return fmt.Errorf("Invalid Key")
-//	}
-//
-//	if value == "" {
-//		return fmt.Errorf("Invalid Value")
-//	}
-//	partitionKey := c.makePartitionKey(key)
-//	log.Debugf("POST partition key %s", partitionKey)
-//	av := AzureValue{
-//		ID:           key,
-//		Value:        value,
-//		PartitionKey: partitionKey,
-//	}
-//
-//	b, err := json.Marshal(&av)
-//	if err != nil {
-//		return err
-//	}
-//
-//	//resourceLink := "/dbs/prebidcache/colls/cache/docs"
-//
-//	req := fasthttp.AcquireRequest()
-//	defer fasthttp.ReleaseRequest(req)
-//	var resp = fasthttp.AcquireResponse()
-//	defer fasthttp.ReleaseResponse(resp)
-//
-//	req.Header.SetMethod("POST")
-//	req.SetRequestURI(c.uri)
-//	req.SetBody(b)
-//
-//	req.Header.Add("x-ms-documentdb-partitionkey", c.wrapForHeader(partitionKey))
-//	req.Header.Add("x-ms-documentdb-is-upsert", "false")
-//	if err != nil {
-//		return err
-//	}
-//	err = c.Send(ctx, req, resp, "docs", "dbs/prebidcache/colls/cache")
-//	return err
-//}
 
 func (c *AzureTableBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	// validate put args
@@ -526,10 +330,13 @@ func createEncodedSignature(azureAuthorizationKey, date, requestMethod, elemKey 
 		strings.ToLower(date),
 	)
 
-	decodedKey, _ := base64.StdEncoding.DecodeString(azureAuthorizationKey)
-	sha256 := hmac.New(sha256.New, []byte(decodedKey))
-	sha256.Write([]byte(signatureString))
+	return encodeString(signatureString, azureAuthorizationKey)
+}
 
+func encodeString(signature, authorizationString string) string {
+	decodedKey, _ := base64.StdEncoding.DecodeString(authorizationString)
+	sha256 := hmac.New(sha256.New, []byte(decodedKey))
+	sha256.Write([]byte(signature))
 	encodedSignature := base64.StdEncoding.EncodeToString(sha256.Sum(nil))
 
 	return url.QueryEscape(fmt.Sprintf("type=master&ver=1.0&sig=%s", encodedSignature))
