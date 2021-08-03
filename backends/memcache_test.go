@@ -99,33 +99,33 @@ func TestMemcachePut(t *testing.T) {
 		expected testExpectedValues
 	}{
 		{
-			"Memcache.Put() throws error",
+			"Memcache.Put() throws non-ErrNotStored error",
 			testInput{
-				NewErrorProneMemcache(memcache.ErrCacheMiss),
+				NewErrorProneMemcache(memcache.ErrServerError),
 				"someKey",
 				"someValue",
 				10,
 			},
 			testExpectedValues{
 				"",
-				memcache.ErrCacheMiss,
+				memcache.ErrServerError,
 			},
 		},
 		{
-			"Memcache.Put() gets called with zero ttlSeconds, value gets successfully set anyways",
+			"Memcache.Put() throws ErrNotStored error",
 			testInput{
-				NewGoodMemcache("defaultKey", "aValue"),
-				"defaultKey",
-				"aValue",
-				0,
+				NewErrorProneMemcache(memcache.ErrNotStored),
+				"someKey",
+				"someValue",
+				10,
 			},
 			testExpectedValues{
-				"aValue",
-				nil,
+				"",
+				utils.RecordExistsError{},
 			},
 		},
 		{
-			"Memcache.Put() successful, no need to set defaultTTL because ttl is greater than zero",
+			"Memcache.Put() successful",
 			testInput{
 				NewGoodMemcache("defaultKey", "aValue"),
 				"defaultKey",

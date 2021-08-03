@@ -783,34 +783,48 @@ func TestCompressionValidateAndLog(t *testing.T) {
 	}
 
 	testCases := []struct {
-		description     string
-		compressionCfg  *Compression
-		expectedLogInfo []logComponents
+		description      string
+		inCompressionCfg *Compression
+		inBackendType    BackendType
+		expectedLogInfo  []logComponents
 	}{
 		{
-			description:    "Blank compression type, expect fatal level log entry",
-			compressionCfg: &Compression{Type: CompressionType("")},
+			description:      "Blank compression type, expect fatal level log entry",
+			inCompressionCfg: &Compression{Type: CompressionType("")},
+			inBackendType:    BackendMemory,
 			expectedLogInfo: []logComponents{
 				{msg: `invalid config.compression.type: . It must be "none" or "snappy"`, lvl: logrus.FatalLevel},
 			},
 		},
 		{
-			description:    "Valid compression type 'none', expect info level log entry",
-			compressionCfg: &Compression{Type: CompressionNone},
+			description:      "Valid compression type 'none', expect info level log entry",
+			inCompressionCfg: &Compression{Type: CompressionNone},
+			inBackendType:    BackendMemory,
 			expectedLogInfo: []logComponents{
 				{msg: "config.compression.type: none", lvl: logrus.InfoLevel},
 			},
 		},
 		{
-			description:    "Valid compression type 'snappy', expect info level log entry",
-			compressionCfg: &Compression{Type: CompressionSnappy},
+			description:      "Valid compression type 'snappy', expect info level log entry",
+			inCompressionCfg: &Compression{Type: CompressionSnappy},
+			inBackendType:    BackendMemory,
 			expectedLogInfo: []logComponents{
 				{msg: "config.compression.type: snappy", lvl: logrus.InfoLevel},
 			},
 		},
 		{
-			description:    "Unsupported compression, expect fatal level log entry",
-			compressionCfg: &Compression{Type: CompressionType("UnknownCompressionType")},
+			description:      "Valid compression type 'snappy', but Azure backend will be used. No compression will be used",
+			inCompressionCfg: &Compression{Type: CompressionSnappy},
+			inBackendType:    BackendAzure,
+			expectedLogInfo: []logComponents{
+				{msg: "Compression type snappy cannot be used with the Azure backend.", lvl: logrus.InfoLevel},
+				{msg: "config.compression.type: none", lvl: logrus.InfoLevel},
+			},
+		},
+		{
+			description:      "Unsupported compression, expect fatal level log entry",
+			inCompressionCfg: &Compression{Type: CompressionType("UnknownCompressionType")},
+			inBackendType:    BackendMemory,
 			expectedLogInfo: []logComponents{
 				{msg: `invalid config.compression.type: UnknownCompressionType. It must be "none" or "snappy"`, lvl: logrus.FatalLevel},
 			},
@@ -823,7 +837,7 @@ func TestCompressionValidateAndLog(t *testing.T) {
 
 	for _, tc := range testCases {
 		// Run test
-		tc.compressionCfg.validateAndLog()
+		tc.inCompressionCfg.validateAndLog(tc.inBackendType)
 
 		// Assert logrus expected entries
 		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.description) {

@@ -1,9 +1,5 @@
 package utils
 
-/**************************/
-/* Get errors             */
-/**************************/
-
 // Key not found
 type KeyNotFoundError struct{}
 
@@ -25,12 +21,8 @@ func (e KeyLengthError) Error() string {
 	return "invalid uuid length"
 }
 
-/**************************/
-/* Put errors             */
-/**************************/
-
 type RecordExistsError struct{}
 
 func (e RecordExistsError) Error() string {
-	return "A record already exists under provided key."
+	return "Record exists with provided key."
 }

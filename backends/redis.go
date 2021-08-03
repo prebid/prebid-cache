@@ -23,15 +23,17 @@ type RedisDBClient struct {
 	client *redis.Client
 }
 
+// Get returns the value associated with the provided `key` parameter
 func (db RedisDBClient) Get(key string) (string, error) {
 	return db.client.Get(key).Result()
 }
 
+// Put will set 'key' to hold string 'value' if 'key' does not exist in the redis storage.
+// When key already holds a value, no operation is performed. That's the reason this adapter
+// uses the 'github.com/go-redis/redis's library SetNX. SetNX is short for "SET if Not eXists".
 func (db RedisDBClient) Put(key string, value string, ttlSeconds int) (bool, error) {
 	return db.client.SetNX(key, value, time.Duration(ttlSeconds)*time.Second).Result()
 }
-
-//------------------------------------------------------------------------------
 
 // Instantiates, and configures the Redis client, it also performs Get
 // and Put operations and monitors results. Implements the Backend interface
@@ -76,8 +78,11 @@ func NewRedisBackend(cfg config.Redis) *RedisBackend {
 	}
 }
 
-func (back *RedisBackend) Get(ctx context.Context, key string) (string, error) {
-	res, err := back.client.Get(key)
+// Get calls the Redis client to return the value associated with the provided `key`
+// parameter and interprets its response. A `Nil` error reply of the Redis client means
+// the `key` does not exist.
+func (b *RedisBackend) Get(ctx context.Context, key string) (string, error) {
+	res, err := b.client.Get(key)
 
 	if err == redis.Nil {
 		err = utils.KeyNotFoundError{}
@@ -86,13 +91,16 @@ func (back *RedisBackend) Get(ctx context.Context, key string) (string, error) {
 	return res, err
 }
 
-func (back *RedisBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+// Put writes the `value` under the provided `key` in the Redis storage server. Because the backend
+// implementation of Put calls SetNX(item *Item), a `false` return value is interpreted as the data
+// not being written because the `key` already holds a value, and a RecordExistsError is returned
+func (b *RedisBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	if ttlSeconds == 0 {
-		ttlSeconds = back.cfg.Expiration * 60
+		ttlSeconds = b.cfg.Expiration * 60
 	}
 
-	success, err := back.client.Put(key, value, ttlSeconds)
-	if err == nil && !success {
+	success, err := b.client.Put(key, value, ttlSeconds)
+	if !success || err == redis.Nil {
 		return utils.RecordExistsError{}
 	}
 	return err

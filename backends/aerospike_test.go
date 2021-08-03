@@ -246,7 +246,7 @@ func TestClientPut(t *testing.T) {
 			inKey:             "testKey",
 			inValueToStore:    "not default value",
 			expectedStoredVal: "",
-			expectedErrorMsg:  "A record already exists under provided key.",
+			expectedErrorMsg:  "Record exists with provided key.",
 		},
 		{
 			desc:              "AerospikeBackend.Put() does not throw error",

@@ -31,7 +31,7 @@ func TestRedisClientGet(t *testing.T) {
 		{
 			"RedisBackend.Get() throws a redis.Nil error",
 			testInput{
-				NewErrorProneRedisClient(redis.Nil),
+				NewErrorProneRedisClient(false, redis.Nil),
 				"someKeyThatWontBeFound",
 			},
 			testExpectedValues{
@@ -42,7 +42,7 @@ func TestRedisClientGet(t *testing.T) {
 		{
 			"RedisBackend.Get() throws an error different from Cassandra ErrNotFound error",
 			testInput{
-				NewErrorProneRedisClient(errors.New("some other get error")),
+				NewErrorProneRedisClient(false, errors.New("some other get error")),
 				"someKey",
 			},
 			testExpectedValues{
@@ -96,16 +96,29 @@ func TestRedisClientPut(t *testing.T) {
 		expected testExpectedValues
 	}{
 		{
-			"RedisBackend.Put() throws error",
+			"RedisBackend.Put() tries to overwrite already existing key",
 			testInput{
-				NewErrorProneRedisClient(redis.Nil),
+				NewErrorProneRedisClient(false, redis.Nil),
+				"repeatedKey",
+				"overwriteValue",
+				10,
+			},
+			testExpectedValues{
+				"",
+				utils.RecordExistsError{},
+			},
+		},
+		{
+			"RedisBackend.Put() throws an error different from error redis.Nil, which gets returned when key does not exist.",
+			testInput{
+				NewErrorProneRedisClient(true, errors.New("Some other redis error.")),
 				"someKey",
 				"someValue",
 				10,
 			},
 			testExpectedValues{
 				"",
-				redis.Nil,
+				errors.New("Some other redis error."),
 			},
 		},
 		{

@@ -20,26 +20,31 @@ type Memcache struct {
 	client *memcache.Client
 }
 
+// Get uses the github.com/bradfitz/gomemcache/memcache library to retrieve
+// the value stored under 'key', if any
 func (mc *Memcache) Get(key string) (*memcache.Item, error) {
 	return mc.client.Get(key)
 }
 
+// Put uses the github.com/bradfitz/gomemcache/memcache library to store
+// 'value' under 'key'. Because Prebid Cache doesn't implement 'upsert',
+// Put calls Add(item *Item), that writes the given item only if no value
+// already exists for its key as opposed to Set(item *Item), or Replace(item *Item)
 func (mc *Memcache) Put(key string, value string, ttlSeconds int) error {
-	return mc.client.Set(&memcache.Item{
+	return mc.client.Add(&memcache.Item{
 		Expiration: int32(ttlSeconds),
 		Key:        key,
 		Value:      []byte(value),
 	})
 }
 
-//------------------------------------------------------------------------------
-
 // MemcacheBackend implements the Backend interface
 type MemcacheBackend struct {
 	memcache MemcacheDataStore
 }
 
-// NewMemcacheBackend create a new memcache backend
+// NewMemcacheBackend creates a new memcache backend and expects a valid
+// 'cfg config.Memcache' argument
 func NewMemcacheBackend(cfg config.Memcache) *MemcacheBackend {
 	var mc *memcache.Client
 	if cfg.ConfigHost != "" {
@@ -58,6 +63,9 @@ func NewMemcacheBackend(cfg config.Memcache) *MemcacheBackend {
 	}
 }
 
+// Get makes the MemcacheDataStore client to retrieve the value that has been previously
+// stored under 'key'. If unseuccessful, returns an empty value and a KeyNotFoundError
+// or other, memcache-related error
 func (mc *MemcacheBackend) Get(ctx context.Context, key string) (string, error) {
 	res, err := mc.memcache.Get(key)
 
@@ -71,9 +79,12 @@ func (mc *MemcacheBackend) Get(ctx context.Context, key string) (string, error) 
 	return string(res.Value), nil
 }
 
-// Put calls Set(item *Item), that writes the given item, unconditionally as
-// opposed to Add, that writes the given item only if no value already exists or
-// Replace, that writes only if the server already holds data for this key
+// Put makes the MemcacheDataStore client to store `value` only if `key` doesn't exist
+// in the storage already. If it does, no operation is performed and Put returns RecordExistsError
 func (mc *MemcacheBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	return mc.memcache.Put(key, value, ttlSeconds)
+	err := mc.memcache.Put(key, value, ttlSeconds)
+	if err != nil && err == memcache.ErrNotStored {
+		return utils.RecordExistsError{}
+	}
+	return err
 }

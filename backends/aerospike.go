@@ -68,10 +68,6 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 		log.Fatalf("%v", classifyAerospikeError(err).Error())
 		panic("AerospikeBackend failure. This shouldn't happen.")
 	}
-
-	// If the record already exists, don't write and throw error
-	client.DefaultWritePolicy.RecordExistsAction = as.CREATE_ONLY
-
 	log.Infof("Connected to Aerospike host(s) %v on port %d", append(cfg.Hosts, cfg.Host), cfg.Port)
 
 	return &AerospikeBackend{

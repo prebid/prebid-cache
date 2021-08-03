@@ -31,6 +31,34 @@ go build .
 
 ## API
 
+### GET /cache?uuid={id}
+
+Retrieves a single value from the cache. If the `id` isn't recognized, then it will return a 404.
+
+Assuming the above POST calls have been made, here are some sample GET responses.
+
+---
+
+**GET** */cache?uuid=279971e4-70f0-4b18-bd65-5c6e7aa75d40*
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/xml
+
+<tag>Your XML content goes here.</tag>
+```
+
+---
+
+**GET** */cache?uuid=147c9934-894b-4c1f-9a32-e7bb9cd15376*
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+[1, true, "JSON value of any type can go here."]
+```
+
 ### POST /cache
 
 Adds one or more values to the cache. Values can be given as either JSON or XML. A sample request is below.
@@ -96,35 +124,43 @@ This will result in the response
 }
 ```
 
-so that a cache key can be specified for the cached object. If an entry already exists for "ArbitraryKeyValueHere", it will not be overwitten, and "" will be returned for the `uuid` value of that entry. This is to prevent bad actors from trying to overwrite legitimate caches with malicious content, or a poorly coded app overwriting its own cache with new values, generating uncertainty what is actually stored under a particular key. Note that this is the only case where only a subset of caches will be stored, as this is the only case where a put will fail due to no fault of the requester yet the other puts are not called into question. (A failure can happen if the backend datastore errors on the storage of one entry, but this then calls into question how successfully the other caches were saved.)
+so that a cache key can be specified for the cached object. If an entry already exists fora given key, it will not be overwitten, and "" will be returned for the `uuid` value of that entry. Suppose we wanted to overwrite the content under "ArbitraryKeyValueHere"
 
-### GET /cache?uuid={id}
+```json
+{
+  "puts": [
+    {
+      "type": "xml",
+      "ttlseconds": 60,
+      "value": "<tag>Some other XML content that we want instead</tag>",
+      "key": "ArbitraryKeyValueHere"
+    },
+  ]
+}
+```
 
-Retrieves a single value from the cache. If the `id` isn't recognized, then it will return a 404.
+Then we get a response with an empty `uuid`:
 
-Assuming the above POST calls have been made, here are some sample GET responses.
+```json
+{
+  "responses": [
+    {"uuid": ""},
+  ]
+}
+```
 
----
-
-**GET** */cache?uuid=279971e4-70f0-4b18-bd65-5c6e7aa75d40*
+And the response would not have gotten overwritten:
 
 ```
+$ curl http://someprebidcachehost.com/cache\?uuid\=ArbitraryKeyValueHere
+
 HTTP/1.1 200 OK
 Content-Type: application/xml
 
 <tag>Your XML content goes here.</tag>
 ```
 
----
-
-**GET** */cache?uuid=147c9934-894b-4c1f-9a32-e7bb9cd15376*
-
-```
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-[1, true, "JSON value of any type can go here."]
-```
+This is to prevent bad actors from trying to overwrite legitimate caches with malicious content, or a poorly coded app overwriting its own cache with new values, generating uncertainty what is actually stored under a particular key. Note that this is the only case where only a subset of caches will be stored, as this is the only case where a put will fail due to no fault of the requester yet the other puts are not called into question. (A failure can happen if the backend datastore errors on the storage of one entry, but this then calls into question how successfully the other caches were saved.)
 
 ### Limitations
 
@@ -132,6 +168,55 @@ This section does not describe permanent API contracts; it just describes limita
 
 - This application does *not* validate XML. If users `POST` malformed XML, they'll `GET` a bad response too.
 - The host company can set a max length on payload size limits in the application config. This limit will vary from vendor to vendor.
+
+## Backend configuration parameters
+
+In order to store its data a Prebid Cache instance can use either of the following storage services: Aerospike, Azure CosmosDB SQL Document Storage, Cassandra, Memcache, Redis, or simply store in local memory. Select the storage service your Prebid Cache server will use by setting the `backend.type` property in the `config.yaml` file:
+
+```yaml
+backend:
+  type: "aerospike"
+```
+
+### Aerospike Backend Configuration
+{: .table .table-bordered .table-striped }
+| Configuration field | Type | Description |
+| host | string | aerospike server URI |
+| port | 4-digit integer | aerospike server port |
+| namespace | string | aerospike service namespace where keys get initialized |
+
+### Azure
+{: .table .table-bordered .table-striped }
+| Configuration field | Type | Description |
+| account | string | Azure CosmosDB SQL storage account |
+| key | string | Azure CosmosDB security key |
+
+### Cassandra
+{: .table .table-bordered .table-striped }
+| Configuration field | Type | Description |
+| hosts | string | Cassandra server URI |
+| keyspace | string | Keyspace defined in Cassandra server |
+
+### Memcache:
+{: .table .table-bordered .table-striped }
+| Configuration field | Type | Description |
+| config_host | string | Configuration endpoint for auto discovery. Replaced at docker build. |
+| poll_interval_seconds | string |  Node change polling interval when auto discovery is used |
+| hosts | string array | List of nodes when not using auto discovery | 
+
+### Redis:
+{: .table .table-bordered .table-striped }
+| Configuration field | Type | Description |
+| host | string | Redis server URI |
+| port | integer | Redis server port |
+| password | string | Redis password |
+| db | integer | Database to be selected after connecting to the server |
+| expiration | integer | Availability in the Redis system in Minutes |
+| tls | field | subfields |
+|     |       | enabled: whether or not pass the InsecureSkipVerify value to the Redis client's TLS confi |
+|     |       | insecure_skip_verify: In Redis, InsecureSkipVerify controls whether a client verifies the server's certificate chain and host name. If InsecureSkipVerify is true, crypto/t |
+
+Sample configuration found in the `config.yaml` file
 
 ## Development
 

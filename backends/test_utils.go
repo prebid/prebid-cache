@@ -10,7 +10,7 @@ import (
 	"github.com/prebid/prebid-cache/utils"
 )
 
-// Mock Aerospike client that always throws an error
+// Aerospike client that always throws an error
 type errorProneAerospikeClient struct {
 	errorThrowingFunction string
 }
@@ -46,7 +46,7 @@ func (c *errorProneAerospikeClient) Put(policy *as.WritePolicy, key *as.Key, bin
 	return nil
 }
 
-// Mock Aerospike client that does not throw errors
+// Aerospike client that does not throw errors
 type goodAerospikeClient struct {
 	records map[string]*as.Record
 }
@@ -90,7 +90,7 @@ func (c *goodAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key,
 
 //------------------------------------------------------------------------
 
-// Mock Cassandra client that always throws an error
+// Cassandra client that always throws an error
 type errorProneCassandraClient struct {
 	errorToThrow error
 }
@@ -107,11 +107,15 @@ func (ec *errorProneCassandraClient) Get(ctx context.Context, key string) (strin
 	return "", ec.errorToThrow
 }
 
-func (ec *errorProneCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	return ec.errorToThrow
+func (ec *errorProneCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
+	rv := true
+	if _, ok := ec.errorToThrow.(utils.RecordExistsError); ok {
+		rv = false
+	}
+	return rv, ec.errorToThrow
 }
 
-// Mock Cassandra client client that does not throw errors
+// Cassandra client client that does not throw errors
 type goodCassandraClient struct {
 	key   string
 	value string
@@ -132,24 +136,25 @@ func (gc *goodCassandraClient) Get(ctx context.Context, key string) (string, err
 	return "", utils.KeyNotFoundError{}
 }
 
-func (gc *goodCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+func (gc *goodCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
 	if gc.key != key {
 		gc.key = key
 	}
 	gc.value = value
 
-	return nil
+	return true, nil
 }
 
 //------------------------------------------------------------------------
 
-// Mock Redis client that always throws an error
+// Redis client that always throws an error
 type errorProneRedisClient struct {
+	success      bool
 	errorToThrow error
 }
 
-func NewErrorProneRedisClient(errorToThrow error) *errorProneRedisClient {
-	return &errorProneRedisClient{errorToThrow}
+func NewErrorProneRedisClient(success bool, errorToThrow error) *errorProneRedisClient {
+	return &errorProneRedisClient{success, errorToThrow}
 }
 
 func (ec *errorProneRedisClient) Get(key string) (string, error) {
@@ -157,10 +162,10 @@ func (ec *errorProneRedisClient) Get(key string) (string, error) {
 }
 
 func (ec *errorProneRedisClient) Put(key string, value string, ttlSeconds int) (bool, error) {
-	return false, ec.errorToThrow
+	return ec.success, ec.errorToThrow
 }
 
-// Mock Redis client client that does not throw errors
+// Redis client client that does not throw errors
 type goodRedisClient struct {
 	key   string
 	value string
@@ -188,7 +193,7 @@ func (gc *goodRedisClient) Put(key string, value string, ttlSeconds int) (bool, 
 
 //------------------------------------------------------------------------
 
-// Mock Memcache that always throws an error
+// Memcache that always throws an error
 type errorProneMemcache struct {
 	errorToThrow error
 }
@@ -205,7 +210,7 @@ func (ec *errorProneMemcache) Put(key string, value string, ttlSeconds int) erro
 	return ec.errorToThrow
 }
 
-// Mock Memcache client that does not throw errors
+// Memcache client that does not throw errors
 type goodMemcache struct {
 	key   string
 	value string

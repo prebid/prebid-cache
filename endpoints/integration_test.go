@@ -496,7 +496,7 @@ func TestInternalPutClientError(t *testing.T) {
 	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"text longer than size limit\"}]}"
 
 	// Use mock client that will return an error
-	backend := backends.NewErrorReturningBackend()
+	backend := NewErrorReturningBackend()
 
 	// Run client
 	router := httprouter.New()
@@ -578,7 +578,7 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"text longer than size limit\"}]}"
 
 	// Use mock client that will return an error
-	backend := backends.NewDeadlineExceededBackend()
+	backend := NewDeadlineExceededBackend()
 
 	// Run client
 	router := httprouter.New()

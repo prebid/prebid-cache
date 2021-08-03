@@ -123,7 +123,7 @@ func (cfg *Configuration) ValidateAndLog() {
 		log.Fatalf("%s", err.Error())
 	}
 
-	cfg.Compression.validateAndLog()
+	cfg.Compression.validateAndLog(cfg.Backend.Type)
 	cfg.Metrics.validateAndLog()
 	cfg.Routes.validateAndLog()
 }
@@ -176,11 +176,15 @@ type Compression struct {
 	Type CompressionType `mapstructure:"type"`
 }
 
-func (cfg *Compression) validateAndLog() {
+func (cfg *Compression) validateAndLog(backendType BackendType) {
 	switch cfg.Type {
 	case CompressionNone:
-		fallthrough
+		log.Infof("config.compression.type: %s", cfg.Type)
 	case CompressionSnappy:
+		if backendType == BackendAzure {
+			log.Infof("Compression type snappy cannot be used with the Azure backend.")
+			cfg.Type = CompressionNone
+		}
 		log.Infof("config.compression.type: %s", cfg.Type)
 	default:
 		log.Fatalf(`invalid config.compression.type: %s. It must be "none" or "snappy"`, cfg.Type)

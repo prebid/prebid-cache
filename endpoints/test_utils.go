@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
@@ -143,4 +145,49 @@ func (b *faultyRequestBodyReader) Read(p []byte) (n int, err error) {
 func (b *faultyRequestBodyReader) Close() error {
 	args := b.Called()
 	return args.Error(0)
+}
+
+type errorReturningBackend struct{}
+
+func (b *errorReturningBackend) Get(ctx context.Context, key string) (string, error) {
+	return "", fmt.Errorf("This is a mock backend that returns this error on Get() operation")
+}
+
+func (b *errorReturningBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+	return fmt.Errorf("This is a mock backend that returns this error on Put() operation")
+}
+
+func NewErrorReturningBackend() *errorReturningBackend {
+	return &errorReturningBackend{}
+}
+
+type deadlineExceedingBackend struct{}
+
+func (b *deadlineExceedingBackend) Get(ctx context.Context, key string) (string, error) {
+	return "", nil
+}
+
+func (b *deadlineExceedingBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+	var err error
+
+	d := time.Now().Add(50 * time.Millisecond)
+	sampleCtx, cancel := context.WithDeadline(context.Background(), d)
+
+	// Even though ctx will be expired, it is good practice to call its
+	// cancellation function in any case. Failure to do so may keep the
+	// context and its parent alive longer than necessary.
+	defer cancel()
+
+	select {
+	case <-time.After(1 * time.Second):
+		//err = fmt.Errorf("Some other error")
+		err = nil
+	case <-sampleCtx.Done():
+		err = sampleCtx.Err()
+	}
+	return err
+}
+
+func NewDeadlineExceededBackend() *deadlineExceedingBackend {
+	return &deadlineExceedingBackend{}
 }
