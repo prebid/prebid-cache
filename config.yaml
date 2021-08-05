@@ -11,14 +11,11 @@ request_limits:
   max_num_values: 10
   max_ttl_seconds: 3600
 backend:
-  type: "memory" # Can also be "aerospike", "azure", "cassandra", "memcache" or "redis"
+  type: "memory" # Can also be "aerospike", "cassandra", "memcache" or "redis"
   aerospike:
     host: "aerospike.prebid.com"
     port: 3000
     namespace: "whatever"
-  azure:
-    account: "azure-account-here"
-    key: "azure-key-here"
   cassandra:
     hosts: "127.0.0.1"
     keyspace: "prebid"

@@ -12,7 +12,7 @@ require (
 	github.com/go-redis/redis v6.12.1-0.20180718122851-ee41b9092371+incompatible
 	github.com/gocql/gocql v0.0.0-20180617115710-e06f8c1bcd78
 	github.com/gofrs/uuid v3.2.0+incompatible
-	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
+	github.com/golang/snappy v0.0.4
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed
 	github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce
 	github.com/influxdata/influxdb v1.6.0

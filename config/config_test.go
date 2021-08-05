@@ -813,15 +813,6 @@ func TestCompressionValidateAndLog(t *testing.T) {
 			},
 		},
 		{
-			description:      "Valid compression type 'snappy', but Azure backend will be used. No compression will be used",
-			inCompressionCfg: &Compression{Type: CompressionSnappy},
-			inBackendType:    BackendAzure,
-			expectedLogInfo: []logComponents{
-				{msg: "Compression type snappy cannot be used with the Azure backend.", lvl: logrus.InfoLevel},
-				{msg: "config.compression.type: none", lvl: logrus.InfoLevel},
-			},
-		},
-		{
 			description:      "Unsupported compression, expect fatal level log entry",
 			inCompressionCfg: &Compression{Type: CompressionType("UnknownCompressionType")},
 			inBackendType:    BackendMemory,
@@ -837,7 +828,7 @@ func TestCompressionValidateAndLog(t *testing.T) {
 
 	for _, tc := range testCases {
 		// Run test
-		tc.inCompressionCfg.validateAndLog(tc.inBackendType)
+		tc.inCompressionCfg.validateAndLog()
 
 		// Assert logrus expected entries
 		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.description) {
@@ -1123,10 +1114,6 @@ func getExpectedFullConfigForTestFile() Configuration {
 				Namespace:  "whatever",
 				User:       "foo",
 				Password:   "bar",
-			},
-			Azure: Azure{
-				Account: "azure-account-here",
-				Key:     "azure-key-here",
 			},
 			Cassandra: Cassandra{
 				Hosts:    "127.0.0.1",

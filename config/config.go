@@ -51,8 +51,6 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("backend.aerospike.user", "")
 	v.SetDefault("backend.aerospike.password", "")
 	v.SetDefault("backend.aerospike.default_ttl_seconds", 0)
-	v.SetDefault("backend.azure.account", "")
-	v.SetDefault("backend.azure.key", "")
 	v.SetDefault("backend.cassandra.hosts", "")
 	v.SetDefault("backend.cassandra.keyspace", "")
 	v.SetDefault("backend.memcache.hosts", []string{})
@@ -123,7 +121,7 @@ func (cfg *Configuration) ValidateAndLog() {
 		log.Fatalf("%s", err.Error())
 	}
 
-	cfg.Compression.validateAndLog(cfg.Backend.Type)
+	cfg.Compression.validateAndLog()
 	cfg.Metrics.validateAndLog()
 	cfg.Routes.validateAndLog()
 }
@@ -176,15 +174,11 @@ type Compression struct {
 	Type CompressionType `mapstructure:"type"`
 }
 
-func (cfg *Compression) validateAndLog(backendType BackendType) {
+func (cfg *Compression) validateAndLog() {
 	switch cfg.Type {
 	case CompressionNone:
-		log.Infof("config.compression.type: %s", cfg.Type)
+		fallthrough
 	case CompressionSnappy:
-		if backendType == BackendAzure {
-			log.Infof("Compression type snappy cannot be used with the Azure backend.")
-			cfg.Type = CompressionNone
-		}
 		log.Infof("config.compression.type: %s", cfg.Type)
 	default:
 		log.Fatalf(`invalid config.compression.type: %s. It must be "none" or "snappy"`, cfg.Type)

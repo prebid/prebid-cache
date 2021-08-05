@@ -9,7 +9,6 @@ import (
 type Backend struct {
 	Type      BackendType `mapstructure:"type"`
 	Aerospike Aerospike   `mapstructure:"aerospike"`
-	Azure     Azure       `mapstructure:"azure"`
 	Cassandra Cassandra   `mapstructure:"cassandra"`
 	Memcache  Memcache    `mapstructure:"memcache"`
 	Redis     Redis       `mapstructure:"redis"`
@@ -21,8 +20,6 @@ func (cfg *Backend) validateAndLog() error {
 	switch cfg.Type {
 	case BackendAerospike:
 		return cfg.Aerospike.validateAndLog()
-	case BackendAzure:
-		return cfg.Azure.validateAndLog()
 	case BackendCassandra:
 		return cfg.Cassandra.validateAndLog()
 	case BackendMemcache:
@@ -32,7 +29,7 @@ func (cfg *Backend) validateAndLog() error {
 	case BackendMemory:
 		return nil
 	default:
-		return fmt.Errorf(`invalid config.backend.type: %s. It must be "aerospike", "azure", "cassandra", "memcache", "redis", or "memory".`, cfg.Type)
+		return fmt.Errorf(`invalid config.backend.type: %s. It must be "aerospike", "cassandra", "memcache", "redis", or "memory".`, cfg.Type)
 	}
 	return nil
 }
@@ -41,7 +38,6 @@ type BackendType string
 
 const (
 	BackendAerospike BackendType = "aerospike"
-	BackendAzure     BackendType = "azure"
 	BackendCassandra BackendType = "cassandra"
 	BackendMemcache  BackendType = "memcache"
 	BackendMemory    BackendType = "memory"
@@ -72,27 +68,6 @@ func (cfg *Aerospike) validateAndLog() error {
 	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
 	log.Infof("config.backend.aerospike.namespace: %s", cfg.Namespace)
 	log.Infof("config.backend.aerospike.user: %s", cfg.User)
-
-	return nil
-}
-
-type Azure struct {
-	Account string `mapstructure:"account"`
-	Key     string `mapstructure:"key"`
-}
-
-func (cfg *Azure) validateAndLog() error {
-	// Verify azure configuration parameters are not empty
-	if len(cfg.Account) == 0 {
-		return fmt.Errorf("Azure account was not provided in Prebid Cache configuration values, cannot connect to CosmosDB Collection Document storage server")
-	}
-	if len(cfg.Key) == 0 {
-		return fmt.Errorf("Azure account accesibility key was not provided in Prebid Cache configuration values, cannot connect to CosmosDB Collection Document server")
-	}
-
-	// Log provided parameters
-	log.Infof("config.backend.azure.account: %s", cfg.Account)
-	log.Infof("config.backend.azure.key: %s", cfg.Key)
 
 	return nil
 }

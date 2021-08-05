@@ -171,7 +171,7 @@ This section does not describe permanent API contracts; it just describes limita
 
 ## Backend configuration parameters
 
-In order to store its data a Prebid Cache instance can use either of the following storage services: Aerospike, Azure CosmosDB SQL Document Storage, Cassandra, Memcache, Redis, or simply store in local memory. Select the storage service your Prebid Cache server will use by setting the `backend.type` property in the `config.yaml` file:
+In order to store its data a Prebid Cache instance can use either of the following storage services: Aerospike, Cassandra, Memcache, Redis, or simply store in local memory. Select the storage service your Prebid Cache server will use by setting the `backend.type` property in the `config.yaml` file:
 
 ```yaml
 backend:
@@ -184,12 +184,6 @@ backend:
 | host | string | aerospike server URI |
 | port | 4-digit integer | aerospike server port |
 | namespace | string | aerospike service namespace where keys get initialized |
-
-### Azure
-{: .table .table-bordered .table-striped }
-| Configuration field | Type | Description |
-| account | string | Azure CosmosDB SQL storage account |
-| key | string | Azure CosmosDB security key |
 
 ### Cassandra
 {: .table .table-bordered .table-striped }

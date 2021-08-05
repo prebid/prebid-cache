@@ -45,8 +45,6 @@ func newBaseBackend(cfg config.Backend, appMetrics *metrics.Metrics) backends.Ba
 		return backends.NewMemoryBackend()
 	case config.BackendMemcache:
 		return backends.NewMemcacheBackend(cfg.Memcache)
-	case config.BackendAzure:
-		return backends.NewAzureBackend(cfg.Azure.Account, cfg.Azure.Key)
 	case config.BackendAerospike:
 		return backends.NewAerospikeBackend(cfg.Aerospike, appMetrics)
 	case config.BackendRedis:
