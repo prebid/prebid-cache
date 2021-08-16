@@ -43,6 +43,7 @@ type InfluxMetricsEntryByFormat struct {
 	DefinesTTL     metrics.Meter
 	InvalidRequest metrics.Meter
 	RequestLength  metrics.Histogram
+	RequestTTL     metrics.Timer
 }
 
 type InfluxConnectionMetrics struct {
@@ -194,6 +195,10 @@ func (m *InfluxMetrics) RecordPutBackendDefTTL() {
 
 func (m *InfluxMetrics) RecordPutBackendDuration(duration time.Duration) {
 	m.PutsBackend.Duration.Update(duration)
+}
+
+func (m *InfluxMetrics) RecordPutBackendTTLSeconds(duration time.Duration) {
+	m.PutsBackend.RequestTTL.Update(duration)
 }
 
 func (m *InfluxMetrics) RecordPutBackendError() {

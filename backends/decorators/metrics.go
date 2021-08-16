@@ -44,6 +44,7 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 	}
 	if ttlSeconds != 0 {
 		b.metrics.RecordPutBackendDefTTL()
+		b.metrics.RecordPutBackendTTLSeconds(float64(ttlSeconds))
 	}
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)

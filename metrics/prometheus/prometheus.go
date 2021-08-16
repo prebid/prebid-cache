@@ -36,6 +36,7 @@ const (
 	PutBackendMet  string = "puts_backend"
 	PutBackDurMet  string = "puts_backend_duration"
 	PutBackSizeMet string = "puts_backend_request_size_bytes"
+	PutBackTTL     string = "puts_backend_request_ttl"
 	GetBackendMet  string = "gets_backend"
 	GetBackendErr  string = "gets_backend_error"
 	GetBackDurMet  string = "gets_backend_duration"
@@ -67,6 +68,7 @@ type PrometheusRequestStatusMetricByFormat struct {
 	Duration           prometheus.Histogram
 	PutBackendRequests *prometheus.CounterVec
 	RequestLength      prometheus.Histogram
+	RequestDefinedTTL  prometheus.Histogram
 }
 
 type PrometheusConnectionMetrics struct {
@@ -81,6 +83,8 @@ type PrometheusExtraTTLMetrics struct {
 
 func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	timeBuckets := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1}
+	// TTL seconds buckets for 1 second, half a minute as well as one, ten, fifteen, thirty minutes and 1, 2, and 3 and 10 hours
+	ttlBuckets := []float64{0.001, 1, 30, 60, 600, 900, 1800, 3600, 7200, 10800, 36000}
 	requestSizeBuckets := []float64{0, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576}
 	registry := prometheus.NewRegistry()
 	promMetrics := &PrometheusMetrics{
@@ -124,6 +128,11 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				PutBackSizeMet,
 				"Size in bytes of a backend put request.",
 				requestSizeBuckets,
+			),
+			RequestDefinedTTL: newHistogram(cfg, registry,
+				PutBackTTL,
+				"Time-to-live duration in seconds specified in put request body's ttl_seconds field",
+				ttlBuckets,
 			),
 		},
 		GetsBackend: &PrometheusRequestStatusMetric{
@@ -272,6 +281,10 @@ func (m *PrometheusMetrics) RecordPutBackendDefTTL() {
 
 func (m *PrometheusMetrics) RecordPutBackendDuration(duration time.Duration) {
 	m.PutsBackend.Duration.Observe(duration.Seconds())
+}
+
+func (m *PrometheusMetrics) RecordPutBackendTTLSeconds(duration time.Duration) {
+	m.PutsBackend.RequestDefinedTTL.Observe(duration.Seconds())
 }
 
 func (m *PrometheusMetrics) RecordPutBackendError() {
