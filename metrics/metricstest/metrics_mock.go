@@ -18,6 +18,7 @@ func CreateMockMetrics() *metrics.Metrics {
 	MockHistograms["gets.current_url.duration"] = 0.00
 	MockHistograms["puts.backends.request_duration"] = 0.00
 	MockHistograms["puts.backends.request_size_bytes"] = 0.00
+	MockHistograms["puts.backends.request_ttl_seconds"] = 0.00
 	MockHistograms["gets.backends.duration"] = 0.00
 	MockHistograms["connections.connections_opened"] = 0.00
 	MockHistograms["extra_ttl_seconds"] = 0.00
@@ -110,6 +111,9 @@ func (m *MockMetrics) RecordPutBackendError() {
 }
 func (m *MockMetrics) RecordPutBackendSize(sizeInBytes float64) {
 	MockHistograms["puts.backends.request_size_bytes"] = sizeInBytes
+}
+func (m *MockMetrics) RecordPutBackendTTLSeconds(duration time.Duration) {
+	MockHistograms["puts.backends.request_ttl_seconds"] = mockDuration.Seconds()
 }
 func (m *MockMetrics) RecordGetBackendDuration(duration time.Duration) {
 	MockHistograms["gets.backends.duration"] = mockDuration.Seconds()

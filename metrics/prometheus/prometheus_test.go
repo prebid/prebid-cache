@@ -226,6 +226,7 @@ func TestPutBackendMetrics(t *testing.T) {
 
 		//Duration and sixe in bytes
 		expDuration      float64
+		expDefTTLSeconds float64
 		expSizeHistSum   float64
 		expSizeHistCount uint64
 	}
@@ -291,6 +292,21 @@ func TestPutBackendMetrics(t *testing.T) {
 			expErrorCount:    1,
 			expSizeHistSum:   16,
 			expSizeHistCount: 1,
+		},
+		{
+			description: "Out of those requests that define a TTL, log the number of TTL seconds",
+			testCase: func(pm *PrometheusMetrics) {
+				pm.RecordPutBackendTTLSeconds(TenSeconds)
+			},
+			expDuration:      10,
+			expXmlCount:      1,
+			expJsonCount:     1,
+			expInvalidCount:  1,
+			expDefTTLCount:   1,
+			expErrorCount:    1,
+			expSizeHistSum:   16,
+			expSizeHistCount: 1,
+			expDefTTLSeconds: 10,
 		},
 	}
 

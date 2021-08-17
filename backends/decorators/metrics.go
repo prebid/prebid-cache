@@ -2,12 +2,14 @@ package decorators
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/prebid/prebid-cache/backends"
 	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/utils"
+	log "github.com/sirupsen/logrus"
 )
 
 type backendWithMetrics struct {
@@ -44,7 +46,11 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 	}
 	if ttlSeconds != 0 {
 		b.metrics.RecordPutBackendDefTTL()
-		b.metrics.RecordPutBackendTTLSeconds(float64(ttlSeconds))
+		if ttl, err := time.ParseDuration(fmt.Sprintf("%ds", ttlSeconds)); err != nil {
+			log.Info("could not record the amount of ttl defined seconds in Prebid Cache metrics")
+		} else {
+			b.metrics.RecordPutBackendTTLSeconds(ttl)
+		}
 	}
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)

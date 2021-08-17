@@ -36,7 +36,7 @@ const (
 	PutBackendMet  string = "puts_backend"
 	PutBackDurMet  string = "puts_backend_duration"
 	PutBackSizeMet string = "puts_backend_request_size_bytes"
-	PutBackTTL     string = "puts_backend_request_ttl"
+	PutTTLSeconds  string = "puts_backend_request_ttl"
 	GetBackendMet  string = "gets_backend"
 	GetBackendErr  string = "gets_backend_error"
 	GetBackDurMet  string = "gets_backend_duration"
@@ -68,7 +68,7 @@ type PrometheusRequestStatusMetricByFormat struct {
 	Duration           prometheus.Histogram
 	PutBackendRequests *prometheus.CounterVec
 	RequestLength      prometheus.Histogram
-	RequestDefinedTTL  prometheus.Histogram
+	RequestTTLDuration prometheus.Histogram
 }
 
 type PrometheusConnectionMetrics struct {
@@ -129,8 +129,8 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				"Size in bytes of a backend put request.",
 				requestSizeBuckets,
 			),
-			RequestDefinedTTL: newHistogram(cfg, registry,
-				PutBackTTL,
+			RequestTTLDuration: newHistogram(cfg, registry,
+				PutTTLSeconds,
 				"Time-to-live duration in seconds specified in put request body's ttl_seconds field",
 				ttlBuckets,
 			),
@@ -284,7 +284,7 @@ func (m *PrometheusMetrics) RecordPutBackendDuration(duration time.Duration) {
 }
 
 func (m *PrometheusMetrics) RecordPutBackendTTLSeconds(duration time.Duration) {
-	m.PutsBackend.RequestDefinedTTL.Observe(duration.Seconds())
+	m.PutsBackend.RequestTTLDuration.Observe(duration.Seconds())
 }
 
 func (m *PrometheusMetrics) RecordPutBackendError() {
