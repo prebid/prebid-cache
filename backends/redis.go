@@ -12,7 +12,6 @@ import (
 )
 
 type Redis struct {
-	cfg    config.Redis
 	client *redis.Client
 }
 
@@ -47,7 +46,6 @@ func NewRedisBackend(cfg config.Redis) *Redis {
 	log.Infof("Connected to Redis at %s:%d", cfg.Host, cfg.Port)
 
 	return &Redis{
-		cfg:    cfg,
 		client: client,
 	}
 }
@@ -63,9 +61,6 @@ func (redis *Redis) Get(ctx context.Context, key string) (string, error) {
 }
 
 func (redis *Redis) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	if ttlSeconds == 0 {
-		ttlSeconds = redis.cfg.Expiration * 60
-	}
 	err := redis.client.Set(key, value, time.Duration(ttlSeconds)*time.Second).Err()
 
 	if err != nil {

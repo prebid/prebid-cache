@@ -2,14 +2,12 @@ package decorators
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/prebid/prebid-cache/backends"
 	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/utils"
-	log "github.com/sirupsen/logrus"
 )
 
 type backendWithMetrics struct {
@@ -45,12 +43,13 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 		b.metrics.RecordPutBackendInvalid()
 	}
 	if ttlSeconds != 0 {
+		// Keep count of the number of incoming Put requests defining their own TTL
 		b.metrics.RecordPutBackendDefTTL()
-		if ttl, err := time.ParseDuration(fmt.Sprintf("%ds", ttlSeconds)); err != nil {
-			log.Info("could not record the amount of ttl defined seconds in Prebid Cache metrics")
-		} else {
-			b.metrics.RecordPutBackendTTLSeconds(ttl)
-		}
+
+		// Record request's ttlSeconds value as is. Note that the LimitTTL decorator
+		// will limit the ttlSeconds value if it is greater than the maximum allowed
+		// value defined in Prebid Cache's configuration
+		b.metrics.RecordPutBackendTTLSeconds(time.Duration(ttlSeconds) * time.Second)
 	}
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)
