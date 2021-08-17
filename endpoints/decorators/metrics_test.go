@@ -53,8 +53,6 @@ func TestBadPutRequestMetrics(t *testing.T) {
 }
 
 func TestCustomKeyPutRequestMetrics(t *testing.T) {
-	metrics := metricstest.CreateMockMetrics()
-
 	type testExpectedValues struct {
 		totalRequests     int64
 		badRequests       int64
@@ -73,7 +71,6 @@ func TestCustomKeyPutRequestMetrics(t *testing.T) {
 			},
 			expectedCounterValues: testExpectedValues{
 				totalRequests:     int64(1),
-				badRequests:       int64(0),
 				customKeyRequests: int64(1),
 			},
 		},
@@ -84,14 +81,17 @@ func TestCustomKeyPutRequestMetrics(t *testing.T) {
 				w.WriteHeader(400)
 			},
 			expectedCounterValues: testExpectedValues{
-				totalRequests:     int64(2),
+				totalRequests:     int64(1),
 				badRequests:       int64(1),
-				customKeyRequests: int64(2),
+				customKeyRequests: int64(1),
 			},
 		},
 	}
 
 	for _, tc := range testCases {
+		// Set up test objects
+		metrics := metricstest.CreateMockMetrics()
+
 		// Run test
 		monitoredHandler := MonitorHttp(tc.inHandler, metrics, PostMethod)
 		monitoredHandler(httptest.NewRecorder(), nil, nil)
