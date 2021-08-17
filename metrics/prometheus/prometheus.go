@@ -42,7 +42,6 @@ const (
 	GetBackDurMet  string = "gets_backend_duration"
 	ConnOpenedMet  string = "connection_opened"
 	ConnClosedMet  string = "connection_closed"
-	ExtraTTLMet    string = "extra_ttl_seconds"
 
 	MetricsPrometheus = "Prometheus"
 )
@@ -54,7 +53,6 @@ type PrometheusMetrics struct {
 	PutsBackend *PrometheusRequestStatusMetricByFormat
 	GetsBackend *PrometheusRequestStatusMetric
 	Connections *PrometheusConnectionMetrics
-	ExtraTTL    *PrometheusExtraTTLMetrics
 	MetricsName string
 }
 
@@ -75,10 +73,6 @@ type PrometheusConnectionMetrics struct {
 	ConnectionsErrors *prometheus.CounterVec
 	ConnectionsClosed prometheus.Counter
 	ConnectionsOpened prometheus.Counter
-}
-
-type PrometheusExtraTTLMetrics struct {
-	ExtraTTLSeconds prometheus.Histogram
 }
 
 func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
@@ -159,13 +153,6 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				ConnErrorKey,
 				"Count the number of connection accept errors or connection close errors",
 				[]string{ConnErrorKey},
-			),
-		},
-		ExtraTTL: &PrometheusExtraTTLMetrics{
-			ExtraTTLSeconds: newHistogram(cfg, registry,
-				ExtraTTLMet,
-				"Extra time to live in seconds specified",
-				timeBuckets,
 			),
 		},
 		MetricsName: MetricsPrometheus,
@@ -333,8 +320,4 @@ func (m *PrometheusMetrics) RecordCloseConnectionErrors() {
 
 func (m *PrometheusMetrics) RecordAcceptConnectionErrors() {
 	m.Connections.ConnectionsErrors.With(prometheus.Labels{ConnErrorKey: AcceptVal}).Inc()
-}
-
-func (m *PrometheusMetrics) RecordExtraTTLSeconds(value float64) {
-	m.ExtraTTL.ExtraTTLSeconds.Observe(value)
 }

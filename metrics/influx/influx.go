@@ -22,7 +22,6 @@ type InfluxMetrics struct {
 	GetsBackend *InfluxMetricsEntry
 	GetsErr     *InfluxMetricsGetErrors
 	Connections *InfluxConnectionMetrics
-	ExtraTTL    *InfluxExtraTTL
 	MetricsName string
 }
 
@@ -50,9 +49,6 @@ type InfluxConnectionMetrics struct {
 	ActiveConnections      metrics.Counter
 	ConnectionCloseErrors  metrics.Meter
 	ConnectionAcceptErrors metrics.Meter
-}
-type InfluxExtraTTL struct {
-	ExtraTTLSeconds metrics.Histogram
 }
 
 type InfluxMetricsGetErrors struct {
@@ -109,7 +105,6 @@ func CreateInfluxMetrics() *InfluxMetrics {
 		GetsBackend: NewInfluxMetricsEntry("gets.backend", r),
 		GetsErr:     NewInfluxGetErrorMetrics("gets.backend_error", r),
 		Connections: NewInfluxConnectionMetrics(r),
-		ExtraTTL:    &InfluxExtraTTL{ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000))},
 		MetricsName: MetricsInfluxDB,
 	}
 
@@ -244,8 +239,4 @@ func (m *InfluxMetrics) RecordCloseConnectionErrors() {
 
 func (m *InfluxMetrics) RecordAcceptConnectionErrors() {
 	m.Connections.ConnectionAcceptErrors.Mark(1)
-}
-
-func (m *InfluxMetrics) RecordExtraTTLSeconds(value float64) {
-	m.ExtraTTL.ExtraTTLSeconds.Update(int64(value))
 }

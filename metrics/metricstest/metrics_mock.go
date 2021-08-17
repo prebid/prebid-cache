@@ -21,7 +21,6 @@ func CreateMockMetrics() *metrics.Metrics {
 	MockHistograms["puts.backends.request_ttl_seconds"] = 0.00
 	MockHistograms["gets.backends.duration"] = 0.00
 	MockHistograms["connections.connections_opened"] = 0.00
-	MockHistograms["extra_ttl_seconds"] = 0.00
 
 	MockCounters = make(map[string]int64, 16)
 	MockCounters["puts.current_url.request.total"] = 0
@@ -141,7 +140,4 @@ func (m *MockMetrics) RecordCloseConnectionErrors() {
 }
 func (m *MockMetrics) RecordAcceptConnectionErrors() {
 	MockCounters["connections.connection_error.accept"] = MockCounters["connections.connection_error.accept"] + 1
-}
-func (m *MockMetrics) RecordExtraTTLSeconds(value float64) {
-	MockHistograms["extra_ttl_seconds"] = value
 }

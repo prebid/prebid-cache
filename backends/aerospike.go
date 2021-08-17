@@ -89,7 +89,6 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 	if rec == nil {
 		return "", formatAerospikeError(errors.New("Nil record"))
 	}
-	a.metrics.RecordExtraTTLSeconds(float64(rec.Expiration))
 
 	value, found := rec.Bins[binValue]
 	if !found {

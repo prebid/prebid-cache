@@ -388,13 +388,6 @@ func TestConnectionMetrics(t *testing.T) {
 	}
 }
 
-func TestExtraTTLMetrics(t *testing.T) {
-	m := createPrometheusMetricsForTesting()
-
-	m.RecordExtraTTLSeconds(5)
-	assertHistogram(t, "Assert the extra time to live in seconds was logged", m.ExtraTTL.ExtraTTLSeconds, 1, 5.00)
-}
-
 func TestMetricCountGatekeeping(t *testing.T) {
 	expectedCardinalityCount := 100
 	actualCardinalityCount := 0

@@ -164,12 +164,6 @@ func (m Metrics) RecordAcceptConnectionErrors() {
 	}
 }
 
-func (m Metrics) RecordExtraTTLSeconds(value float64) {
-	for _, me := range m.MetricEngines {
-		me.RecordExtraTTLSeconds(value)
-	}
-}
-
 func (m Metrics) Export(cfg config.Configuration) {
 	for _, me := range m.MetricEngines {
 		me.Export(cfg.Metrics)
@@ -217,7 +211,6 @@ type CacheMetrics interface {
 	RecordConnectionClosed()
 	RecordCloseConnectionErrors()
 	RecordAcceptConnectionErrors()
-	RecordExtraTTLSeconds(value float64)
 }
 
 func CreateMetrics(cfg config.Configuration) *Metrics {
