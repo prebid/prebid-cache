@@ -91,7 +91,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 			// Only allow setting a provided key if configured (and ensure a key is provided).
 			if allowKeys && len(p.Key) > 0 {
 				resps.Responses[i].UUID = p.Key
-				w.WriteHeader(endpointDecorators.CacheUpdateCode)
+				w.Write([]byte(endpointDecorators.CustomUuidKey))
 			} else if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
 				http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
 			}

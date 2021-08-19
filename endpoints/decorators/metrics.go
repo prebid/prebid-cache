@@ -13,7 +13,7 @@ const (
 	GetMethod  = 2
 )
 
-const CacheUpdateCode = 1001
+const CustomUuidKey string = "IsKeyProvided"
 
 type metricsFunctions struct {
 	RecordTotal       func()
@@ -42,18 +42,19 @@ func assignMetricsFunctions(m *metrics.Metrics, method int) *metricsFunctions {
 	return metrics
 }
 
+// writerWithStatus implements the http.ResponseWriter interface in order to store
+// extra information needed for metrics purposes.
 type writerWithStatus struct {
 	delegate       http.ResponseWriter
 	statusCode     int
 	wasKeyProvided bool
 }
 
+// WriteHeader is writerWithStatus's implementation of the http.ResponseWriter interface
+// WriteHeader(statusCode int) method and stores the backend client's statusCode
+// into the writerWithStatus's statusCode field so we can log metrics
+// accoding to its value in the decorator implemented in MonitorHttp()
 func (w *writerWithStatus) WriteHeader(statusCode int) {
-	if statusCode == CacheUpdateCode {
-		w.wasKeyProvided = true
-		return
-	}
-
 	// Capture only the first call, because that's the one the client got.
 	if w.statusCode == 0 {
 		w.statusCode = statusCode
@@ -61,7 +62,17 @@ func (w *writerWithStatus) WriteHeader(statusCode int) {
 	w.delegate.WriteHeader(statusCode)
 }
 
+// Write is writerWithStatus's implementation of the http.ResponseWriter interface
+// Write(bytes []byte) (int, error) method and includes logic to set the wasKeyProvided
+// field to true if the "IsKeyProvided" keyword is passed as parameter. If not, bytes
+// is assumed to be the Put response and is passed as parameter to http.ResponseWriter's
+// Write(bytes []byte) (int, error) instead.
 func (w *writerWithStatus) Write(bytes []byte) (int, error) {
+	if string(bytes) == CustomUuidKey {
+		w.wasKeyProvided = true
+		return 0, nil
+	}
+
 	return w.delegate.Write(bytes)
 }
 
