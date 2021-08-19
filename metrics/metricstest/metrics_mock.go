@@ -33,7 +33,6 @@ func CreateMockMetrics() *metrics.Metrics {
 	MockCounters["puts.backends.json"] = 0
 	MockCounters["puts.backends.xml"] = 0
 	MockCounters["puts.backends.invalid_format"] = 0
-	MockCounters["puts.backends.defines_ttl"] = 0
 	MockCounters["puts.backends.request.error"] = 0
 	MockCounters["puts.backends.request.bad_request"] = 0
 	MockCounters["gets.backends.request.total"] = 0
@@ -98,9 +97,6 @@ func (m *MockMetrics) RecordPutBackendJson() {
 }
 func (m *MockMetrics) RecordPutBackendInvalid() {
 	MockCounters["puts.backends.invalid_format"] = MockCounters["puts.backends.invalid_format"] + 1
-}
-func (m *MockMetrics) RecordPutBackendDefTTL() {
-	MockCounters["puts.backends.defines_ttl"] = MockCounters["puts.backends.defines_ttl"] + 1
 }
 func (m *MockMetrics) RecordPutBackendDuration(duration time.Duration) {
 	MockHistograms["puts.backends.request_duration"] = mockDuration.Seconds()

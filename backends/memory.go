@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type MemoryBackend struct {
@@ -30,7 +28,6 @@ func (b *MemoryBackend) Put(ctx context.Context, key string, value string, ttlSe
 	defer b.mu.Unlock()
 
 	b.db[key] = value
-	log.Infof("metrics TTL seconds logged: %d", ttlSeconds)
 	return nil
 }
 

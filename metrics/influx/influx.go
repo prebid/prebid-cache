@@ -39,7 +39,6 @@ type InfluxMetricsEntryByFormat struct {
 	BadRequest     metrics.Meter
 	JsonRequest    metrics.Meter
 	XmlRequest     metrics.Meter
-	DefinesTTL     metrics.Meter
 	InvalidRequest metrics.Meter
 	RequestLength  metrics.Histogram
 	RequestTTL     metrics.Timer
@@ -79,7 +78,6 @@ func NewInfluxMetricsEntryBackendPuts(name string, r metrics.Registry) *InfluxMe
 		BadRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
 		JsonRequest:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.json_request_count", name), r),
 		XmlRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.xml_request_count", name), r),
-		DefinesTTL:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.defines_ttl", name), r),
 		InvalidRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.unknown_request_count", name), r),
 		RequestLength:  metrics.GetOrRegisterHistogram(name+".request_size_bytes", r, metrics.NewExpDecaySample(1028, 0.015)),
 		RequestTTL:     metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_ttl_seconds", name), r),
@@ -183,10 +181,6 @@ func (m *InfluxMetrics) RecordPutBackendJson() {
 
 func (m *InfluxMetrics) RecordPutBackendInvalid() {
 	m.PutsBackend.InvalidRequest.Mark(1)
-}
-
-func (m *InfluxMetrics) RecordPutBackendDefTTL() {
-	m.PutsBackend.DefinesTTL.Mark(1)
 }
 
 func (m *InfluxMetrics) RecordPutBackendDuration(duration time.Duration) {

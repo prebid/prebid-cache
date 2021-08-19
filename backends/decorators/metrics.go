@@ -42,15 +42,8 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 	} else {
 		b.metrics.RecordPutBackendInvalid()
 	}
-	if ttlSeconds != 0 {
-		// Keep count of the number of incoming Put requests defining their own TTL
-		b.metrics.RecordPutBackendDefTTL()
+	b.metrics.RecordPutBackendTTLSeconds(time.Duration(ttlSeconds) * time.Second)
 
-		// Record request's ttlSeconds value as is. Note that the LimitTTL decorator
-		// will limit the ttlSeconds value if it is greater than the maximum allowed
-		// value defined in Prebid Cache's configuration
-		b.metrics.RecordPutBackendTTLSeconds(time.Duration(ttlSeconds) * time.Second)
-	}
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)
 	if err == nil {

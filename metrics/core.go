@@ -80,12 +80,6 @@ func (m Metrics) RecordPutBackendInvalid() {
 	}
 }
 
-func (m Metrics) RecordPutBackendDefTTL() {
-	for _, me := range m.MetricEngines {
-		me.RecordPutBackendDefTTL()
-	}
-}
-
 func (m Metrics) RecordPutBackendDuration(duration time.Duration) {
 	for _, me := range m.MetricEngines {
 		me.RecordPutBackendDuration(duration)
@@ -197,7 +191,6 @@ type CacheMetrics interface {
 	RecordPutBackendXml()
 	RecordPutBackendJson()
 	RecordPutBackendInvalid()
-	RecordPutBackendDefTTL()
 	RecordPutBackendDuration(duration time.Duration)
 	RecordPutBackendTTLSeconds(duration time.Duration)
 	RecordPutBackendError()

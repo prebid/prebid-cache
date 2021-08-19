@@ -261,15 +261,6 @@ func TestPutBackendMetrics(t *testing.T) {
 			expInvalidCount: 1,
 		},
 		{
-			description:     "Count put backend of requests that define TTL",
-			testCase:        func(pm *PrometheusMetrics) { pm.RecordPutBackendDefTTL() },
-			expDuration:     10,
-			expXmlCount:     1,
-			expJsonCount:    1,
-			expInvalidCount: 1,
-			expDefTTLCount:  1,
-		},
-		{
 			description:     "Count put backend request errors",
 			testCase:        func(pm *PrometheusMetrics) { pm.RecordPutBackendError() },
 			expDuration:     10,
@@ -317,7 +308,6 @@ func TestPutBackendMetrics(t *testing.T) {
 		assertCounterVecValue(t, test.description, m.PutsBackend.PutBackendRequests, test.expXmlCount, prometheus.Labels{FormatKey: XmlVal})
 		assertCounterVecValue(t, test.description, m.PutsBackend.PutBackendRequests, test.expJsonCount, prometheus.Labels{FormatKey: JsonVal})
 		assertCounterVecValue(t, test.description, m.PutsBackend.PutBackendRequests, test.expInvalidCount, prometheus.Labels{FormatKey: InvFormatVal})
-		assertCounterVecValue(t, test.description, m.PutsBackend.PutBackendRequests, test.expDefTTLCount, prometheus.Labels{FormatKey: DefinesTTLVal})
 		assertCounterVecValue(t, test.description, m.PutsBackend.PutBackendRequests, test.expErrorCount, prometheus.Labels{FormatKey: ErrorVal})
 		assertHistogram(t, test.description, m.PutsBackend.RequestLength, test.expSizeHistCount, test.expSizeHistSum)
 	}

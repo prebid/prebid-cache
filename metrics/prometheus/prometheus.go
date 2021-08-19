@@ -23,7 +23,6 @@ const (
 	BadRequestVal  string = "bad_request"
 	JsonVal        string = "json"
 	XmlVal         string = "xml"
-	DefinesTTLVal  string = "defines_ttl"
 	InvFormatVal   string = "invalid_format"
 	CloseVal       string = "close"
 	AcceptVal      string = "accept"
@@ -260,10 +259,6 @@ func (m *PrometheusMetrics) RecordPutBackendJson() {
 
 func (m *PrometheusMetrics) RecordPutBackendInvalid() {
 	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{FormatKey: InvFormatVal}).Inc()
-}
-
-func (m *PrometheusMetrics) RecordPutBackendDefTTL() {
-	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{FormatKey: DefinesTTLVal}).Inc()
 }
 
 func (m *PrometheusMetrics) RecordPutBackendDuration(duration time.Duration) {

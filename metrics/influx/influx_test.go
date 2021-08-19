@@ -32,7 +32,6 @@ func TestRegisteredInfluxMetrics(t *testing.T) {
 		{"puts.backend.bad_request_count", "Meter"},
 		{"puts.backend.json_request_count", "Meter"},
 		{"puts.backend.xml_request_count", "Meter"},
-		{"puts.backend.defines_ttl", "Meter"},
 		{"puts.backend.unknown_request_count", "Meter"},
 		{"puts.backend.request_size_bytes", "Histogram"},
 		{"puts.backend.request_ttl_seconds", "Timer"},
@@ -162,11 +161,6 @@ func TestDurationRecorders(t *testing.T) {
 					description:    "record an invalid put request with RecordPutBackendInvalid",
 					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendInvalid() },
 					metricToAssert: m.PutsBackend.InvalidRequest,
-				},
-				{
-					description:    "valid put request specifies its time to live. Keep count of the number of requests that do so with RecordPutBackendDefTTL",
-					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendDefTTL() },
-					metricToAssert: m.PutsBackend.DefinesTTL,
 				},
 				{
 					description:    "valid put request record the size of its value field in bytes with RecordPutBackendSize",
