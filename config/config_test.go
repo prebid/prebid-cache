@@ -1110,10 +1110,6 @@ func getExpectedFullConfigForTestFile() Configuration {
 				User:       "foo",
 				Password:   "bar",
 			},
-			Azure: Azure{
-				Account: "azure-account-here",
-				Key:     "azure-key-here",
-			},
 			Cassandra: Cassandra{
 				Hosts:    "127.0.0.1",
 				Keyspace: "prebid",

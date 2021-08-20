@@ -21,9 +21,6 @@ backend:
     namespace: "whatever"
     user: "foo"
     password: "bar"
-  azure:
-    account: "azure-account-here"
-    key: "azure-key-here"
   cassandra:
     hosts: "127.0.0.1"
     keyspace: "prebid"
