@@ -3,6 +3,7 @@ package endpoints
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -57,17 +58,33 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 	return putHandler.handle
 }
 
-func (e *PutHandler) unmarshalRequest(body []byte) (*PutRequest, error) {
+// parseRequest unmarshals the incoming put request into a thread-safe memory pool
+// If the incoming request could not be unmarshalled or if the request comes with more
+// elements to put than the maximum allowed in Prebid Cache's configuration, the
+// corresponding error is returned
+func (e *PutHandler) parseRequest(r *http.Request) (*PutRequest, error) {
+	if r == nil {
+		return nil, utils.PutBadRequestError{}
+	}
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return nil, utils.PutBadRequestError{}
+	}
+	defer r.Body.Close()
+
+	// Allocate a PutRequest object in thread-safe memory
 	put := e.memory.requestPool.Get().(*PutRequest)
 	put.Puts = make([]PutObject, 0)
 
-	err := json.Unmarshal(body, put)
-	if err != nil {
+	if err := json.Unmarshal(body, put); err != nil {
+		// place memory back in sync pool
 		e.memory.requestPool.Put(put)
 		return nil, utils.PutBadRequestError{body}
 	}
 
 	if len(put.Puts) > e.cfg.maxNumValues {
+		// place memory back in sync pool
 		e.memory.requestPool.Put(put)
 		return nil, utils.PutMaxNumValuesError{len(put.Puts), e.cfg.maxNumValues}
 	}
@@ -75,90 +92,99 @@ func (e *PutHandler) unmarshalRequest(body []byte) (*PutRequest, error) {
 	return put, nil
 }
 
-func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read the request body.", http.StatusBadRequest)
-		return
+// validatePutObject returns an error if the PutObject comes with an invalid field
+func validatePutObject(p PutObject) error {
+	// Make sure there's data to store
+	if len(p.Value) == 0 {
+		return errors.New("Missing required field value.")
 	}
-	defer r.Body.Close()
 
-	put, err := e.unmarshalRequest(body)
+	// Make sure a non-negative time-to-live quantity was provided
+	if p.TTLSeconds < 0 {
+		return fmt.Errorf("ttlseconds must not be negative %d.", p.TTLSeconds)
+	}
+
+	// Limit the type of data to XML or JSON
+	if p.Type == backends.XML_PREFIX {
+		if p.Value[0] != byte('"') || p.Value[len(p.Value)-1] != byte('"') {
+			return fmt.Errorf("XML messages must have a String value. Found %v", p.Value)
+		}
+
+		// Be careful about the the cross-script escaping issues here. JSON requires quotation marks to be escaped,
+		// for example... so we'll need to un-escape it before we consider it to be XML content.
+		var interpreted string
+		if err := json.Unmarshal(p.Value, &interpreted); err != nil {
+			return fmt.Errorf("Error unmarshalling XML value: %v", p.Value)
+		}
+
+	} else if p.Type != backends.JSON_PREFIX {
+		return fmt.Errorf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type)
+	}
+
+	return nil
+}
+
+func formatPutError(err error, index int) (error, int) {
+	if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
+		return utils.PutBadPayloadSizeError{err.Error(), index}, http.StatusBadRequest
+	}
+
+	logrus.Error("POST /cache Error while writing to the backend: ", err)
+	switch err {
+	case context.DeadlineExceeded:
+		logrus.Error("POST /cache timed out:", err)
+		return utils.PutDeadlineExceededError{}, utils.HttpDependencyTimeout
+	default:
+		logrus.Error("POST /cache had an unexpected error:", err)
+		return utils.PutInternalServerError{err.Error()}, http.StatusInternalServerError
+	}
+	return nil, 0
+}
+
+func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	put, err := e.parseRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	defer e.memory.requestPool.Put(put)
 
+	// Allocate a PutResponse object in thread-safe memory
 	resps := e.memory.putResponsePool.Get().(*PutResponse)
 	resps.Responses = make([]PutResponseObject, len(put.Puts))
 	defer e.memory.putResponsePool.Put(resps)
 
 	for i, p := range put.Puts {
-		if len(p.Value) == 0 {
-			http.Error(w, "Missing value.", http.StatusBadRequest)
-			return
-		}
-		if p.TTLSeconds < 0 {
-			http.Error(w, fmt.Sprintf("request.puts[%d].ttlseconds must not be negative.", p.TTLSeconds), http.StatusBadRequest)
-			return
+		if err := validatePutObject(p); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			continue
 		}
 
-		var toCache string
-		if p.Type == backends.XML_PREFIX {
-			if p.Value[0] != byte('"') || p.Value[len(p.Value)-1] != byte('"') {
-				http.Error(w, fmt.Sprintf("XML messages must have a String value. Found %v", p.Value), http.StatusBadRequest)
-				return
-			}
+		// Prefix value with data type
+		toCache := p.Type + string(p.Value)
 
-			// Be careful about the the cross-script escaping issues here. JSON requires quotation marks to be escaped,
-			// for example... so we'll need to un-escape it before we consider it to be XML content.
-			var interpreted string
-			json.Unmarshal(p.Value, &interpreted)
-			toCache = p.Type + interpreted
-		} else if p.Type == backends.JSON_PREFIX {
-			toCache = p.Type + string(p.Value)
-		} else {
-			http.Error(w, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type), http.StatusBadRequest)
-			return
-		}
-
-		if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
-			http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-		defer cancel()
 		// Only allow setting a provided key if configured (and ensure a key is provided).
 		if e.cfg.allowKeys && len(p.Key) > 0 {
 			resps.Responses[i].UUID = p.Key
 			// Record put that comes with a Key
-		}
-		// If we have a blank UUID, don't store anything.
-		// Eventually we may want to provide error details, but as of today this is the only non-fatal error
-		// Future error details could go into a second property of the Responses object, such as "errors"
-		if len(resps.Responses[i].UUID) > 0 {
-			err = e.backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
-			if err != nil {
-				if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
-					http.Error(w, fmt.Sprintf("POST /cache element %d exceeded max size: %v", i, err), http.StatusBadRequest)
-					return
-				}
-
-				logrus.Error("POST /cache Error while writing to the backend: ", err)
-				switch err {
-				case context.DeadlineExceeded:
-					logrus.Error("POST /cache timed out:", err)
-					http.Error(w, "Timeout writing value to the backend", HttpDependencyTimeout)
-				default:
-					logrus.Error("POST /cache had an unexpected error:", err)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-				}
-				return
-			}
-			logrus.Tracef("PUT /cache uuid=%s", resps.Responses[i].UUID)
+		} else if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
+			http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
+			// If we have a blank UUID, don't store anything.
+			// Eventually we may want to provide error details, but as of today this is the only non-fatal error
+			// Future error details could go into a second property of the Responses object, such as "errors"
+			continue
 		}
 
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+
+		err = e.backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
+		if err != nil {
+			err, code := formatPutError(err, i)
+			http.Error(w, err.Error(), code)
+			return
+		}
+		logrus.Tracef("PUT /cache uuid=%s", resps.Responses[i].UUID)
 	}
 
 	bytes, err := json.Marshal(resps)
@@ -185,6 +211,7 @@ type PutObject struct {
 
 type PutResponseObject struct {
 	UUID string `json:"uuid"`
+	//Error string `json:"error,omitempty"`
 }
 
 type PutResponse struct {
