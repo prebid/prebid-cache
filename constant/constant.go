@@ -22,4 +22,10 @@ const (
 
 	// UnexpErr : POST /cache had an unexpected error
 	UnexpErr = "107"
+
+	//Node and Pod names for K8S
+	DEFAULT_NODENAME  = "Default_Node"
+	DEFAULT_PODNAME   = "Default_Pod"
+	ENV_VAR_NODE_NAME = "MY_NODE_NAME"
+	ENV_VAR_POD_NAME  = "MY_POD_NAME"
 )

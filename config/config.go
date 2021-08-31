@@ -1,10 +1,12 @@
 package config
 
 import (
+	"os"
 	"strings"
 	"time"
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
+	"github.com/PubMatic-OpenWrap/prebid-cache/constant"
 	"github.com/PubMatic-OpenWrap/prebid-cache/stats"
 	"github.com/spf13/viper"
 )
@@ -22,6 +24,9 @@ func NewConfig() Configuration {
 	if err := v.Unmarshal(&cfg); err != nil {
 		logger.Fatal("Failed to unmarshal config: %v", err)
 	}
+
+	cfg.Server.ServerName = getHostName()
+
 	//Initialize Stats Server
 	stats.InitStat(cfg.Stats.StatsHost, cfg.Stats.StatsPort, cfg.Server.ServerName, cfg.Stats.StatsDCName,
 		cfg.Stats.PortTCP, cfg.Stats.PublishInterval, cfg.Stats.PublishThreshold, cfg.Stats.Retries, cfg.Stats.DialTimeout, cfg.Stats.KeepAliveDuration, cfg.Stats.MaxIdleConnections, cfg.Stats.MaxIdleConnectionsPerHost, cfg.Stats.UseTCP)
@@ -242,4 +247,31 @@ func (cfg *OWLog) validateAndLog() {
 	logger.Info("config.ow_log.rotation_time: %v", cfg.LogRotationTime)
 	logger.Info("config.ow_log.max_log_files: %v", cfg.MaxLogFiles)
 	logger.Info("config.ow_log.max_log_size: %v", cfg.MaxLogSize)
+}
+
+//getHostName Generates server name from node and pod name in K8S  environment
+func getHostName() string {
+	var (
+		nodeName string
+		podName  string
+	)
+
+	if nodeName, _ = os.LookupEnv(constant.ENV_VAR_NODE_NAME); nodeName == "" {
+		nodeName = constant.DEFAULT_NODENAME
+		logger.Info("Node name not set. Using default name: '%s'", nodeName)
+	} else {
+		nodeName = strings.Split(nodeName, ".")[0]
+	}
+
+	if podName, _ = os.LookupEnv(constant.ENV_VAR_POD_NAME); podName == "" {
+		podName = constant.DEFAULT_PODNAME
+		logger.Info("Pod name not set. Using default name: '%s'", podName)
+	} else {
+		podName = strings.TrimPrefix(podName, "creativecache-")
+	}
+
+	serverName := nodeName + ":" + podName
+	logger.Info("Server name: '%s'", serverName)
+
+	return serverName
 }

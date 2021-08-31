@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/PubMatic-OpenWrap/prebid-cache/constant"
+
 	"github.com/spf13/viper"
 )
 
@@ -165,5 +167,73 @@ func forceEnv(t *testing.T, key string, val string) func() {
 				t.Fatalf("Error unsetting evnvironment %s", key)
 			}
 		}
+	}
+}
+
+func Test_getHostName(t *testing.T) {
+
+	var (
+		node string
+		pod  string
+	)
+
+	saveEnvVarsForServerName := func() {
+		node, _ = os.LookupEnv(constant.ENV_VAR_NODE_NAME)
+		pod, _ = os.LookupEnv(constant.ENV_VAR_POD_NAME)
+	}
+
+	resetEnvVarsForServerName := func() {
+		os.Setenv(constant.ENV_VAR_NODE_NAME, node)
+		os.Setenv(constant.ENV_VAR_POD_NAME, pod)
+	}
+
+	type args struct {
+		nodeName string
+		podName  string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "default_value",
+			args: args{},
+			want: constant.DEFAULT_NODENAME + ":" + constant.DEFAULT_PODNAME,
+		},
+		{
+			name: "valid_name",
+			args: args{
+				nodeName: "sfo2hyp084.sfo2.pubmatic.com",
+				podName:  "creativecache-0-0-38-pr-26-2-k8s-5679748b7b-tqh42",
+			},
+			want: "sfo2hyp084:0-0-38-pr-26-2-k8s-5679748b7b-tqh42",
+		},
+		{
+			name: "special_characters",
+			args: args{
+				nodeName: "sfo2hyp084.sfo2.pubmatic.com!!!@#$-_^%x090",
+				podName:  "creativecache-0-0-38-pr-26-2-k8s-5679748b7b-tqh42",
+			},
+			want: "sfo2hyp084:0-0-38-pr-26-2-k8s-5679748b7b-tqh42",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			saveEnvVarsForServerName()
+
+			if len(tt.args.nodeName) > 0 {
+				os.Setenv(constant.ENV_VAR_NODE_NAME, tt.args.nodeName)
+			}
+
+			if len(tt.args.podName) > 0 {
+				os.Setenv(constant.ENV_VAR_POD_NAME, tt.args.podName)
+			}
+
+			if got := getHostName(); got != tt.want {
+				t.Errorf("getHostName() = %v, want %v", got, tt.want)
+			}
+			resetEnvVarsForServerName()
+		})
 	}
 }
