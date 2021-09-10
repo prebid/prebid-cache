@@ -62,7 +62,7 @@ func NewRedisBackend(cfg config.Redis) *RedisBackend {
 		}
 	}
 
-	redisClient := RedisDBClient{redis.NewClient(options)}
+	redisClient := RedisDBClient{client: redis.NewClient(options)}
 
 	_, err := redisClient.client.Ping().Result()
 

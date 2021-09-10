@@ -31,34 +31,6 @@ go build .
 
 ## API
 
-### GET /cache?uuid={id}
-
-Retrieves a single value from the cache. If the `id` isn't recognized, then it will return a 404.
-
-Assuming the above POST calls have been made, here are some sample GET responses.
-
----
-
-**GET** */cache?uuid=279971e4-70f0-4b18-bd65-5c6e7aa75d40*
-
-```
-HTTP/1.1 200 OK
-Content-Type: application/xml
-
-<tag>Your XML content goes here.</tag>
-```
-
----
-
-**GET** */cache?uuid=147c9934-894b-4c1f-9a32-e7bb9cd15376*
-
-```
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-[1, true, "JSON value of any type can go here."]
-```
-
 ### POST /cache
 
 Adds one or more values to the cache. Values can be given as either JSON or XML. A sample request is below.
@@ -80,7 +52,7 @@ Adds one or more values to the cache. Values can be given as either JSON or XML.
 }
 ```
 
-If any of the `puts` are invalid, then it responds with a **400** none of the values will be retrievable. Assuming that all of the values are well-formed, then the server will respond with IDs which can be used to fetch the values later.
+If any of the `puts` are invalid, then it responds with a **400** and none of the values will be retrievable. Assuming that all of the values are well-formed, then the server will respond with IDs which can be used to fetch the values later.
 
 **Note**: `ttlseconds` is optional, and will only be honored on a _best effort_ basis. Callers should never _assume_ that the data will stay in the cache for that long.
 
@@ -93,7 +65,26 @@ If any of the `puts` are invalid, then it responds with a **400** none of the va
 }
 ```
 
-An optional parameter `key` has been added that a particular install of prebid cache may or may not support (config option). If the server does not support specifying `key`s, then any supplied keys will be ignored and requests will be processed as above. If the server supports key, then the put can optionally use it as:
+#### POST Params
+
+These are the parameters the elements or the `"puts"` array of a `POST` call to Prebid Cache support:
+
+| Name        | Scope    | Type     | Description |
+| --- | --- | --- | --- |
+| `type`      | required | `string` | Only `"xml"` or `"json"` are supported |
+| `value`     | required | `string` | Prebid Cache will respond with an error if an empty string is provided |
+| `ttlseconds` | optional | integer | Represents the time to live in seconds of your data. Default value is 3600 seconds |
+| `key` | optional | string | When included, your value will be stored under this key instead of a system-generated random UUID. Requires `request_limits.allow_setting_keys` to be set to `true` |
+
+If `ttlseconds` is included, its value must not be negative nor larger than what configuration option `request_limits.max_ttl_seconds` is set, its default value is 3600 seconds. The `key` parameter will be ignored unless the boolean configuration flag `request_limits.allow_setting_keys` is set to `true`. The following is a sample `config.yaml` configuration file that sets the ttl to 100 seconds and allows Prebid Cache to set custom keys: 
+
+```
+request_limits:
+  max_ttl_seconds: 100
+  allow_setting_keys: true
+```
+
+in the example below, A Prebid Cache instance that supports `key` by setting `allow_setting_keys` to `true`, includes `key` fields in some of the `"puts"` array elements:
 
 ```json
 {
@@ -102,29 +93,39 @@ An optional parameter `key` has been added that a particular install of prebid c
       "type": "xml",
       "ttlseconds": 60,
       "value": "<tag>Your XML content goes here.</tag>",
-      "key": "ArbitraryKeyValueHere"
+      "key": "CustomKeyValueHere"
     },
     {
       "type": "json",
       "ttlseconds": 300,
       "value": [1, true, "JSON value of any type can go here."]
+    },
+    {
+      "type": "json",
+      "value": "{\"someJsonField\":\"some JSON string value.\"}",
+      "key": "AnotherCustomKeyValue"
     }
   ]
 }
 ```
 
-This will result in the response
+This would result in a response like this:
 
 ```json
 {
   "responses": [
-    {"uuid": "ArbitraryKeyValueHere"},
-    {"uuid": "147c9934-894b-4c1f-9a32-e7bb9cd15376"}
+    {"uuid": "CustomKeyValueHere"},
+    {"uuid": "147c9934-894b-4c1f-9a32-e7bb9cd15376"},
+    {"uuid": "AnotherCustomKeyValue"}
   ]
 }
 ```
 
-so that a cache key can be specified for the cached object. If an entry already exists fora given key, it will not be overwitten, and "" will be returned for the `uuid` value of that entry. Suppose we wanted to overwrite the content under "ArbitraryKeyValueHere"
+Prebid Cache will use the custom keys for those elements that include them and will create system-generated `uuid`s for the ones that don't. Note that if configuration flag `allow_setting_keys` is set to `false` or simply not set inside the `config.yaml` file, Prebid Cache would generate random `uuid`s for all elements and not use the custom keys `"CustomKeyValueHere"` nor `"AnotherCustomKeyValue"` at all.
+
+#### Overwritting values
+
+Prebid Cache does not allow overwritting for any value under any key, custom or not. If an entry already exists for a given key, it will not be overwitten, and an empty string will be returned as the `uuid` value of that entry. Suppose we wanted to overwrite the entries under `"CustomKeyValueHere"` and the system-generated key `"147c9934-894b-4c1f-9a32-e7bb9cd15376"`.
 
 ```json
 {
@@ -132,27 +133,40 @@ so that a cache key can be specified for the cached object. If an entry already 
     {
       "type": "xml",
       "ttlseconds": 60,
-      "value": "<tag>Some other XML content that we want instead</tag>",
-      "key": "ArbitraryKeyValueHere"
+      "value": "<tag>Some other XML content under a key already in use.</tag>",
+      "key": "CustomKeyValueHere"
     },
+    {
+      "type": "json",
+      "ttlseconds": 300,
+      "value": [2, false, "Trying to store other JSON under a key already in use."],
+      "key": "147c9934-894b-4c1f-9a32-e7bb9cd15376"
+    },
+    {
+      "type": "xml",
+      "ttlseconds": 30,
+      "value": "<tag>Different XML content will be stored under a system-generated key.</tag>",
+    }
   ]
 }
 ```
 
-Then we get a response with an empty `uuid`:
+Then we get a response with empty `uuid` fields for those `"puts"` elements that tried to overwrite entries:
 
 ```json
 {
   "responses": [
     {"uuid": ""},
+    {"uuid": ""},
+    {"uuid": "efc6ca1d-3409-4b8b-96e5-aec508a57639"}
   ]
 }
 ```
 
-And the response would not have gotten overwritten:
+Those items in the cache did not get overwritten as a subsequent `GET` call would assert:
 
 ```
-$ curl http://someprebidcachehost.com/cache\?uuid\=ArbitraryKeyValueHere
+$ curl http://someprebidcachehost.com/cache\?uuid\=CustomKeyValueHere
 
 HTTP/1.1 200 OK
 Content-Type: application/xml
@@ -160,7 +174,32 @@ Content-Type: application/xml
 <tag>Your XML content goes here.</tag>
 ```
 
-This is to prevent bad actors from trying to overwrite legitimate caches with malicious content, or a poorly coded app overwriting its own cache with new values, generating uncertainty what is actually stored under a particular key. Note that this is the only case where only a subset of caches will be stored, as this is the only case where a put will fail due to no fault of the requester yet the other puts are not called into question. (A failure can happen if the backend datastore errors on the storage of one entry, but this then calls into question how successfully the other caches were saved.)
+This is to prevent bad actors from trying to overwrite legitimate caches with malicious content, or a poorly coded app overwriting its own cache with new values, generating uncertainty of what is actually stored under a particular key. Note that cases like these are the only where a subset of caches would not get stored. Under any other scenario, we expect the entire request to fail and no elements to get stored.
+
+Trying to overwrite the value under an existing key is also the only instance where an unsuccessful `Put` is not considered an error. As such, Prebid Cache will not respond with an error message or return an error code on these particular instances.
+
+### GET /cache?uuid={id}
+
+Retrieves a single value from the cache. If the id isn't recognized, then it will return an HTTP 404. The following are sample requests and responses based on the POST call examples above.
+
+GET */cache?uuid=279971e4-70f0-4b18-bd65-5c6e7aa75d40*
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/xml
+
+<tag>Your XML content goes here.</tag>
+```
+
+
+GET */cache?uuid=147c9934-894b-4c1f-9a32-e7bb9cd15376*
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+[1, true, "JSON value of any type can go here."]
+```
 
 ### Limitations
 
@@ -169,7 +208,7 @@ This section does not describe permanent API contracts; it just describes limita
 - This application does *not* validate XML. If users `POST` malformed XML, they'll `GET` a bad response too.
 - The host company can set a max length on payload size limits in the application config. This limit will vary from vendor to vendor.
 
-## Backend configuration parameters
+## Backend Configuration
 
 In order to store its data a Prebid Cache instance can use either of the following storage services: Aerospike, Cassandra, Memcache, Redis, or simply store in local memory. Select the storage service your Prebid Cache server will use by setting the `backend.type` property in the `config.yaml` file:
 
@@ -178,39 +217,94 @@ backend:
   type: "aerospike"
 ```
 
-### Aerospike Backend Configuration
-{: .table .table-bordered .table-striped }
+### Aerospike
 | Configuration field | Type | Description |
+| --- | --- | --- |
 | host | string | aerospike server URI |
 | port | 4-digit integer | aerospike server port |
 | namespace | string | aerospike service namespace where keys get initialized |
 
 ### Cassandra
-{: .table .table-bordered .table-striped }
 | Configuration field | Type | Description |
+| --- | --- | --- |
 | hosts | string | Cassandra server URI |
 | keyspace | string | Keyspace defined in Cassandra server |
 
 ### Memcache:
-{: .table .table-bordered .table-striped }
 | Configuration field | Type | Description |
+| --- | --- | --- |
 | config_host | string | Configuration endpoint for auto discovery. Replaced at docker build. |
-| poll_interval_seconds | string |  Node change polling interval when auto discovery is used |
+| poll_interval_seconds | string | Node change polling interval when auto discovery is used |
 | hosts | string array | List of nodes when not using auto discovery | 
 
 ### Redis:
-{: .table .table-bordered .table-striped }
 | Configuration field | Type | Description |
+| --- | --- | --- |
 | host | string | Redis server URI |
 | port | integer | Redis server port |
 | password | string | Redis password |
 | db | integer | Database to be selected after connecting to the server |
 | expiration | integer | Availability in the Redis system in Minutes |
-| tls | field | subfields |
-|     |       | enabled: whether or not pass the InsecureSkipVerify value to the Redis client's TLS confi |
-|     |       | insecure_skip_verify: In Redis, InsecureSkipVerify controls whether a client verifies the server's certificate chain and host name. If InsecureSkipVerify is true, crypto/t |
+| tls | field | Subfields: <br> `enabled`: whether or not pass the InsecureSkipVerify value to the Redis client's TLS config <br> `insecure_skip_verify`: In Redis, InsecureSkipVerify controls whether a client verifies the server's certificate chain and host name. If InsecureSkipVerify is true, crypto/t |
 
-Sample configuration found in the `config.yaml` file
+Sample configuration file `config/configtest/sample_full_config.yaml` shown below:
+```yaml
+port: 9000
+admin_port: 2525
+index_response: "Any index response"
+log:
+  level: "info"
+rate_limiter:
+  enabled: false
+  num_requests: 150
+request_limits:
+  max_size_bytes: 10240
+  max_num_values: 10
+  max_ttl_seconds: 5000
+  allow_setting_keys: true
+backend:
+  type: "memory"
+  aerospike:
+    default_ttl_seconds: 3600
+    host: "aerospike.prebid.com"
+    hosts: ["aerospike2.prebid.com", "aerospike3.prebid.com"]
+    port: 3000
+    namespace: "whatever"
+    user: "foo"
+    password: "bar"
+  cassandra:
+    hosts: "127.0.0.1"
+    keyspace: "prebid"
+  memcache:
+    hosts: ["10.0.0.1:11211","127.0.0.1"]
+  redis:
+    host: "127.0.0.1"
+    port: 6379
+    password: "redis-password"
+    db: 1
+    expiration: 1
+    tls:
+      enabled: false
+      insecure_skip_verify: false
+compression:
+  type: "snappy"
+metrics:
+  type: "none"
+  influx:
+    host: "metrics-host"
+    database: "metrics-database"
+    username: "metrics-username"
+    password: "metrics-password"
+    enabled: true
+  prometheus:
+    port: 8080
+    namespace: "prebid"
+    subsystem: "cache"
+    timeout_ms: 100
+    enabled: true
+routes:
+  allow_public_write: true
+```
 
 ## Development
 

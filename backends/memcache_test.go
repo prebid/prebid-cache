@@ -32,9 +32,9 @@ func TestMemcacheGet(t *testing.T) {
 		expected testExpectedValues
 	}{
 		{
-			"Memcache.Get() throws a redis.Nil error",
+			"Memcache.Get() throws a memcache.ErrCacheMiss error",
 			testInput{
-				NewErrorProneMemcache(memcache.ErrCacheMiss),
+				&errorProneMemcache{errorToThrow: memcache.ErrCacheMiss},
 				"someKeyThatWontBeFound",
 			},
 			testExpectedValues{
@@ -45,7 +45,7 @@ func TestMemcacheGet(t *testing.T) {
 		{
 			"Memcache.Get() throws an error different from Cassandra ErrNotFound error",
 			testInput{
-				NewErrorProneMemcache(errors.New("some other get error")),
+				&errorProneMemcache{errorToThrow: errors.New("some other get error")},
 				"someKey",
 			},
 			testExpectedValues{
@@ -56,7 +56,7 @@ func TestMemcacheGet(t *testing.T) {
 		{
 			"Memcache.Get() doesn't throw an error",
 			testInput{
-				NewGoodMemcache("defaultKey", "aValue"),
+				&goodMemcache{key: "defaultKey", value: "aValue"},
 				"defaultKey",
 			},
 			testExpectedValues{
@@ -101,7 +101,7 @@ func TestMemcachePut(t *testing.T) {
 		{
 			"Memcache.Put() throws non-ErrNotStored error",
 			testInput{
-				NewErrorProneMemcache(memcache.ErrServerError),
+				&errorProneMemcache{errorToThrow: memcache.ErrServerError},
 				"someKey",
 				"someValue",
 				10,
@@ -114,7 +114,7 @@ func TestMemcachePut(t *testing.T) {
 		{
 			"Memcache.Put() throws ErrNotStored error",
 			testInput{
-				NewErrorProneMemcache(memcache.ErrNotStored),
+				&errorProneMemcache{errorToThrow: memcache.ErrNotStored},
 				"someKey",
 				"someValue",
 				10,
@@ -127,7 +127,7 @@ func TestMemcachePut(t *testing.T) {
 		{
 			"Memcache.Put() successful",
 			testInput{
-				NewGoodMemcache("defaultKey", "aValue"),
+				&goodMemcache{key: "defaultKey", value: "aValue"},
 				"defaultKey",
 				"aValue",
 				1,
@@ -140,7 +140,6 @@ func TestMemcachePut(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		// Assign aerospike backend cient
 		mcBackend.memcache = tt.in.memcacheClient
 
 		// Run test
@@ -227,4 +226,39 @@ func TestNewMemcacheBackend(t *testing.T) {
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
 	}
+}
+
+// Memcache that always throws an error
+type errorProneMemcache struct {
+	errorToThrow error
+}
+
+func (ec *errorProneMemcache) Get(key string) (*memcache.Item, error) {
+	return nil, ec.errorToThrow
+}
+
+func (ec *errorProneMemcache) Put(key string, value string, ttlSeconds int) error {
+	return ec.errorToThrow
+}
+
+// Memcache client that does not throw errors
+type goodMemcache struct {
+	key   string
+	value string
+}
+
+func (gc *goodMemcache) Get(key string) (*memcache.Item, error) {
+	if key == gc.key {
+		return &memcache.Item{Key: gc.key, Value: []byte(gc.value)}, nil
+	}
+	return nil, utils.KeyNotFoundError{}
+}
+
+func (gc *goodMemcache) Put(key string, value string, ttlSeconds int) error {
+	if gc.key != key {
+		gc.key = key
+	}
+	gc.value = value
+
+	return nil
 }

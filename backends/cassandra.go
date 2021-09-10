@@ -10,9 +10,9 @@ import (
 )
 
 type CassandraDB interface {
+	Init() error
 	Get(ctx context.Context, key string) (string, error)
 	Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error)
-	Init() error
 }
 
 // CassandraDBClient is a wrapper for the Cassandra client 'gocql' that

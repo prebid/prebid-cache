@@ -772,6 +772,110 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 	}
 }
 
+func TestRequestLimitsValidateAndLog(t *testing.T) {
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	type logComponents struct {
+		msg string
+		lvl logrus.Level
+	}
+
+	testCases := []struct {
+		description        string
+		inRequestLimitsCfg *RequestLimits
+		expectedLogInfo    []logComponents
+		expectFatal        bool
+	}{
+		{
+			description:        "Blank RequestLimits",
+			inRequestLimitsCfg: &RequestLimits{},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_num_values: 0`, lvl: logrus.InfoLevel},
+			},
+			expectFatal: false,
+		},
+		{
+			description:        "allow_setting_keys flag set to true",
+			inRequestLimitsCfg: &RequestLimits{AllowSettingKeys: true},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: true`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_num_values: 0`, lvl: logrus.InfoLevel},
+			},
+			expectFatal: false,
+		},
+		{
+			description:        "Negative max_ttl_seconds, expect fatal level log and early exit",
+			inRequestLimitsCfg: &RequestLimits{MaxTTLSeconds: -1},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `invalid config.request_limits.max_ttl_seconds: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
+			},
+			expectFatal: true,
+		},
+		{
+			description:        "Negative max_size_bytes, expect fatal level log and early exit",
+			inRequestLimitsCfg: &RequestLimits{MaxSize: -1},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `invalid config.request_limits.max_size_bytes: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
+			},
+			expectFatal: true,
+		},
+		{
+			description:        "Negative max_num_values, expect fatal level log and early exit",
+			inRequestLimitsCfg: &RequestLimits{MaxNumValues: -1},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
+				{msg: `invalid config.request_limits.max_num_values: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
+			},
+			expectFatal: true,
+		},
+	}
+
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	var fatal bool
+	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+
+	for _, tc := range testCases {
+		// Reset the fatal flag to false every test
+		fatal = false
+
+		// Run test
+		tc.inRequestLimitsCfg.validateAndLog()
+
+		// Assert logrus expected entries
+		logEntryCount := 0
+		for i := 0; i < len(tc.expectedLogInfo); i++ {
+			assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message, tc.description+":message")
+			assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.description+":log level")
+
+			logEntryCount++
+			if tc.expectedLogInfo[i].lvl == logrus.FatalLevel {
+				break
+			}
+		}
+		if tc.expectedLogInfo[logEntryCount-1].lvl == logrus.FatalLevel && !fatal {
+			t.Errorf("Log level fatal was expected. %s", tc.description)
+		}
+		assert.Len(t, tc.expectedLogInfo, logEntryCount, tc.description)
+
+		//Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
+	}
+}
+
 func TestCompressionValidateAndLog(t *testing.T) {
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
