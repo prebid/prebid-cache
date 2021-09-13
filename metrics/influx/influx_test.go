@@ -32,9 +32,9 @@ func TestRegisteredInfluxMetrics(t *testing.T) {
 		{"puts.backend.bad_request_count", "Meter"},
 		{"puts.backend.json_request_count", "Meter"},
 		{"puts.backend.xml_request_count", "Meter"},
-		{"puts.backend.defines_ttl", "Meter"},
 		{"puts.backend.unknown_request_count", "Meter"},
 		{"puts.backend.request_size_bytes", "Histogram"},
+		{"puts.backend.request_ttl_seconds", "Timer"},
 		// GetsBackend:
 		{"gets.backend.request_duration", "Timer"},
 		{"gets.backend.error_count", "Meter"},
@@ -47,8 +47,6 @@ func TestRegisteredInfluxMetrics(t *testing.T) {
 		{"connections.active_incoming", "Counter"},
 		{"connections.accept_errors", "Meter"},
 		{"connections.close_errors", "Meter"},
-		// ExtraTTL:
-		{"extra_ttl_seconds", "Histogram"},
 	}
 
 	// Assertions
@@ -68,41 +66,6 @@ func TestRegisteredInfluxMetrics(t *testing.T) {
 			_, correctMetricType = actualMetricObject.(metrics.Histogram)
 		}
 		assert.True(t, correctMetricType, "Metric %s was expected to be of type %s but it isn't", test.metricName, test.expectedMetricObject)
-	}
-}
-
-func TestRecordExtraTTLSeconds(t *testing.T) {
-	testCases := []struct {
-		description      string
-		inTtlSeconds     float64
-		outRecordedTtl   int64
-		outElemsInBucket int64
-	}{
-		{
-			description:    "First update, five time-to-live seconds",
-			inTtlSeconds:   float64(5),
-			outRecordedTtl: int64(5),
-		},
-		{
-			description:    "second update, zero time-to-live seconds",
-			inTtlSeconds:   float64(0),
-			outRecordedTtl: int64(0),
-		},
-		{
-			description:    "third update, five time-to-live seconds again",
-			inTtlSeconds:   float64(5),
-			outRecordedTtl: int64(5),
-		},
-	}
-
-	for _, test := range testCases {
-		m := CreateInfluxMetrics()
-
-		//Run test
-		m.RecordExtraTTLSeconds(test.inTtlSeconds)
-
-		//Assertions
-		assert.Equal(t, test.outRecordedTtl, m.ExtraTTL.ExtraTTLSeconds.Sum(), test.description)
 	}
 }
 
@@ -200,14 +163,14 @@ func TestDurationRecorders(t *testing.T) {
 					metricToAssert: m.PutsBackend.InvalidRequest,
 				},
 				{
-					description:    "valid put request specifies its time to live with RecordPutBackendDefTTL",
-					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendDefTTL() },
-					metricToAssert: m.PutsBackend.DefinesTTL,
-				},
-				{
-					description:    "valid put request specifies its size in bytes with RecordPutBackendSize",
+					description:    "valid put request record the size of its value field in bytes with RecordPutBackendSize",
 					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendSize(float64(1)) },
 					metricToAssert: m.PutsBackend.RequestLength,
+				},
+				{
+					description:    "valid put request comes with a non-zero value in the ttlseconds field. Record with RecordPutBackendSize",
+					runTest:        func(im *InfluxMetrics) { im.RecordPutBackendTTLSeconds(fiveSeconds) },
+					metricToAssert: m.PutsBackend.RequestTTL,
 				},
 			},
 		},
@@ -263,16 +226,6 @@ func TestDurationRecorders(t *testing.T) {
 					description:    "record a connection that suddenly closed with an error",
 					runTest:        func(im *InfluxMetrics) { im.RecordCloseConnectionErrors() },
 					metricToAssert: m.Connections.ConnectionCloseErrors,
-				},
-			},
-		},
-		{
-			"m.ExtraTTL",
-			[]testCase{
-				{
-					description:    "Increase counter when a connection opens",
-					runTest:        func(im *InfluxMetrics) { im.RecordExtraTTLSeconds(float64(1)) },
-					metricToAssert: m.ExtraTTL.ExtraTTLSeconds,
 				},
 			},
 		},

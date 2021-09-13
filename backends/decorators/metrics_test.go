@@ -107,15 +107,6 @@ func TestPutSuccessMetrics(t *testing.T) {
 	assert.Equal(t, int64(0), metricstest.MockCounters["puts.backends.defines_ttl"], "An event for TTL defined shouldn't be logged if the TTL was 0")
 }
 
-func TestTTLDefinedMetrics(t *testing.T) {
-
-	m := metricstest.CreateMockMetrics()
-	backend := LogMetrics(backends.NewMemoryBackend(), m)
-	backend.Put(context.Background(), "foo", "xml<vast></vast>", 1)
-
-	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.defines_ttl"], "An event for TTL defined shouldn't be logged if the TTL was 0")
-}
-
 func TestPutErrorMetrics(t *testing.T) {
 
 	m := metricstest.CreateMockMetrics()

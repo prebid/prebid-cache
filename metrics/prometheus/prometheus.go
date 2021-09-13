@@ -23,7 +23,6 @@ const (
 	BadRequestVal  string = "bad_request"
 	JsonVal        string = "json"
 	XmlVal         string = "xml"
-	DefinesTTLVal  string = "defines_ttl"
 	InvFormatVal   string = "invalid_format"
 	CloseVal       string = "close"
 	AcceptVal      string = "accept"
@@ -36,12 +35,12 @@ const (
 	PutBackendMet  string = "puts_backend"
 	PutBackDurMet  string = "puts_backend_duration"
 	PutBackSizeMet string = "puts_backend_request_size_bytes"
+	PutTTLSeconds  string = "puts_backend_request_ttl"
 	GetBackendMet  string = "gets_backend"
 	GetBackendErr  string = "gets_backend_error"
 	GetBackDurMet  string = "gets_backend_duration"
 	ConnOpenedMet  string = "connection_opened"
 	ConnClosedMet  string = "connection_closed"
-	ExtraTTLMet    string = "extra_ttl_seconds"
 
 	MetricsPrometheus = "Prometheus"
 )
@@ -53,7 +52,6 @@ type PrometheusMetrics struct {
 	PutsBackend *PrometheusRequestStatusMetricByFormat
 	GetsBackend *PrometheusRequestStatusMetric
 	Connections *PrometheusConnectionMetrics
-	ExtraTTL    *PrometheusExtraTTLMetrics
 	MetricsName string
 }
 
@@ -67,6 +65,7 @@ type PrometheusRequestStatusMetricByFormat struct {
 	Duration           prometheus.Histogram
 	PutBackendRequests *prometheus.CounterVec
 	RequestLength      prometheus.Histogram
+	RequestTTLDuration prometheus.Histogram
 }
 
 type PrometheusConnectionMetrics struct {
@@ -75,12 +74,10 @@ type PrometheusConnectionMetrics struct {
 	ConnectionsOpened prometheus.Counter
 }
 
-type PrometheusExtraTTLMetrics struct {
-	ExtraTTLSeconds prometheus.Histogram
-}
-
 func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	timeBuckets := []float64{0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1}
+	// TTL seconds buckets for 1 second, half a minute as well as one, ten, fifteen, thirty minutes and 1, 2, and 3 and 10 hours
+	ttlBuckets := []float64{0.001, 1, 30, 60, 600, 900, 1800, 3600, 7200, 10800, 36000}
 	requestSizeBuckets := []float64{0, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576}
 	registry := prometheus.NewRegistry()
 	promMetrics := &PrometheusMetrics{
@@ -125,6 +122,11 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				"Size in bytes of a backend put request.",
 				requestSizeBuckets,
 			),
+			RequestTTLDuration: newHistogram(cfg, registry,
+				PutTTLSeconds,
+				"Time-to-live duration in seconds specified in put request body's ttl_seconds field",
+				ttlBuckets,
+			),
 		},
 		GetsBackend: &PrometheusRequestStatusMetric{
 			Duration: newHistogram(cfg, registry,
@@ -150,13 +152,6 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 				ConnErrorKey,
 				"Count the number of connection accept errors or connection close errors",
 				[]string{ConnErrorKey},
-			),
-		},
-		ExtraTTL: &PrometheusExtraTTLMetrics{
-			ExtraTTLSeconds: newHistogram(cfg, registry,
-				ExtraTTLMet,
-				"Extra time to live in seconds specified",
-				timeBuckets,
 			),
 		},
 		MetricsName: MetricsPrometheus,
@@ -266,12 +261,12 @@ func (m *PrometheusMetrics) RecordPutBackendInvalid() {
 	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{FormatKey: InvFormatVal}).Inc()
 }
 
-func (m *PrometheusMetrics) RecordPutBackendDefTTL() {
-	m.PutsBackend.PutBackendRequests.With(prometheus.Labels{FormatKey: DefinesTTLVal}).Inc()
-}
-
 func (m *PrometheusMetrics) RecordPutBackendDuration(duration time.Duration) {
 	m.PutsBackend.Duration.Observe(duration.Seconds())
+}
+
+func (m *PrometheusMetrics) RecordPutBackendTTLSeconds(duration time.Duration) {
+	m.PutsBackend.RequestTTLDuration.Observe(duration.Seconds())
 }
 
 func (m *PrometheusMetrics) RecordPutBackendError() {
@@ -320,8 +315,4 @@ func (m *PrometheusMetrics) RecordCloseConnectionErrors() {
 
 func (m *PrometheusMetrics) RecordAcceptConnectionErrors() {
 	m.Connections.ConnectionsErrors.With(prometheus.Labels{ConnErrorKey: AcceptVal}).Inc()
-}
-
-func (m *PrometheusMetrics) RecordExtraTTLSeconds(value float64) {
-	m.ExtraTTL.ExtraTTLSeconds.Observe(value)
 }

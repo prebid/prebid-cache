@@ -40,9 +40,9 @@ func (db *AerospikeDBClient) NewUuidKey(namespace string, key string) (*as.Key, 
 
 // Instantiates, and configures the Aerospike client, it also performs Get and Put operations and monitors results
 type AerospikeBackend struct {
-	cfg     config.Aerospike
-	client  AerospikeDB
-	metrics *metrics.Metrics
+	namespace string
+	client    AerospikeDB
+	metrics   *metrics.Metrics
 }
 
 func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *AerospikeBackend {
@@ -71,14 +71,14 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 	log.Infof("Connected to Aerospike host(s) %v on port %d", append(cfg.Hosts, cfg.Host), cfg.Port)
 
 	return &AerospikeBackend{
-		cfg:     cfg,
-		client:  &AerospikeDBClient{client},
-		metrics: metrics,
+		namespace: cfg.Namespace,
+		client:    &AerospikeDBClient{client},
+		metrics:   metrics,
 	}
 }
 
 func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) {
-	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
+	asKey, err := a.client.NewUuidKey(a.namespace, key)
 	if err != nil {
 		return "", formatAerospikeError(err)
 	}
@@ -89,7 +89,6 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 	if rec == nil {
 		return "", formatAerospikeError(errors.New("Nil record"))
 	}
-	a.metrics.RecordExtraTTLSeconds(float64(rec.Expiration))
 
 	value, found := rec.Bins[binValue]
 	if !found {
@@ -105,13 +104,9 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 }
 
 func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	asKey, err := a.client.NewUuidKey(a.cfg.Namespace, key)
+	asKey, err := a.client.NewUuidKey(a.namespace, key)
 	if err != nil {
 		return formatAerospikeError(err)
-	}
-
-	if ttlSeconds == 0 {
-		ttlSeconds = a.cfg.DefaultTTL
 	}
 
 	bins := as.BinMap{binValue: value}

@@ -80,15 +80,15 @@ func (m Metrics) RecordPutBackendInvalid() {
 	}
 }
 
-func (m Metrics) RecordPutBackendDefTTL() {
-	for _, me := range m.MetricEngines {
-		me.RecordPutBackendDefTTL()
-	}
-}
-
 func (m Metrics) RecordPutBackendDuration(duration time.Duration) {
 	for _, me := range m.MetricEngines {
 		me.RecordPutBackendDuration(duration)
+	}
+}
+
+func (m Metrics) RecordPutBackendTTLSeconds(duration time.Duration) {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendTTLSeconds(duration)
 	}
 }
 
@@ -158,12 +158,6 @@ func (m Metrics) RecordAcceptConnectionErrors() {
 	}
 }
 
-func (m Metrics) RecordExtraTTLSeconds(value float64) {
-	for _, me := range m.MetricEngines {
-		me.RecordExtraTTLSeconds(value)
-	}
-}
-
 func (m Metrics) Export(cfg config.Configuration) {
 	for _, me := range m.MetricEngines {
 		me.Export(cfg.Metrics)
@@ -197,8 +191,8 @@ type CacheMetrics interface {
 	RecordPutBackendXml()
 	RecordPutBackendJson()
 	RecordPutBackendInvalid()
-	RecordPutBackendDefTTL()
 	RecordPutBackendDuration(duration time.Duration)
+	RecordPutBackendTTLSeconds(duration time.Duration)
 	RecordPutBackendError()
 	RecordPutBackendSize(sizeInBytes float64)
 	RecordGetBackendTotal()
@@ -210,7 +204,6 @@ type CacheMetrics interface {
 	RecordConnectionClosed()
 	RecordCloseConnectionErrors()
 	RecordAcceptConnectionErrors()
-	RecordExtraTTLSeconds(value float64)
 }
 
 func CreateMetrics(cfg config.Configuration) *Metrics {
