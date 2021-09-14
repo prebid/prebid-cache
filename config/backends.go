@@ -62,7 +62,9 @@ func (cfg *Aerospike) validateAndLog() error {
 	if cfg.Port <= 0 {
 		return fmt.Errorf("Cannot connect to Aerospike host at port %d", cfg.Port)
 	}
-	log.Infof("config.backend.aerospike.default_ttl_seconds: %d", cfg.DefaultTTL)
+	if cfg.DefaultTTL > 0 {
+		log.Infof("config.backend.aerospike.default_ttl_seconds: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.DefaultTTL)
+	}
 	log.Infof("config.backend.aerospike.host: %s", cfg.Host)
 	log.Infof("config.backend.aerospike.hosts: %v", cfg.Hosts)
 	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
@@ -124,7 +126,9 @@ func (cfg *Redis) validateAndLog() error {
 	log.Infof("config.backend.redis.host: %s", cfg.Host)
 	log.Infof("config.backend.redis.port: %d", cfg.Port)
 	log.Infof("config.backend.redis.db: %d", cfg.Db)
-	log.Infof("config.backend.redis.expiration: %d", cfg.Expiration)
+	if cfg.Expiration > 0 {
+		log.Infof("config.backend.redis.expiration: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.Expiration)
+	}
 	log.Infof("config.backend.redis.tls.enabled: %t", cfg.TLS.Enabled)
 	log.Infof("config.backend.redis.tls.insecure_skip_verify: %t", cfg.TLS.InsecureSkipVerify)
 	return nil

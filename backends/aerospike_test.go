@@ -153,7 +153,6 @@ func TestFormatAerospikeError(t *testing.T) {
 
 func TestClientGet(t *testing.T) {
 	aerospikeBackend := &AerospikeBackend{
-		cfg:     config.Aerospike{Host: "www.anyHost.com", Port: 0},
 		metrics: metricstest.CreateMockMetrics(),
 	}
 
@@ -227,7 +226,6 @@ func TestClientGet(t *testing.T) {
 
 func TestClientPut(t *testing.T) {
 	aerospikeBackend := &AerospikeBackend{
-		cfg:     config.Aerospike{Host: "www.anyHost.com", Port: 0},
 		metrics: metricstest.CreateMockMetrics(),
 	}
 

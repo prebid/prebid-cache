@@ -97,9 +97,6 @@ func (back *CassandraBackend) Get(ctx context.Context, key string) (string, erro
 // exist in the storage already. If it does, no operation is performed and Put
 // returns RecordExistsError
 func (back *CassandraBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	if ttlSeconds == 0 {
-		ttlSeconds = back.defaultTTL
-	}
 
 	applied, err := back.client.Put(ctx, key, value, ttlSeconds)
 	if !applied {

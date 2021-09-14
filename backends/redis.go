@@ -95,9 +95,6 @@ func (b *RedisBackend) Get(ctx context.Context, key string) (string, error) {
 // implementation of Put calls SetNX(item *Item), a `false` return value is interpreted as the data
 // not being written because the `key` already holds a value, and a RecordExistsError is returned
 func (b *RedisBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	if ttlSeconds == 0 {
-		ttlSeconds = b.cfg.Expiration * 60
-	}
 
 	success, err := b.client.Put(key, value, ttlSeconds)
 	if !success {

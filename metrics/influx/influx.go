@@ -22,7 +22,6 @@ type InfluxMetrics struct {
 	GetsBackend *InfluxMetricsEntry
 	GetsErr     *InfluxMetricsGetErrors
 	Connections *InfluxConnectionMetrics
-	ExtraTTL    *InfluxExtraTTL
 	MetricsName string
 }
 
@@ -41,18 +40,15 @@ type InfluxMetricsEntryByFormat struct {
 	BadRequest     metrics.Meter
 	JsonRequest    metrics.Meter
 	XmlRequest     metrics.Meter
-	DefinesTTL     metrics.Meter
 	InvalidRequest metrics.Meter
 	RequestLength  metrics.Histogram
+	RequestTTL     metrics.Timer
 }
 
 type InfluxConnectionMetrics struct {
 	ActiveConnections      metrics.Counter
 	ConnectionCloseErrors  metrics.Meter
 	ConnectionAcceptErrors metrics.Meter
-}
-type InfluxExtraTTL struct {
-	ExtraTTLSeconds metrics.Histogram
 }
 
 type InfluxMetricsGetErrors struct {
@@ -97,9 +93,9 @@ func NewInfluxMetricsEntryBackendPuts(name string, r metrics.Registry) *InfluxMe
 		BadRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
 		JsonRequest:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.json_request_count", name), r),
 		XmlRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.xml_request_count", name), r),
-		DefinesTTL:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.defines_ttl", name), r),
 		InvalidRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.unknown_request_count", name), r),
 		RequestLength:  metrics.GetOrRegisterHistogram(name+".request_size_bytes", r, metrics.NewExpDecaySample(1028, 0.015)),
+		RequestTTL:     metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_ttl_seconds", name), r),
 	}
 }
 
@@ -122,7 +118,6 @@ func CreateInfluxMetrics() *InfluxMetrics {
 		GetsBackend: NewInfluxMetricsEntryGet("gets.backend", r),
 		GetsErr:     NewInfluxGetErrorMetrics("gets.backend_error", r),
 		Connections: NewInfluxConnectionMetrics(r),
-		ExtraTTL:    &InfluxExtraTTL{ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000))},
 		MetricsName: MetricsInfluxDB,
 	}
 
@@ -207,12 +202,12 @@ func (m *InfluxMetrics) RecordPutBackendInvalid() {
 	m.PutsBackend.InvalidRequest.Mark(1)
 }
 
-func (m *InfluxMetrics) RecordPutBackendDefTTL() {
-	m.PutsBackend.DefinesTTL.Mark(1)
-}
-
 func (m *InfluxMetrics) RecordPutBackendDuration(duration time.Duration) {
 	m.PutsBackend.Duration.Update(duration)
+}
+
+func (m *InfluxMetrics) RecordPutBackendTTLSeconds(duration time.Duration) {
+	m.PutsBackend.RequestTTL.Update(duration)
 }
 
 func (m *InfluxMetrics) RecordPutBackendError() {
@@ -257,8 +252,4 @@ func (m *InfluxMetrics) RecordCloseConnectionErrors() {
 
 func (m *InfluxMetrics) RecordAcceptConnectionErrors() {
 	m.Connections.ConnectionAcceptErrors.Mark(1)
-}
-
-func (m *InfluxMetrics) RecordExtraTTLSeconds(value float64) {
-	m.ExtraTTL.ExtraTTLSeconds.Update(int64(value))
 }
