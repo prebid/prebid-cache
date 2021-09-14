@@ -100,7 +100,7 @@ func (b *RedisBackend) Put(ctx context.Context, key string, value string, ttlSec
 	}
 
 	success, err := b.client.Put(key, value, ttlSeconds)
-	if !success || err == redis.Nil {
+	if !success {
 		return utils.RecordExistsError{}
 	}
 	return err
