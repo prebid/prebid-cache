@@ -7,7 +7,6 @@ import (
 
 	"github.com/gocql/gocql"
 	"github.com/prebid/prebid-cache/utils"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -140,7 +139,6 @@ func TestCassandraClientPut(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		// Assign aerospike backend cient
 		cassandraBackend.client = tt.in.cassandraClient
 
 		// Run test

@@ -13,14 +13,11 @@ const (
 	GetMethod  = 2
 )
 
-const CustomUuidKey string = "IsKeyProvided"
-
 type metricsFunctions struct {
-	RecordTotal       func()
-	RecordDuration    func(duration time.Duration)
-	RecordBadRequest  func()
-	RecordError       func()
-	RecordKeyProvided func()
+	RecordTotal      func()
+	RecordDuration   func(duration time.Duration)
+	RecordBadRequest func()
+	RecordError      func()
 }
 
 func assignMetricsFunctions(m *metrics.Metrics, method int) *metricsFunctions {
@@ -31,13 +28,11 @@ func assignMetricsFunctions(m *metrics.Metrics, method int) *metricsFunctions {
 		metrics.RecordDuration = m.RecordPutDuration
 		metrics.RecordBadRequest = m.RecordPutBadRequest
 		metrics.RecordError = m.RecordPutError
-		metrics.RecordKeyProvided = m.RecordPutKeyProvided
 	case GetMethod:
 		metrics.RecordTotal = m.RecordGetTotal
 		metrics.RecordDuration = m.RecordGetDuration
 		metrics.RecordBadRequest = m.RecordGetBadRequest
 		metrics.RecordError = m.RecordGetError
-		metrics.RecordKeyProvided = func() {} // Doesn't get called from Get endpoint
 	}
 	return metrics
 }
@@ -45,9 +40,8 @@ func assignMetricsFunctions(m *metrics.Metrics, method int) *metricsFunctions {
 // writerWithStatus implements the http.ResponseWriter interface in order to store
 // extra information needed for metrics purposes.
 type writerWithStatus struct {
-	delegate       http.ResponseWriter
-	statusCode     int
-	wasKeyProvided bool
+	delegate   http.ResponseWriter
+	statusCode int
 }
 
 // WriteHeader is writerWithStatus's implementation of the http.ResponseWriter interface
@@ -63,16 +57,7 @@ func (w *writerWithStatus) WriteHeader(statusCode int) {
 }
 
 // Write is writerWithStatus's implementation of the http.ResponseWriter interface
-// Write(bytes []byte) (int, error) method and includes logic to set the wasKeyProvided
-// field to true if the "IsKeyProvided" keyword is passed as parameter. If not, bytes
-// is assumed to be the Put response and is passed as parameter to http.ResponseWriter's
-// Write(bytes []byte) (int, error) instead.
 func (w *writerWithStatus) Write(bytes []byte) (int, error) {
-	if string(bytes) == CustomUuidKey {
-		w.wasKeyProvided = true
-		return 0, nil
-	}
-
 	return w.delegate.Write(bytes)
 }
 
@@ -90,10 +75,6 @@ func MonitorHttp(handler httprouter.Handle, m *metrics.Metrics, method int) http
 
 		start := time.Now()
 		handler(&wrapper, req, params)
-
-		if wrapper.wasKeyProvided {
-			mf.RecordKeyProvided()
-		}
 
 		respCode := wrapper.statusCode
 		// If the calling function never calls WriterHeader explicitly, Go auto-fills it with a 200

@@ -52,58 +52,6 @@ func TestBadPutRequestMetrics(t *testing.T) {
 	assert.Equal(t, metricstest.MockHistograms["puts.current_url.duration"], 0.00, "Unsuccessful put request duration should have been logged")
 }
 
-func TestCustomKeyPutRequestMetrics(t *testing.T) {
-	type testExpectedValues struct {
-		totalRequests     int64
-		badRequests       int64
-		customKeyRequests int64
-	}
-	testCases := []struct {
-		desc                  string
-		inHandler             func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params)
-		expectedCounterValues testExpectedValues
-	}{
-		{
-			desc: "A put request that comes with its own custom key and Put endpoint throws no error",
-			inHandler: func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-				w.Write([]byte(CustomUuidKey))
-				w.WriteHeader(200)
-			},
-			expectedCounterValues: testExpectedValues{
-				totalRequests:     int64(1),
-				customKeyRequests: int64(1),
-			},
-		},
-		{
-			desc: "A put request that comes with its own custom key and Put endpoint throws error",
-			inHandler: func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-				w.Write([]byte(CustomUuidKey))
-				w.WriteHeader(400)
-			},
-			expectedCounterValues: testExpectedValues{
-				totalRequests:     int64(1),
-				badRequests:       int64(1),
-				customKeyRequests: int64(1),
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		// Set up test objects
-		metrics := metricstest.CreateMockMetrics()
-
-		// Run test
-		monitoredHandler := MonitorHttp(tc.inHandler, metrics, PostMethod)
-		monitoredHandler(httptest.NewRecorder(), nil, nil)
-
-		// Assert
-		assert.Equalf(t, tc.expectedCounterValues.totalRequests, metricstest.MockCounters["puts.current_url.request.total"], "Put request has not been accounted for in the 'total request' count")
-		assert.Equalf(t, tc.expectedCounterValues.badRequests, metricstest.MockCounters["puts.current_url.request.bad_request"], "Put request has not been accounted for in the 'bad request' count")
-		assert.Equalf(t, tc.expectedCounterValues.customKeyRequests, metricstest.MockCounters["puts.current_url.request.custom_key"], "Put request has not been accounted for in the 'put requests with custom key' count")
-	}
-
-}
-
 func TestGetRequestErrorMetrics(t *testing.T) {
 	var handler = func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 		w.WriteHeader(500)
