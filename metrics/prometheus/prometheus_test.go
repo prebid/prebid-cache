@@ -108,12 +108,6 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 				expDuration:      10,
 				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1, expCustomKeyReqs: 0,
 			},
-			{
-				description:      "Count put request that comes with custom key",
-				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutKeyProvided() },
-				expDuration:      10,
-				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1, expCustomKeyReqs: 1,
-			},
 		},
 		m.Gets: {
 			{

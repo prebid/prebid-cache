@@ -100,40 +100,40 @@ func TestCassandraClientPut(t *testing.T) {
 		{
 			"CassandraBackend.Put() throws error",
 			testInput{
-				&errorProneCassandraClient{errorToThrow: gocql.ErrNoConnections},
-				"someKey",
-				"someValue",
-				10,
+				cassandraClient: &errorProneCassandraClient{errorToThrow: gocql.ErrNoConnections},
+				key:             "someKey",
+				valueToStore:    "someValue",
+				ttl:             10,
 			},
 			testExpectedValues{
-				"",
-				errors.New("gocql: no hosts available in the pool"),
+				value: "",
+				err:   errors.New("gocql: no hosts available in the pool"),
 			},
 		},
 		{
 			"CassandraBackend.Put() gets called with zero ttlSeconds, value gets successfully set anyways",
 			testInput{
-				&goodCassandraClient{key: "defaultKey", value: "aValue"},
-				"defaultKey",
-				"aValue",
-				0,
+				cassandraClient: &goodCassandraClient{key: "defaultKey", value: "aValue"},
+				key:             "defaultKey",
+				valueToStore:    "aValue",
+				ttl:             0,
 			},
 			testExpectedValues{
-				"aValue",
-				nil,
+				value: "aValue",
+				err:   nil,
 			},
 		},
 		{
 			"CassandraBackend.Put() successful, no need to set defaultTTL because ttl is greater than zero",
 			testInput{
-				&goodCassandraClient{key: "defaultKey", value: "aValue"},
-				"defaultKey",
-				"aValue",
-				1,
+				cassandraClient: &goodCassandraClient{key: "defaultKey", value: "aValue"},
+				key:             "defaultKey",
+				valueToStore:    "aValue",
+				ttl:             1,
 			},
 			testExpectedValues{
-				"aValue",
-				nil,
+				value: "aValue",
+				err:   nil,
 			},
 		},
 	}

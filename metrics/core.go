@@ -38,12 +38,6 @@ func (m Metrics) RecordPutDuration(duration time.Duration) {
 	}
 }
 
-func (m Metrics) RecordPutKeyProvided() {
-	for _, me := range m.MetricEngines {
-		me.RecordPutKeyProvided()
-	}
-}
-
 func (m Metrics) RecordGetError() {
 	for _, me := range m.MetricEngines {
 		me.RecordGetError()
@@ -190,7 +184,6 @@ type CacheMetrics interface {
 	RecordPutBadRequest()
 	RecordPutTotal()
 	RecordPutDuration(duration time.Duration)
-	RecordPutKeyProvided()
 	RecordGetError()
 	RecordGetBadRequest()
 	RecordGetTotal()

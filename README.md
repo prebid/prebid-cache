@@ -172,7 +172,7 @@ Content-Type: application/xml
 <tag>Your XML content goes here.</tag>
 ```
 
-This is to prevent bad actors from trying to overwrite legitimate caches with malicious content, or a poorly coded app overwriting its own cache with new values, generating uncertainty of what is actually stored under a particular key. Note that cases like these are the only where a subset of caches would not get stored. Under any other scenario, we expect the entire request to fail and no elements to get stored.
+This is to prevent bad actors from trying to overwrite legitimate caches with malicious content, or a poorly coded app overwriting its own cache with new values, generating uncertainty of what is actually stored under a particular key. Note that cases like these are the only time where a subset of caches would not get stored. Under any other scenario, we expect the entire request to fail and no elements will be stored.
 
 Trying to overwrite the value under an existing key is also the only instance where an unsuccessful `Put` is not considered an error. As such, Prebid Cache will not respond with an error message or return an error code on these particular instances.
 
@@ -208,7 +208,7 @@ This section does not describe permanent API contracts; it just describes limita
 
 ## Backend Configuration
 
-In order to store its data a Prebid Cache instance can use either of the following storage services: Aerospike, Cassandra, Memcache, Redis, or simply store in local memory. Select the storage service your Prebid Cache server will use by setting the `backend.type` property in the `config.yaml` file:
+In order to store its data a Prebid Cache instance can use either of the following storage services: Aerospike, Cassandra, Memcache, Redis, or local memory. Select the storage service your Prebid Cache server will use by setting the `backend.type` property in the `config.yaml` file:
 
 ```yaml
 backend:

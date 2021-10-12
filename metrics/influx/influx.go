@@ -170,10 +170,6 @@ func (m *InfluxMetrics) RecordPutDuration(duration time.Duration) {
 	m.Puts.Duration.Update(duration)
 }
 
-func (m *InfluxMetrics) RecordPutKeyProvided() {
-	m.Puts.Update.Mark(1)
-}
-
 func (m *InfluxMetrics) RecordGetError() {
 	m.Gets.Errors.Mark(1)
 }

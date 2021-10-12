@@ -108,11 +108,6 @@ func TestAllRecorders(t *testing.T) {
 					runTest:        func(im *InfluxMetrics) { im.RecordPutTotal() },
 					metricToAssert: m.Puts.Request,
 				},
-				{
-					description:    "record an incoming put request that defines its own custom key",
-					runTest:        func(im *InfluxMetrics) { im.RecordPutKeyProvided() },
-					metricToAssert: m.Puts.Update,
-				},
 			},
 		},
 		{
