@@ -234,6 +234,10 @@ func (m *PrometheusMetrics) RecordPutDuration(duration time.Duration) {
 	m.Puts.Duration.Observe(duration.Seconds())
 }
 
+func (m *PrometheusMetrics) RecordPutKeyProvided() {
+	m.Puts.RequestStatus.With(prometheus.Labels{StatusKey: CustomKey}).Inc()
+}
+
 func (m *PrometheusMetrics) RecordGetError() {
 	m.Gets.RequestStatus.With(prometheus.Labels{StatusKey: ErrorVal}).Inc()
 }
