@@ -92,36 +92,46 @@ func (e *PutHandler) parseRequest(r *http.Request) (*PutRequest, error) {
 	return put, nil
 }
 
-// validatePutObject returns an error if the PutObject comes with an invalid field
-func validatePutObject(p PutObject) error {
+// parsePutObject returns an error if the PutObject comes with an invalid field
+// and formats the string according to its type:
+//   - XML content gets unmarshaled in order to un-escape it and then gets
+//     prepended by its type
+//   - JSON content gets prepended by its type
+// No other formats are supported.
+func parsePutObject(p PutObject) (string, error) {
+	var toCache string
+
 	// Make sure there's data to store
 	if len(p.Value) == 0 {
-		return errors.New("Missing required field value.")
+		return "", errors.New("Missing required field value.")
 	}
 
 	// Make sure a non-negative time-to-live quantity was provided
 	if p.TTLSeconds < 0 {
-		return fmt.Errorf("ttlseconds must not be negative %d.", p.TTLSeconds)
+		return "", fmt.Errorf("ttlseconds must not be negative %d.", p.TTLSeconds)
 	}
 
 	// Limit the type of data to XML or JSON
 	if p.Type == backends.XML_PREFIX {
 		if p.Value[0] != byte('"') || p.Value[len(p.Value)-1] != byte('"') {
-			return fmt.Errorf("XML messages must have a String value. Found %v", p.Value)
+			return "", fmt.Errorf("XML messages must have a String value. Found %v", p.Value)
 		}
 
 		// Be careful about the the cross-script escaping issues here. JSON requires quotation marks to be escaped,
 		// for example... so we'll need to un-escape it before we consider it to be XML content.
 		var interpreted string
 		if err := json.Unmarshal(p.Value, &interpreted); err != nil {
-			return fmt.Errorf("Error unmarshalling XML value: %v", p.Value)
+			return "", fmt.Errorf("Error unmarshalling XML value: %v", p.Value)
 		}
 
-	} else if p.Type != backends.JSON_PREFIX {
-		return fmt.Errorf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type)
+		toCache = p.Type + interpreted
+	} else if p.Type == backends.JSON_PREFIX {
+		toCache = p.Type + string(p.Value)
+	} else {
+		return "", fmt.Errorf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type)
 	}
 
-	return nil
+	return toCache, nil
 }
 
 func formatPutError(err error, index int) (error, int) {
@@ -155,13 +165,11 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	defer e.memory.putResponsePool.Put(resps)
 
 	for i, p := range put.Puts {
-		if err := validatePutObject(p); err != nil {
+		toCache, err := parsePutObject(p)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			continue
 		}
-
-		// Prefix value with data type
-		toCache := p.Type + string(p.Value)
 
 		// Only allow setting a provided key if configured (and ensure a key is provided).
 		if e.cfg.allowKeys && len(p.Key) > 0 {
