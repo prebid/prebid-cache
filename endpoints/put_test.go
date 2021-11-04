@@ -81,16 +81,23 @@ func TestParseRequest(t *testing.T) {
 	}
 }
 
-func TestValidatePutObject(t *testing.T) {
+func TestParsePutObject(t *testing.T) {
+	type testOut struct {
+		value string
+		err   error
+	}
 	testCases := []struct {
-		desc          string
-		in            PutObject
-		expectedError error
+		desc     string
+		in       PutObject
+		expected testOut
 	}{
 		{
 			"empty value, expect error",
 			PutObject{},
-			errors.New("Missing required field value."),
+			testOut{
+				value: "",
+				err:   errors.New("Missing required field value."),
+			},
 		},
 		{
 			"negative time-to-live, expect error",
@@ -98,7 +105,10 @@ func TestValidatePutObject(t *testing.T) {
 				TTLSeconds: -1,
 				Value:      json.RawMessage(`<tag>Your XML content goes here.</tag>`),
 			},
-			errors.New("ttlseconds must not be negative -1."),
+			testOut{
+				value: "",
+				err:   errors.New("ttlseconds must not be negative -1."),
+			},
 		},
 		{
 			"non xml nor json type, expect error",
@@ -107,7 +117,10 @@ func TestValidatePutObject(t *testing.T) {
 				TTLSeconds: 60,
 				Value:      json.RawMessage(`<tag>Your XML content goes here.</tag>`),
 			},
-			errors.New("Type must be one of [\"json\", \"xml\"]. Found unknown"),
+			testOut{
+				value: "",
+				err:   errors.New("Type must be one of [\"json\", \"xml\"]. Found unknown"),
+			},
 		},
 		{
 			"xml type value is not a string, expect error",
@@ -116,7 +129,10 @@ func TestValidatePutObject(t *testing.T) {
 				TTLSeconds: 60,
 				Value:      json.RawMessage(`<tag>XML</tag>`),
 			},
-			errors.New("XML messages must have a String value. Found [60 116 97 103 62 88 77 76 60 47 116 97 103 62]"),
+			testOut{
+				value: "",
+				err:   errors.New("XML messages must have a String value. Found [60 116 97 103 62 88 77 76 60 47 116 97 103 62]"),
+			},
 		},
 		{
 			"valid xml input, no errors expected",
@@ -125,7 +141,10 @@ func TestValidatePutObject(t *testing.T) {
 				TTLSeconds: 60,
 				Value:      json.RawMessage(`"<tag>XML</tag>"`),
 			},
-			nil,
+			testOut{
+				"xml<tag>XML</tag>",
+				nil,
+			},
 		},
 		{
 			"valid JSON input, no errors expected",
@@ -134,18 +153,23 @@ func TestValidatePutObject(t *testing.T) {
 				TTLSeconds: 60,
 				Value:      json.RawMessage(`{"native":"{\"context\":1,\"plcmttype\":1,\"assets\":[{\"img\":{\"wmin\":30}}]}}`),
 			},
-			nil,
+			testOut{
+				`json{"native":"{\"context\":1,\"plcmttype\":1,\"assets\":[{\"img\":{\"wmin\":30}}]}}`,
+				nil,
+			},
 		},
 	}
 	for _, tc := range testCases {
 		// run
-		outErr := validatePutObject(tc.in)
+		actualPutString, actualError := parsePutObject(tc.in)
+
 		// assertions
-		assert.Equal(t, tc.expectedError, outErr, tc.desc)
+		assert.Equal(t, tc.expected.value, actualPutString, tc.desc)
+		assert.Equal(t, tc.expected.err, actualError, tc.desc)
 	}
 }
 
-func TestFormatPutError(t *testing.T) {
+func TestLogBackendError(t *testing.T) {
 	type testOutput struct {
 		err  error
 		code int
@@ -186,7 +210,7 @@ func TestFormatPutError(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		// run
-		err, errCode := formatPutError(tc.inError, 0)
+		err, errCode := logBackendError(tc.inError, 0)
 
 		// assertions
 		assert.Equal(t, tc.expected.err, err, tc.desc)
