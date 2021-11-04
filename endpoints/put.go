@@ -13,6 +13,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/utils"
 	"github.com/sirupsen/logrus"
 )
@@ -22,6 +23,7 @@ type PutHandler struct {
 	backend backends.Backend
 	cfg     putHandlerConfig
 	memory  syncPools
+	metrics *metrics.Metrics
 }
 
 type putHandlerConfig struct {
@@ -34,7 +36,7 @@ type syncPools struct {
 	putResponsePool sync.Pool
 }
 
-func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(backend backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	putHandler := &PutHandler{
 		backend: backend,
 		cfg: putHandlerConfig{
@@ -53,6 +55,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 				},
 			},
 		},
+		metrics: metrics,
 	}
 
 	return putHandler.handle
@@ -152,10 +155,32 @@ func formatPutError(err error, index int) (error, int) {
 }
 
 func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	e.metrics.RecordPutTotal()
+
+	start := time.Now()
+
+	err := e.doPut(w, r, ps)
+
+	// If the calling function never calls WriterHeader explicitly, Go auto-fills it with a 200
+	if err.Code() == 0 || err.Code() >= 200 && err.Code() < 300 {
+		e.metrics.RecordPutDuration(time.Since(start))
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	} else {
+		if err.Code() >= 400 && err.Code() < 500 {
+			e.metrics.RecordPutBadRequest()
+		} else {
+			e.metrics.RecordPutError()
+		}
+		http.Error(w, err.Error(), err.Code())
+	}
+}
+
+func (e *PutHandler) doPut(w http.ResponseWriter, r *http.Request, ps httprouter.Params) []error {
 	put, err := e.parseRequest(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		//http.Error(w, err.Error(), http.StatusBadRequest)
+		return []error(utils.NewPrebidCacheError(err, http.StatusBadRequest))
 	}
 	defer e.memory.requestPool.Put(put)
 
@@ -164,10 +189,12 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	resps.Responses = make([]PutResponseObject, len(put.Puts))
 	defer e.memory.putResponsePool.Put(resps)
 
+	var errs []error
 	for i, p := range put.Puts {
 		toCache, err := parsePutObject(p)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			//http.Error(w, err.Error(), http.StatusBadRequest)
+			errs := append(errs, utils.NewPrebidCacheError(err, http.StatusBadRequest))
 			continue
 		}
 
@@ -176,7 +203,8 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 			resps.Responses[i].UUID = p.Key
 			// Record put that comes with a Key
 		} else if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
-			http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
+			errs := append(errs, utils.NewPrebidCacheError(errors.New("Error generating version 4 UUID"), http.StatusInternalServerError))
+			//http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
 			// If we have a blank UUID, don't store anything.
 			// Eventually we may want to provide error details, but as of today this is the only non-fatal error
 			// Future error details could go into a second property of the Responses object, such as "errors"
@@ -189,16 +217,18 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 		err = e.backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
 		if err != nil {
 			err, code := formatPutError(err, i)
-			http.Error(w, err.Error(), code)
-			return
+			return []error(utils.NewPrebidCacheError(err, code))
+			//http.Error(w, err.Error(), code)
+			//return
 		}
 		logrus.Tracef("PUT /cache uuid=%s", resps.Responses[i].UUID)
 	}
 
 	bytes, err := json.Marshal(resps)
 	if err != nil {
-		http.Error(w, "Failed to serialize UUIDs into JSON.", http.StatusInternalServerError)
-		return
+		return []error(utils.NewPrebidCacheError(errors.New("Failed to serialize UUIDs into JSON."), http.StatusInternalServerError))
+		//http.Error(w, errors.New("Failed to serialize UUIDs into JSON."), http.StatusInternalServerError)
+		//return
 	}
 
 	/* Handles POST */

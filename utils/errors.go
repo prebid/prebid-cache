@@ -8,6 +8,26 @@ import (
 const HttpDependencyTimeout = 597
 
 /**************************/
+/* Error wrapper          */
+/**************************/
+func NewPrebidCacheError(e error, statusCode int) PrebidCacheError {
+	return PrebidCacheError{e, statusCode}
+}
+
+type PrebidCacheError struct {
+	err    error
+	status int
+}
+
+func (ce PrebidCacheError) Error() string {
+	return ce.err
+}
+
+func (ce PrebidCacheError) Code() int {
+	return ce.status
+}
+
+/**************************/
 /* Get errors			  */
 /**************************/
 
