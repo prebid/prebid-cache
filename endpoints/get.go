@@ -39,12 +39,12 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	e.metrics.RecordGetTotal()
 	start := time.Now()
 
-	uuid, gerr := parseUUID(r, e.allowCustomKeys)
-	if gerr != nil {
+	uuid, parseErr := parseUUID(r, e.allowCustomKeys)
+	if parseErr != nil {
 		// parseUUID either returns http.StatusBadRequest or http.StatusNotFound. Both should be
 		// accounted under the RecordPutBadRequest()
 		e.metrics.RecordGetBadRequest()
-		outputError(w, gerr)
+		handleException(w, parseErr)
 		return
 	}
 
@@ -54,18 +54,18 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	value, err := e.backend.Get(ctx, uuid)
 	if err != nil {
 		e.metrics.RecordGetBadRequest()
-		outputError(w, utils.NewPrebidCacheGetError(uuid, err, http.StatusNotFound))
+		handleException(w, utils.NewPrebidCacheGetError(uuid, err, http.StatusNotFound))
 		return
 	}
 
-	if gerr := writeGetResponse(w, uuid, value); gerr == nil {
-		// successfully retrieved value under uuid from the backend storage
-		e.metrics.RecordGetDuration(time.Since(start))
-	} else {
+	if err := writeGetResponse(w, uuid, value); err != nil {
 		e.metrics.RecordGetError()
-		outputError(w, gerr)
+		handleException(w, err)
 		return
 	}
+
+	// successfully retrieved value under uuid from the backend storage
+	e.metrics.RecordGetDuration(time.Since(start))
 	return
 }
 
@@ -101,10 +101,10 @@ func writeGetResponse(w http.ResponseWriter, id string, value string) *utils.Pre
 	return nil
 }
 
-// outputError will prefix error messages with "GET /cache" and, if uuid string list is passed, will
+// handleException will prefix error messages with "GET /cache" and, if uuid string list is passed, will
 // follow with the first element of it in the following fashion: "uuid=FIRST_ELEMENT_ON_UUID_PARAM".
 // Expects non-nil error
-func outputError(w http.ResponseWriter, err *utils.PrebidCacheGetError) {
+func handleException(w http.ResponseWriter, err *utils.PrebidCacheGetError) {
 	logError(err)
 	http.Error(w, err.Error(), err.StatusCode())
 }

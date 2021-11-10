@@ -167,23 +167,24 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 
 	start := time.Now()
 
-	if bytes, err := e.processPutRequest(r); err == nil {
-		// successfully stored all elements storage service or database, write http response
-		// and record duration metrics
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(bytes)
-		e.metrics.RecordPutDuration(time.Since(start))
-	} else {
+	bytes, err := e.processPutRequest(r)
+	if err != nil {
 		// At least one of the elements in the incomming request could not be stored
 		// write the http error and log corresponding metrics
-		http.Error(w, err.Error(), err.StatusCode())
-
 		if err.StatusCode() >= 400 && err.StatusCode() < 500 {
 			e.metrics.RecordPutBadRequest()
 		} else {
 			e.metrics.RecordPutError()
 		}
+
+		http.Error(w, err.Error(), err.StatusCode())
 	}
+
+	// successfully stored all elements in storage service or database, write http
+	// response and record duration metrics
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(bytes)
+	e.metrics.RecordPutDuration(time.Since(start))
 }
 
 // processPutRequest parses, unmarshals, and validates the incomming request; then calls the backend Put()
