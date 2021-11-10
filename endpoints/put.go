@@ -167,7 +167,7 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 
 	start := time.Now()
 
-	if bytes, err := e.processRequest(r); err == nil {
+	if bytes, err := e.processPutRequest(r); err == nil {
 		// successfully stored all elements storage service or database, write http response
 		// and record duration metrics
 		w.Header().Set("Content-Type", "application/json")
@@ -186,10 +186,10 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	}
 }
 
-// processRequest parses, unmarshals, and validates the incomming request; then calls the backend Put()
+// processPutRequest parses, unmarshals, and validates the incomming request; then calls the backend Put()
 // implementation on every element of the "puts" array. This function exits after all elements in the
 // "puts" array have been stored in the backend, or after the first error is found
-func (e *PutHandler) processRequest(r *http.Request) ([]byte, *utils.PrebidCacheError) {
+func (e *PutHandler) processPutRequest(r *http.Request) ([]byte, *utils.PrebidCacheError) {
 	// Parse and validate incomming request
 	put, err := e.parseRequest(r)
 	if err != nil {
@@ -232,7 +232,7 @@ func (e *PutHandler) putElements(put *PutRequest, resps *PutResponse) *utils.Pre
 		// Only allow setting a provided key if configured (and ensure a key is provided).
 		if e.cfg.allowKeys && len(p.Key) > 0 {
 			resps.Responses[i].UUID = p.Key
-			// Record put that comes with a Key
+			e.metrics.RecordPutKeyProvided()
 		} else if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
 			return utils.NewPrebidCacheError(errors.New("Error generating version 4 UUID"), http.StatusInternalServerError)
 		}
@@ -246,8 +246,13 @@ func (e *PutHandler) putElements(put *PutRequest, resps *PutResponse) *utils.Pre
 
 			err = e.backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
 			if err != nil {
-				err, code := logBackendError(err, i)
-				return utils.NewPrebidCacheError(err, code)
+				if _, ok := err.(utils.RecordExistsError); ok {
+					// Record didn't get overwritten, return a reponse with an empty UUID string
+					resps.Responses[i].UUID = ""
+				} else {
+					err, code := logBackendError(err, i)
+					return utils.NewPrebidCacheError(err, code)
+				}
 			}
 			logrus.Tracef("PUT /cache uuid=%s", resps.Responses[i].UUID)
 		}

@@ -22,7 +22,6 @@ type InfluxMetrics struct {
 	GetsBackend *InfluxMetricsEntry
 	GetsErr     *InfluxMetricsGetErrors
 	Connections *InfluxConnectionMetrics
-	ExtraTTL    *InfluxExtraTTL
 	MetricsName string
 }
 
@@ -31,6 +30,7 @@ type InfluxMetricsEntry struct {
 	Errors     metrics.Meter
 	BadRequest metrics.Meter
 	Request    metrics.Meter
+	Update     metrics.Meter
 }
 
 type InfluxMetricsEntryByFormat struct {
@@ -40,18 +40,15 @@ type InfluxMetricsEntryByFormat struct {
 	BadRequest     metrics.Meter
 	JsonRequest    metrics.Meter
 	XmlRequest     metrics.Meter
-	DefinesTTL     metrics.Meter
 	InvalidRequest metrics.Meter
 	RequestLength  metrics.Histogram
+	RequestTTL     metrics.Timer
 }
 
 type InfluxConnectionMetrics struct {
 	ActiveConnections      metrics.Counter
 	ConnectionCloseErrors  metrics.Meter
 	ConnectionAcceptErrors metrics.Meter
-}
-type InfluxExtraTTL struct {
-	ExtraTTLSeconds metrics.Histogram
 }
 
 type InfluxMetricsGetErrors struct {
@@ -66,12 +63,26 @@ func NewInfluxGetErrorMetrics(name string, r metrics.Registry) *InfluxMetricsGet
 	}
 }
 
-func NewInfluxMetricsEntry(name string, r metrics.Registry) *InfluxMetricsEntry {
+// NewInfluxMetricsEntryGet initializes all the metrics of InfluxMetricsEntry except for
+// Update which makes no sense in the context of a Get call
+func NewInfluxMetricsEntryGet(name string, r metrics.Registry) *InfluxMetricsEntry {
 	return &InfluxMetricsEntry{
 		Duration:   metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
 		Errors:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
 		BadRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
 		Request:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.request_count", name), r),
+	}
+}
+
+// NewInfluxMetricsEntryEndpointPuts initializes all the metrics of InfluxMetricsEntry including
+// Update which will account for the Put requests that come with their own Key to store the value in.
+func NewInfluxMetricsEntryEndpointPuts(name string, r metrics.Registry) *InfluxMetricsEntry {
+	return &InfluxMetricsEntry{
+		Duration:   metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
+		Errors:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
+		BadRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
+		Request:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.request_count", name), r),
+		Update:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.updated_key_count", name), r),
 	}
 }
 
@@ -82,9 +93,9 @@ func NewInfluxMetricsEntryBackendPuts(name string, r metrics.Registry) *InfluxMe
 		BadRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
 		JsonRequest:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.json_request_count", name), r),
 		XmlRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.xml_request_count", name), r),
-		DefinesTTL:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.defines_ttl", name), r),
 		InvalidRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.unknown_request_count", name), r),
 		RequestLength:  metrics.GetOrRegisterHistogram(name+".request_size_bytes", r, metrics.NewExpDecaySample(1028, 0.015)),
+		RequestTTL:     metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_ttl_seconds", name), r),
 	}
 }
 
@@ -101,13 +112,12 @@ func CreateInfluxMetrics() *InfluxMetrics {
 	r := metrics.NewPrefixedRegistry("prebidcache.")
 	m := &InfluxMetrics{
 		Registry:    r,
-		Puts:        NewInfluxMetricsEntry("puts.current_url", r),
-		Gets:        NewInfluxMetricsEntry("gets.current_url", r),
+		Puts:        NewInfluxMetricsEntryEndpointPuts("puts.current_url", r),
+		Gets:        NewInfluxMetricsEntryGet("gets.current_url", r),
 		PutsBackend: NewInfluxMetricsEntryBackendPuts("puts.backend", r),
-		GetsBackend: NewInfluxMetricsEntry("gets.backend", r),
+		GetsBackend: NewInfluxMetricsEntryGet("gets.backend", r),
 		GetsErr:     NewInfluxGetErrorMetrics("gets.backend_error", r),
 		Connections: NewInfluxConnectionMetrics(r),
-		ExtraTTL:    &InfluxExtraTTL{ExtraTTLSeconds: metrics.GetOrRegisterHistogram("extra_ttl_seconds", r, metrics.NewUniformSample(5000))},
 		MetricsName: MetricsInfluxDB,
 	}
 
@@ -160,6 +170,10 @@ func (m *InfluxMetrics) RecordPutDuration(duration time.Duration) {
 	m.Puts.Duration.Update(duration)
 }
 
+func (m *InfluxMetrics) RecordPutKeyProvided() {
+	m.Puts.Update.Mark(1)
+}
+
 func (m *InfluxMetrics) RecordGetError() {
 	m.Gets.Errors.Mark(1)
 }
@@ -188,12 +202,12 @@ func (m *InfluxMetrics) RecordPutBackendInvalid() {
 	m.PutsBackend.InvalidRequest.Mark(1)
 }
 
-func (m *InfluxMetrics) RecordPutBackendDefTTL() {
-	m.PutsBackend.DefinesTTL.Mark(1)
-}
-
 func (m *InfluxMetrics) RecordPutBackendDuration(duration time.Duration) {
 	m.PutsBackend.Duration.Update(duration)
+}
+
+func (m *InfluxMetrics) RecordPutBackendTTLSeconds(duration time.Duration) {
+	m.PutsBackend.RequestTTL.Update(duration)
 }
 
 func (m *InfluxMetrics) RecordPutBackendError() {
@@ -238,8 +252,4 @@ func (m *InfluxMetrics) RecordCloseConnectionErrors() {
 
 func (m *InfluxMetrics) RecordAcceptConnectionErrors() {
 	m.Connections.ConnectionAcceptErrors.Mark(1)
-}
-
-func (m *InfluxMetrics) RecordExtraTTLSeconds(value float64) {
-	m.ExtraTTL.ExtraTTLSeconds.Update(int64(value))
 }

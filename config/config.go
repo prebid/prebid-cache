@@ -165,9 +165,24 @@ type RequestLimits struct {
 
 func (cfg *RequestLimits) validateAndLog() {
 	log.Infof("config.request_limits.allow_setting_keys: %v", cfg.AllowSettingKeys)
-	log.Infof("config.request_limits.max_ttl_seconds: %d", cfg.MaxTTLSeconds)
-	log.Infof("config.request_limits.max_size_bytes: %d", cfg.MaxSize)
-	log.Infof("config.request_limits.max_num_values: %d", cfg.MaxNumValues)
+
+	if cfg.MaxTTLSeconds >= 0 {
+		log.Infof("config.request_limits.max_ttl_seconds: %d", cfg.MaxTTLSeconds)
+	} else {
+		log.Fatalf("invalid config.request_limits.max_ttl_seconds: %d. Value cannot be negative.", cfg.MaxTTLSeconds)
+	}
+
+	if cfg.MaxSize >= 0 {
+		log.Infof("config.request_limits.max_size_bytes: %d", cfg.MaxSize)
+	} else {
+		log.Fatalf("invalid config.request_limits.max_size_bytes: %d. Value cannot be negative.", cfg.MaxSize)
+	}
+
+	if cfg.MaxNumValues >= 0 {
+		log.Infof("config.request_limits.max_num_values: %d", cfg.MaxNumValues)
+	} else {
+		log.Fatalf("invalid config.request_limits.max_num_values: %d. Value cannot be negative.", cfg.MaxNumValues)
+	}
 }
 
 type Compression struct {

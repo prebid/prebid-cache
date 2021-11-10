@@ -1,10 +1,11 @@
 package decorators
 
 import (
-	"github.com/julienschmidt/httprouter"
-	"github.com/prebid/prebid-cache/metrics"
 	"net/http"
 	"time"
+
+	"github.com/julienschmidt/httprouter"
+	"github.com/prebid/prebid-cache/metrics"
 )
 
 const (
@@ -13,7 +14,7 @@ const (
 )
 
 type metricsFunctions struct {
-	RecordTotal    func()
+	RecordTotal      func()
 	RecordDuration   func(duration time.Duration)
 	RecordBadRequest func()
 	RecordError      func()
@@ -36,11 +37,17 @@ func assignMetricsFunctions(m *metrics.Metrics, method int) *metricsFunctions {
 	return metrics
 }
 
+// writerWithStatus implements the http.ResponseWriter interface in order to store
+// extra information needed for metrics purposes.
 type writerWithStatus struct {
 	delegate   http.ResponseWriter
 	statusCode int
 }
 
+// WriteHeader is writerWithStatus's implementation of the http.ResponseWriter interface
+// WriteHeader(statusCode int) method and stores the backend client's statusCode
+// into the writerWithStatus's statusCode field so we can log metrics
+// accoding to its value in the decorator implemented in MonitorHttp()
 func (w *writerWithStatus) WriteHeader(statusCode int) {
 	// Capture only the first call, because that's the one the client got.
 	if w.statusCode == 0 {
@@ -49,6 +56,7 @@ func (w *writerWithStatus) WriteHeader(statusCode int) {
 	w.delegate.WriteHeader(statusCode)
 }
 
+// Write is writerWithStatus's implementation of the http.ResponseWriter interface
 func (w *writerWithStatus) Write(bytes []byte) (int, error) {
 	return w.delegate.Write(bytes)
 }
@@ -67,6 +75,7 @@ func MonitorHttp(handler httprouter.Handle, m *metrics.Metrics, method int) http
 
 		start := time.Now()
 		handler(&wrapper, req, params)
+
 		respCode := wrapper.statusCode
 		// If the calling function never calls WriterHeader explicitly, Go auto-fills it with a 200
 		if respCode == 0 || respCode >= 200 && respCode < 300 {

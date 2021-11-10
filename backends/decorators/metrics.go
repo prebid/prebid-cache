@@ -42,9 +42,8 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 	} else {
 		b.metrics.RecordPutBackendInvalid()
 	}
-	if ttlSeconds != 0 {
-		b.metrics.RecordPutBackendDefTTL()
-	}
+	b.metrics.RecordPutBackendTTLSeconds(time.Duration(ttlSeconds) * time.Second)
+
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)
 	if err == nil {

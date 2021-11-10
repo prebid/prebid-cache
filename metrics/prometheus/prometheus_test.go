@@ -76,6 +76,7 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 		expRequestTotals float64
 		expRequestErrors float64
 		expBadRequests   float64
+		expCustomKeyReqs float64
 		testCase         func(pm *PrometheusMetrics)
 	}
 
@@ -93,19 +94,25 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 				description:      "Count put request total",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutTotal() },
 				expDuration:      10,
-				expRequestTotals: 1, expRequestErrors: 0, expBadRequests: 0,
+				expRequestTotals: 1, expRequestErrors: 0, expBadRequests: 0, expCustomKeyReqs: 0,
 			},
 			{
 				description:      "Count put request error",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutError() },
 				expDuration:      10,
-				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 0,
+				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 0, expCustomKeyReqs: 0,
 			},
 			{
 				description:      "Count put request bad request",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutBadRequest() },
 				expDuration:      10,
-				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1,
+				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1, expCustomKeyReqs: 0,
+			},
+			{
+				description:      "Count put request that comes with custom key",
+				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutKeyProvided() },
+				expDuration:      10,
+				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1, expCustomKeyReqs: 1,
 			},
 		},
 		m.Gets: {
@@ -226,6 +233,7 @@ func TestPutBackendMetrics(t *testing.T) {
 
 		//Duration and sixe in bytes
 		expDuration      float64
+		expDefTTLSeconds float64
 		expSizeHistSum   float64
 		expSizeHistCount uint64
 	}
@@ -260,15 +268,6 @@ func TestPutBackendMetrics(t *testing.T) {
 			expInvalidCount: 1,
 		},
 		{
-			description:     "Count put backend of requests that define TTL",
-			testCase:        func(pm *PrometheusMetrics) { pm.RecordPutBackendDefTTL() },
-			expDuration:     10,
-			expXmlCount:     1,
-			expJsonCount:    1,
-			expInvalidCount: 1,
-			expDefTTLCount:  1,
-		},
-		{
 			description:     "Count put backend request errors",
 			testCase:        func(pm *PrometheusMetrics) { pm.RecordPutBackendError() },
 			expDuration:     10,
@@ -292,6 +291,21 @@ func TestPutBackendMetrics(t *testing.T) {
 			expSizeHistSum:   16,
 			expSizeHistCount: 1,
 		},
+		{
+			description: "Out of those requests that define a TTL, log the number of TTL seconds",
+			testCase: func(pm *PrometheusMetrics) {
+				pm.RecordPutBackendTTLSeconds(TenSeconds)
+			},
+			expDuration:      10,
+			expXmlCount:      1,
+			expJsonCount:     1,
+			expInvalidCount:  1,
+			expDefTTLCount:   1,
+			expErrorCount:    1,
+			expSizeHistSum:   16,
+			expSizeHistCount: 1,
+			expDefTTLSeconds: 10,
+		},
 	}
 
 	for _, test := range testCases {
@@ -301,7 +315,6 @@ func TestPutBackendMetrics(t *testing.T) {
 		assertCounterVecValue(t, test.description, m.PutsBackend.PutBackendRequests, test.expXmlCount, prometheus.Labels{FormatKey: XmlVal})
 		assertCounterVecValue(t, test.description, m.PutsBackend.PutBackendRequests, test.expJsonCount, prometheus.Labels{FormatKey: JsonVal})
 		assertCounterVecValue(t, test.description, m.PutsBackend.PutBackendRequests, test.expInvalidCount, prometheus.Labels{FormatKey: InvFormatVal})
-		assertCounterVecValue(t, test.description, m.PutsBackend.PutBackendRequests, test.expDefTTLCount, prometheus.Labels{FormatKey: DefinesTTLVal})
 		assertCounterVecValue(t, test.description, m.PutsBackend.PutBackendRequests, test.expErrorCount, prometheus.Labels{FormatKey: ErrorVal})
 		assertHistogram(t, test.description, m.PutsBackend.RequestLength, test.expSizeHistCount, test.expSizeHistSum)
 	}
@@ -370,13 +383,6 @@ func TestConnectionMetrics(t *testing.T) {
 		assertCounterVecValue(t, test.description, m.Connections.ConnectionsErrors, test.expectedAcceptConnectionErrors, prometheus.Labels{ConnErrorKey: AcceptVal})
 		assertCounterVecValue(t, test.description, m.Connections.ConnectionsErrors, test.expectedCloseConnectionErrors, prometheus.Labels{ConnErrorKey: CloseVal})
 	}
-}
-
-func TestExtraTTLMetrics(t *testing.T) {
-	m := createPrometheusMetricsForTesting()
-
-	m.RecordExtraTTLSeconds(5)
-	assertHistogram(t, "Assert the extra time to live in seconds was logged", m.ExtraTTL.ExtraTTLSeconds, 1, 5.00)
 }
 
 func TestMetricCountGatekeeping(t *testing.T) {
