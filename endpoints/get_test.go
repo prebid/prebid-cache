@@ -16,7 +16,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
-	endpointDecorators "github.com/prebid/prebid-cache/endpoints/decorators"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -353,8 +352,7 @@ func TestCustomKey(t *testing.T) {
 			// already contains some values
 			router := httprouter.New()
 			putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, tgroup.allowSettingKeys)
-			monitoredHandler := endpointDecorators.MonitorHttp(putEndpointHandler, m, endpointDecorators.PostMethod)
-			router.POST("/cache", monitoredHandler)
+			router.POST("/cache", putEndpointHandler)
 
 			recorder := httptest.NewRecorder()
 
