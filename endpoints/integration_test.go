@@ -286,7 +286,6 @@ func TestNegativeTTL(t *testing.T) {
 	testBackend := backends.NewMemoryBackend()
 
 	testRouter.POST("/cache", NewPutHandler(testBackend, 10, true))
-	testRouter.GET("/cache", NewGetHandler(testBackend, true))
 
 	recorder := httptest.NewRecorder()
 

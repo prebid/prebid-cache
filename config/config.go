@@ -53,6 +53,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("backend.aerospike.default_ttl_seconds", 0)
 	v.SetDefault("backend.cassandra.hosts", "")
 	v.SetDefault("backend.cassandra.keyspace", "")
+	v.SetDefault("backend.cassandra.default_ttl_seconds", 2400)
 	v.SetDefault("backend.memcache.hosts", []string{})
 	v.SetDefault("backend.redis.host", "")
 	v.SetDefault("backend.redis.port", 0)
