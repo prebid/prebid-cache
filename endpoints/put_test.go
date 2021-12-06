@@ -161,7 +161,7 @@ func TestParsePutObject(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		// run
-		actualPutString, actualError := parsePutObject(tc.in)
+		actualPutString, actualError := parsePutObject(&tc.in)
 
 		// assertions
 		assert.Equal(t, tc.expected.value, actualPutString, tc.desc)
@@ -169,51 +169,46 @@ func TestParsePutObject(t *testing.T) {
 	}
 }
 
-func TestLogBackendError(t *testing.T) {
-	type testOutput struct {
-		err  error
-		code int
-	}
+func TestClassifyBackendError(t *testing.T) {
 
 	testCases := []struct {
 		desc     string
 		inError  error
-		expected testOutput
+		expected *utils.PrebidCacheError
 	}{
 		{
 			"Bad payload size error",
 			&backendDecorators.BadPayloadSize{Limit: 1, Size: 2},
-			testOutput{
+			utils.NewPrebidCacheError(
 				utils.PutBadPayloadSizeError{
 					Msg:   "Payload size 2 exceeded max 1",
 					Index: 0,
 				},
 				http.StatusBadRequest,
-			},
+			),
 		},
 		{
 			"DeadlineExceeded error",
 			context.DeadlineExceeded,
-			testOutput{
+			utils.NewPrebidCacheError(
 				utils.PutDeadlineExceededError{},
 				utils.HttpDependencyTimeout,
-			},
+			),
 		},
 		{
 			"Backend client error",
 			errors.New("Key exist error"),
-			testOutput{
+			utils.NewPrebidCacheError(
 				utils.PutInternalServerError{"Key exist error"},
 				http.StatusInternalServerError,
-			},
+			),
 		},
 	}
 	for _, tc := range testCases {
 		// run
-		err, errCode := logBackendError(tc.inError, 0)
+		err := classifyBackendError(tc.inError, 0)
 
 		// assertions
-		assert.Equal(t, tc.expected.err, err, tc.desc)
-		assert.Equal(t, tc.expected.code, errCode, tc.desc)
+		assert.Equal(t, tc.expected, err, tc.desc)
 	}
 }
