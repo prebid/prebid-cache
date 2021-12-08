@@ -65,7 +65,7 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 
 	client, err := as.NewClientWithPolicyAndHost(clientPolicy, hosts...)
 	if err != nil {
-		log.Fatalf("%v", formatAerospikeError(err).Error())
+		log.Fatalf("%v", classifyAerospikeError(err).Error())
 		panic("AerospikeBackend failure. This shouldn't happen.")
 	}
 	log.Infof("Connected to Aerospike host(s) %v on port %d", append(cfg.Hosts, cfg.Host), cfg.Port)
@@ -80,24 +80,24 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) {
 	asKey, err := a.client.NewUuidKey(a.namespace, key)
 	if err != nil {
-		return "", formatAerospikeError(err)
+		return "", classifyAerospikeError(err)
 	}
 	rec, err := a.client.Get(asKey)
 	if err != nil {
-		return "", formatAerospikeError(err)
+		return "", classifyAerospikeError(err)
 	}
 	if rec == nil {
-		return "", formatAerospikeError(errors.New("Nil record"))
+		return "", errors.New("Nil record")
 	}
 
 	value, found := rec.Bins[binValue]
 	if !found {
-		return "", formatAerospikeError(errors.New("No 'value' bucket found"))
+		return "", errors.New("No 'value' bucket found")
 	}
 
 	str, isString := value.(string)
 	if !isString {
-		return "", formatAerospikeError(errors.New("Unexpected non-string value found"))
+		return "", errors.New("Unexpected non-string value found")
 	}
 
 	return str, nil
@@ -106,27 +106,32 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	asKey, err := a.client.NewUuidKey(a.namespace, key)
 	if err != nil {
-		return formatAerospikeError(err)
+		return classifyAerospikeError(err)
 	}
 
 	bins := as.BinMap{binValue: value}
-	policy := &as.WritePolicy{Expiration: uint32(ttlSeconds)}
+	policy := &as.WritePolicy{
+		Expiration:         uint32(ttlSeconds),
+		RecordExistsAction: as.CREATE_ONLY,
+	}
 
 	if err := a.client.Put(policy, asKey, bins); err != nil {
-		return formatAerospikeError(err)
+		return classifyAerospikeError(err)
 	}
 
 	return nil
 }
 
-func formatAerospikeError(err error) error {
+func classifyAerospikeError(err error) error {
 	if err != nil {
 		if aerr, ok := err.(as_types.AerospikeError); ok {
 			if aerr.ResultCode() == as_types.KEY_NOT_FOUND_ERROR {
 				return utils.KeyNotFoundError{}
 			}
+			if aerr.ResultCode() == as_types.KEY_EXISTS_ERROR {
+				return utils.RecordExistsError{}
+			}
 		}
-		return errors.New(err.Error())
 	}
 	return err
 }

@@ -64,7 +64,7 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 				return
 			}
 			if p.TTLSeconds < 0 {
-				http.Error(w, fmt.Sprintf("request.puts[%d].ttlseconds must not be negative.", p.TTLSeconds), http.StatusBadRequest)
+				http.Error(w, "Error request ttlseconds value must not be negative.", http.StatusBadRequest)
 				return
 			}
 
@@ -87,46 +87,46 @@ func NewPutHandler(backend backends.Backend, maxNumValues int, allowKeys bool) f
 				return
 			}
 
-			if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
+			// Only allow setting a provided key if configured (and ensure a key is provided).
+			if allowKeys && len(p.Key) > 0 {
+				resps.Responses[i].UUID = p.Key
+			} else if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
 				http.Error(w, fmt.Sprintf("Error generating version 4 UUID"), http.StatusInternalServerError)
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
-			// Only allow setting a provided key if configured (and ensure a key is provided).
-			if allowKeys && len(p.Key) > 0 {
-				s, err := backend.Get(ctx, p.Key)
-				if err != nil || len(s) == 0 {
-					resps.Responses[i].UUID = p.Key
-				} else {
-					resps.Responses[i].UUID = ""
-				}
-			}
+
 			// If we have a blank UUID, don't store anything.
 			// Eventually we may want to provide error details, but as of today this is the only non-fatal error
 			// Future error details could go into a second property of the Responses object, such as "errors"
 			if len(resps.Responses[i].UUID) > 0 {
 				err = backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
 				if err != nil {
-					if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
-						http.Error(w, fmt.Sprintf("POST /cache element %d exceeded max size: %v", i, err), http.StatusBadRequest)
+					// If entry already existed for UUID, it shouldn't get overwritten and a RecordExistsError is expected
+					if _, ok := err.(utils.RecordExistsError); ok {
+						// Record didn't get overwritten, return a reponse with an empty UUID string
+						resps.Responses[i].UUID = ""
+					} else {
+						if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
+							http.Error(w, fmt.Sprintf("POST /cache element %d exceeded max size: %v", i, err), http.StatusBadRequest)
+							return
+						}
+
+						logrus.Error("POST /cache Error while writing to the backend: ", err)
+						switch err {
+						case context.DeadlineExceeded:
+							logrus.Error("POST /cache timed out:", err)
+							http.Error(w, "Timeout writing value to the backend", HttpDependencyTimeout)
+						default:
+							logrus.Error("POST /cache had an unexpected error:", err)
+							http.Error(w, err.Error(), http.StatusInternalServerError)
+						}
 						return
 					}
-
-					logrus.Error("POST /cache Error while writing to the backend: ", err)
-					switch err {
-					case context.DeadlineExceeded:
-						logrus.Error("POST /cache timed out:", err)
-						http.Error(w, "Timeout writing value to the backend", HttpDependencyTimeout)
-					default:
-						logrus.Error("POST /cache had an unexpected error:", err)
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-					}
-					return
 				}
 				logrus.Tracef("PUT /cache uuid=%s", resps.Responses[i].UUID)
 			}
-
 		}
 
 		bytes, err := json.Marshal(resps)

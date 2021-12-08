@@ -5,7 +5,7 @@ import (
 )
 
 func preloadLabelValues(m *PrometheusMetrics) {
-	preloadLabelValuesForCounter(m.Puts.RequestStatus, map[string][]string{StatusKey: {ErrorVal, BadRequestVal, TotalsVal}})
+	preloadLabelValuesForCounter(m.Puts.RequestStatus, map[string][]string{StatusKey: {ErrorVal, BadRequestVal, TotalsVal, CustomKey}})
 	preloadLabelValuesForCounter(m.Gets.RequestStatus, map[string][]string{StatusKey: {ErrorVal, BadRequestVal, TotalsVal}})
 	preloadLabelValuesForCounter(m.PutsBackend.PutBackendRequests, map[string][]string{FormatKey: {XmlVal, JsonVal, InvFormatVal, ErrorVal}})
 	preloadLabelValuesForCounter(m.GetsBackend.RequestStatus, map[string][]string{StatusKey: {ErrorVal, BadRequestVal, TotalsVal}})

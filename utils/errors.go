@@ -1,13 +1,7 @@
 package utils
 
-/**************************/
-/* Get errors			  */
-/**************************/
-
 // Key not found
-type KeyNotFoundError struct {
-	msgPrefix string
-}
+type KeyNotFoundError struct{}
 
 func (e KeyNotFoundError) Error() string {
 	return "Key not found"
@@ -25,4 +19,10 @@ type KeyLengthError struct{}
 
 func (e KeyLengthError) Error() string {
 	return "invalid uuid length"
+}
+
+type RecordExistsError struct{}
+
+func (e RecordExistsError) Error() string {
+	return "Record exists with provided key."
 }

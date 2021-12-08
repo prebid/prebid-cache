@@ -772,6 +772,110 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 	}
 }
 
+func TestRequestLimitsValidateAndLog(t *testing.T) {
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	type logComponents struct {
+		msg string
+		lvl logrus.Level
+	}
+
+	testCases := []struct {
+		description        string
+		inRequestLimitsCfg *RequestLimits
+		expectedLogInfo    []logComponents
+		expectFatal        bool
+	}{
+		{
+			description:        "Blank RequestLimits",
+			inRequestLimitsCfg: &RequestLimits{},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_num_values: 0`, lvl: logrus.InfoLevel},
+			},
+			expectFatal: false,
+		},
+		{
+			description:        "allow_setting_keys flag set to true",
+			inRequestLimitsCfg: &RequestLimits{AllowSettingKeys: true},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: true`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_num_values: 0`, lvl: logrus.InfoLevel},
+			},
+			expectFatal: false,
+		},
+		{
+			description:        "Negative max_ttl_seconds, expect fatal level log and early exit",
+			inRequestLimitsCfg: &RequestLimits{MaxTTLSeconds: -1},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `invalid config.request_limits.max_ttl_seconds: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
+			},
+			expectFatal: true,
+		},
+		{
+			description:        "Negative max_size_bytes, expect fatal level log and early exit",
+			inRequestLimitsCfg: &RequestLimits{MaxSize: -1},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `invalid config.request_limits.max_size_bytes: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
+			},
+			expectFatal: true,
+		},
+		{
+			description:        "Negative max_num_values, expect fatal level log and early exit",
+			inRequestLimitsCfg: &RequestLimits{MaxNumValues: -1},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
+				{msg: `invalid config.request_limits.max_num_values: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
+			},
+			expectFatal: true,
+		},
+	}
+
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	var fatal bool
+	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+
+	for _, tc := range testCases {
+		// Reset the fatal flag to false every test
+		fatal = false
+
+		// Run test
+		tc.inRequestLimitsCfg.validateAndLog()
+
+		// Assert logrus expected entries
+		logEntryCount := 0
+		for i := 0; i < len(tc.expectedLogInfo); i++ {
+			assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message, tc.description+":message")
+			assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.description+":log level")
+
+			logEntryCount++
+			if tc.expectedLogInfo[i].lvl == logrus.FatalLevel {
+				break
+			}
+		}
+		if tc.expectedLogInfo[logEntryCount-1].lvl == logrus.FatalLevel && !fatal {
+			t.Errorf("Log level fatal was expected. %s", tc.description)
+		}
+		assert.Len(t, tc.expectedLogInfo, logEntryCount, tc.description)
+
+		//Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
+	}
+}
+
 func TestCompressionValidateAndLog(t *testing.T) {
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
@@ -783,34 +887,39 @@ func TestCompressionValidateAndLog(t *testing.T) {
 	}
 
 	testCases := []struct {
-		description     string
-		compressionCfg  *Compression
-		expectedLogInfo []logComponents
+		description      string
+		inCompressionCfg *Compression
+		inBackendType    BackendType
+		expectedLogInfo  []logComponents
 	}{
 		{
-			description:    "Blank compression type, expect fatal level log entry",
-			compressionCfg: &Compression{Type: CompressionType("")},
+			description:      "Blank compression type, expect fatal level log entry",
+			inCompressionCfg: &Compression{Type: CompressionType("")},
+			inBackendType:    BackendMemory,
 			expectedLogInfo: []logComponents{
 				{msg: `invalid config.compression.type: . It must be "none" or "snappy"`, lvl: logrus.FatalLevel},
 			},
 		},
 		{
-			description:    "Valid compression type 'none', expect info level log entry",
-			compressionCfg: &Compression{Type: CompressionNone},
+			description:      "Valid compression type 'none', expect info level log entry",
+			inCompressionCfg: &Compression{Type: CompressionNone},
+			inBackendType:    BackendMemory,
 			expectedLogInfo: []logComponents{
 				{msg: "config.compression.type: none", lvl: logrus.InfoLevel},
 			},
 		},
 		{
-			description:    "Valid compression type 'snappy', expect info level log entry",
-			compressionCfg: &Compression{Type: CompressionSnappy},
+			description:      "Valid compression type 'snappy', expect info level log entry",
+			inCompressionCfg: &Compression{Type: CompressionSnappy},
+			inBackendType:    BackendMemory,
 			expectedLogInfo: []logComponents{
 				{msg: "config.compression.type: snappy", lvl: logrus.InfoLevel},
 			},
 		},
 		{
-			description:    "Unsupported compression, expect fatal level log entry",
-			compressionCfg: &Compression{Type: CompressionType("UnknownCompressionType")},
+			description:      "Unsupported compression, expect fatal level log entry",
+			inCompressionCfg: &Compression{Type: CompressionType("UnknownCompressionType")},
+			inBackendType:    BackendMemory,
 			expectedLogInfo: []logComponents{
 				{msg: `invalid config.compression.type: UnknownCompressionType. It must be "none" or "snappy"`, lvl: logrus.FatalLevel},
 			},
@@ -823,7 +932,7 @@ func TestCompressionValidateAndLog(t *testing.T) {
 
 	for _, tc := range testCases {
 		// Run test
-		tc.compressionCfg.validateAndLog()
+		tc.inCompressionCfg.validateAndLog()
 
 		// Assert logrus expected entries
 		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.description) {
@@ -1061,6 +1170,9 @@ func getExpectedDefaultConfig() Configuration {
 			Aerospike: Aerospike{
 				Hosts: []string{},
 			},
+			Cassandra: Cassandra{
+				DefaultTTL: 2400,
+			},
 		},
 		Compression: Compression{
 			Type: CompressionType("snappy"),
@@ -1111,8 +1223,9 @@ func getExpectedFullConfigForTestFile() Configuration {
 				Password:   "bar",
 			},
 			Cassandra: Cassandra{
-				Hosts:    "127.0.0.1",
-				Keyspace: "prebid",
+				Hosts:      "127.0.0.1",
+				Keyspace:   "prebid",
+				DefaultTTL: 60,
 			},
 			Memcache: Memcache{
 				Hosts: []string{"10.0.0.1:11211", "127.0.0.1"},

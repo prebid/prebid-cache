@@ -1,12 +1,13 @@
 package decorators
 
 import (
-	"github.com/julienschmidt/httprouter"
-	"github.com/prebid/prebid-cache/metrics/metricstest"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/julienschmidt/httprouter"
+	"github.com/prebid/prebid-cache/metrics/metricstest"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetRequestSuccessMetrics(t *testing.T) {

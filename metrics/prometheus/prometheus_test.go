@@ -76,6 +76,7 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 		expRequestTotals float64
 		expRequestErrors float64
 		expBadRequests   float64
+		expCustomKeyReqs float64
 		testCase         func(pm *PrometheusMetrics)
 	}
 
@@ -93,19 +94,25 @@ func TestPrometheusRequestStatusMetric(t *testing.T) {
 				description:      "Count put request total",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutTotal() },
 				expDuration:      10,
-				expRequestTotals: 1, expRequestErrors: 0, expBadRequests: 0,
+				expRequestTotals: 1, expRequestErrors: 0, expBadRequests: 0, expCustomKeyReqs: 0,
 			},
 			{
 				description:      "Count put request error",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutError() },
 				expDuration:      10,
-				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 0,
+				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 0, expCustomKeyReqs: 0,
 			},
 			{
 				description:      "Count put request bad request",
 				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutBadRequest() },
 				expDuration:      10,
-				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1,
+				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1, expCustomKeyReqs: 0,
+			},
+			{
+				description:      "Count put request that comes with custom key",
+				testCase:         func(pm *PrometheusMetrics) { pm.RecordPutKeyProvided() },
+				expDuration:      10,
+				expRequestTotals: 1, expRequestErrors: 1, expBadRequests: 1, expCustomKeyReqs: 1,
 			},
 		},
 		m.Gets: {

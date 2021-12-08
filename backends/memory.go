@@ -2,8 +2,9 @@ package backends
 
 import (
 	"context"
-	"fmt"
 	"sync"
+
+	"github.com/prebid/prebid-cache/utils"
 )
 
 type MemoryBackend struct {
@@ -17,7 +18,7 @@ func (b *MemoryBackend) Get(ctx context.Context, key string) (string, error) {
 
 	v, ok := b.db[key]
 	if !ok {
-		return "", fmt.Errorf("Not found")
+		return "", utils.KeyNotFoundError{}
 	}
 
 	return v, nil
@@ -26,6 +27,11 @@ func (b *MemoryBackend) Get(ctx context.Context, key string) (string, error) {
 func (b *MemoryBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
+	// If the record already exists, don't write and throw error
+	if _, ok := b.db[key]; ok {
+		return utils.RecordExistsError{}
+	}
 
 	b.db[key] = value
 	return nil
