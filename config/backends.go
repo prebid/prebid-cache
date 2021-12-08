@@ -83,10 +83,11 @@ type Cassandra struct {
 func (cfg *Cassandra) validateAndLog() error {
 	log.Infof("config.backend.cassandra.hosts: %s", cfg.Hosts)
 	log.Infof("config.backend.cassandra.keyspace: %s", cfg.Keyspace)
-	if cfg.DefaultTTL <= 0 {
+	if cfg.DefaultTTL < 0 {
+		// Goes back to default if we are provided a negative value
 		cfg.DefaultTTL = 2400
 	}
-	log.Infof("config.backend.cassandra.default_ttl_seconds: %d", cfg.DefaultTTL)
+	log.Infof("config.backend.cassandra.default_ttl_seconds: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.DefaultTTL)
 
 	return nil
 }

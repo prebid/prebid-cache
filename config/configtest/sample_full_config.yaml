@@ -24,6 +24,7 @@ backend:
   cassandra:
     hosts: "127.0.0.1"
     keyspace: "prebid"
+    default_ttl_seconds: 60
   memcache:
     hosts: ["10.0.0.1:11211","127.0.0.1"]
   redis:
