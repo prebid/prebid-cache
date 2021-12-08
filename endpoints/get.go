@@ -23,7 +23,7 @@ type GetHandler struct {
 
 func NewGetHandler(storage backends.Backend, metrics *metrics.Metrics, allowCustomKeys bool) func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	getHandler := &GetHandler{
-		// Assign storage client to put endpoint
+		// Assign storage client to get endpoint
 		backend: storage,
 		// pass metrics engine
 		metrics: metrics,
@@ -51,14 +51,14 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
-	value, err := e.backend.Get(ctx, uuid)
+	storedData, err := e.backend.Get(ctx, uuid)
 	if err != nil {
 		e.metrics.RecordGetBadRequest()
 		handleException(w, utils.NewPrebidCacheGetError(uuid, err, http.StatusNotFound))
 		return
 	}
 
-	if err := writeGetResponse(w, uuid, value); err != nil {
+	if err := writeGetResponse(w, uuid, storedData); err != nil {
 		e.metrics.RecordGetError()
 		handleException(w, err)
 		return
@@ -88,13 +88,15 @@ func parseUUID(r *http.Request, allowCustomKeys bool) (string, *utils.PrebidCach
 	return uuid, nil
 }
 
-func writeGetResponse(w http.ResponseWriter, id string, value string) *utils.PrebidCacheGetError {
-	if strings.HasPrefix(value, backends.XML_PREFIX) {
+// writeGetResponse writes the "Content-Type" header and sends back the stored data as a response if
+// the sotred data is prefixed by either the "xml" or "json"
+func writeGetResponse(w http.ResponseWriter, id string, storedData string) *utils.PrebidCacheGetError {
+	if strings.HasPrefix(storedData, backends.XML_PREFIX) {
 		w.Header().Set("Content-Type", "application/xml")
-		w.Write([]byte(value)[len(backends.XML_PREFIX):])
-	} else if strings.HasPrefix(value, backends.JSON_PREFIX) {
+		w.Write([]byte(storedData)[len(backends.XML_PREFIX):])
+	} else if strings.HasPrefix(storedData, backends.JSON_PREFIX) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(value)[len(backends.JSON_PREFIX):])
+		w.Write([]byte(storedData)[len(backends.JSON_PREFIX):])
 	} else {
 		return utils.NewPrebidCacheGetError(id, errors.New("Cache data was corrupted. Cannot determine type."), http.StatusInternalServerError)
 	}
@@ -109,6 +111,8 @@ func handleException(w http.ResponseWriter, err *utils.PrebidCacheGetError) {
 	http.Error(w, err.Error(), err.StatusCode())
 }
 
+// logError uses the logging package Prebid Cache currently uses to log an error message. KeyNotFoundError
+// gets logged at a DEBUG level because it is not considered a system error.
 func logError(e *utils.PrebidCacheGetError) {
 	if e.IsKeyNotFound() {
 		log.Debug(e.Error())
