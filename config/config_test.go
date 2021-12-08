@@ -1170,6 +1170,9 @@ func getExpectedDefaultConfig() Configuration {
 			Aerospike: Aerospike{
 				Hosts: []string{},
 			},
+			Cassandra: Cassandra{
+				DefaultTTL: 2400,
+			},
 		},
 		Compression: Compression{
 			Type: CompressionType("snappy"),
@@ -1220,8 +1223,9 @@ func getExpectedFullConfigForTestFile() Configuration {
 				Password:   "bar",
 			},
 			Cassandra: Cassandra{
-				Hosts:    "127.0.0.1",
-				Keyspace: "prebid",
+				Hosts:      "127.0.0.1",
+				Keyspace:   "prebid",
+				DefaultTTL: 60,
 			},
 			Memcache: Memcache{
 				Hosts: []string{"10.0.0.1:11211", "127.0.0.1"},
