@@ -16,7 +16,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
-	endpointDecorators "github.com/prebid/prebid-cache/endpoints/decorators"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -103,7 +102,9 @@ func TestXMLOther(t *testing.T) {
 func TestGetInvalidUUIDs(t *testing.T) {
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	router.GET("/cache", NewGetHandler(backend, false))
+	mockmetrics := metricstest.CreateMockMetrics()
+
+	router.GET("/cache", NewGetHandler(backend, mockmetrics, false))
 
 	getResults := doMockGet(t, router, "fdd9405b-ef2b-46da-a55a-2f526d338e16")
 	if getResults.Code != http.StatusNotFound {
@@ -234,7 +235,8 @@ func TestGetHandler(t *testing.T) {
 		// Set up test object
 		backend := newMockBackend()
 		router := httprouter.New()
-		router.GET("/cache", NewGetHandler(backend, test.in.allowKeys))
+		mockmetrics := metricstest.CreateMockMetrics()
+		router.GET("/cache", NewGetHandler(backend, mockmetrics, test.in.allowKeys))
 
 		// Run test
 		getResults := doMockGet(t, router, test.in.uuid)
@@ -278,14 +280,16 @@ func TestNegativeTTL(t *testing.T) {
 	assert.NoError(t, err, "Failed to create a POST request: %v", err)
 
 	// Expected Values
-	expectedErrorMsg := "Error request ttlseconds value must not be negative.\n"
+	expectedErrorMsg := "ttlseconds must not be negative -1.\n"
 	expectedStatusCode := http.StatusBadRequest
 
 	// Set up server to run our test
 	testRouter := httprouter.New()
 	testBackend := backends.NewMemoryBackend()
+	m := metricstest.CreateMockMetrics()
 
-	testRouter.POST("/cache", NewPutHandler(testBackend, 10, true))
+	testRouter.POST("/cache", NewPutHandler(testBackend, m, 10, true))
+	testRouter.GET("/cache", NewGetHandler(testBackend, m, true))
 
 	recorder := httptest.NewRecorder()
 
@@ -347,9 +351,8 @@ func TestCustomKey(t *testing.T) {
 			// Instantiate prebid cache prod server with mock metrics and a mock metrics that
 			// already contains some values
 			router := httprouter.New()
-			putEndpointHandler := NewPutHandler(mockBackendWithValues, 10, tgroup.allowSettingKeys)
-			monitoredHandler := endpointDecorators.MonitorHttp(putEndpointHandler, m, endpointDecorators.PostMethod)
-			router.POST("/cache", monitoredHandler)
+			putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, tgroup.allowSettingKeys)
+			router.POST("/cache", putEndpointHandler)
 
 			recorder := httptest.NewRecorder()
 
@@ -378,7 +381,8 @@ func TestCustomKey(t *testing.T) {
 func TestRequestReadError(t *testing.T) {
 	// Setup server and mock body request reader
 	mockBackendWithValues := newMockBackend()
-	putEndpointHandler := NewPutHandler(mockBackendWithValues, 10, false)
+	m := metricstest.CreateMockMetrics()
+	putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, false)
 
 	router := httprouter.New()
 	router.POST("/cache", putEndpointHandler)
@@ -411,7 +415,8 @@ func TestTooManyPutElements(t *testing.T) {
 	//Set up server with capacity to handle less than putElements.size()
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	router.POST("/cache", NewPutHandler(backend, len(putElements)-1, true))
+	m := metricstest.CreateMockMetrics()
+	router.POST("/cache", NewPutHandler(backend, m, len(putElements)-1, true))
 
 	_, httpTestRecorder := doMockPut(t, router, reqBody)
 	assert.Equalf(t, http.StatusBadRequest, httpTestRecorder.Code, "doMockPut should have failed when trying to store %d elements because capacity is %d ", len(putElements), len(putElements)-1)
@@ -449,9 +454,10 @@ func TestMultiPutRequest(t *testing.T) {
 	//Set up server and run
 	router := httprouter.New()
 	backend := backends.NewMemoryBackend()
+	m := metricstest.CreateMockMetrics()
 
-	router.POST("/cache", NewPutHandler(backend, 10, true))
-	router.GET("/cache", NewGetHandler(backend, true))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true))
+	router.GET("/cache", NewGetHandler(backend, m, true))
 
 	rr := httptest.NewRecorder()
 
@@ -484,7 +490,8 @@ func TestBadPayloadSizePutError(t *testing.T) {
 
 	// Run client
 	router := httprouter.New()
-	router.POST("/cache", NewPutHandler(backend, 10, true))
+	m := metricstest.CreateMockMetrics()
+	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
 	_, httpTestRecorder := doMockPut(t, router, reqBody)
 
@@ -501,7 +508,8 @@ func TestInternalPutClientError(t *testing.T) {
 
 	// Run client
 	router := httprouter.New()
-	router.POST("/cache", NewPutHandler(backend, 10, true))
+	m := metricstest.CreateMockMetrics()
+	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
 	_, httpTestRecorder := doMockPut(t, router, reqBody)
 
@@ -543,8 +551,9 @@ func TestEmptyPutRequests(t *testing.T) {
 	// Set up server
 	router := httprouter.New()
 	backend := backends.NewMemoryBackend()
+	m := metricstest.CreateMockMetrics()
 
-	router.POST("/cache", NewPutHandler(backend, 10, true))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
 	for i, test := range testCases {
 		rr := httptest.NewRecorder()
@@ -583,7 +592,8 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 
 	// Run client
 	router := httprouter.New()
-	router.POST("/cache", NewPutHandler(backend, 10, true))
+	m := metricstest.CreateMockMetrics()
+	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
 	_, httpTestRecorder := doMockPut(t, router, reqBody)
 
@@ -666,9 +676,10 @@ func doMockPut(t *testing.T, router *httprouter.Router, content string) (string,
 func expectStored(t *testing.T, putBody string, expectedGet string, expectedMimeType string) {
 	router := httprouter.New()
 	backend := backends.NewMemoryBackend()
+	m := metricstest.CreateMockMetrics()
 
-	router.POST("/cache", NewPutHandler(backend, 10, true))
-	router.GET("/cache", NewGetHandler(backend, true))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true))
+	router.GET("/cache", NewGetHandler(backend, m, true))
 
 	uuid, putTrace := doMockPut(t, router, putBody)
 	if putTrace.Code != http.StatusOK {
@@ -695,7 +706,8 @@ func expectStored(t *testing.T, putBody string, expectedGet string, expectedMime
 func expectFailedPut(t *testing.T, requestBody string) {
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	router.POST("/cache", NewPutHandler(backend, 10, true))
+	m := metricstest.CreateMockMetrics()
+	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
 	_, putTrace := doMockPut(t, router, requestBody)
 	if putTrace.Code != http.StatusBadRequest {
@@ -715,9 +727,10 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 	//Set up server ready to run
 	router := httprouter.New()
 	backend := backends.NewMemoryBackend()
+	m := metricstest.CreateMockMetrics()
 
-	router.POST("/cache", NewPutHandler(backend, 10, true))
-	router.GET("/cache", NewGetHandler(backend, true))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true))
+	router.GET("/cache", NewGetHandler(backend, m, true))
 
 	rr := httptest.NewRecorder()
 

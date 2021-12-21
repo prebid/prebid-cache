@@ -3,93 +3,120 @@ package endpoints
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/utils"
 	log "github.com/sirupsen/logrus"
 )
 
-func NewGetHandler(backend backends.Backend, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		id, err, status := parseUUID(r, allowKeys)
-		if err != nil {
-			handleException(w, err, status, id)
-			return
-		}
+// GetHandler serves "GET /cache" requests.
+type GetHandler struct {
+	backend         backends.Backend
+	metrics         *metrics.Metrics
+	allowCustomKeys bool
+}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-		defer cancel()
+func NewGetHandler(storage backends.Backend, metrics *metrics.Metrics, allowCustomKeys bool) func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	getHandler := &GetHandler{
+		// Assign storage client to get endpoint
+		backend: storage,
+		// pass metrics engine
+		metrics: metrics,
+		// Pass configuration value
+		allowCustomKeys: allowCustomKeys,
+	}
 
-		value, err := backend.Get(ctx, id)
-		if err != nil {
-			handleException(w, err, http.StatusNotFound, id)
-			return
-		}
+	// Return handle function
+	return getHandler.handle
+}
 
-		if err, status := writeGetResponse(w, id, value); err != nil {
-			handleException(w, err, status, id)
-			return
-		}
+func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	e.metrics.RecordGetTotal()
+	start := time.Now()
+
+	uuid, parseErr := parseUUID(r, e.allowCustomKeys)
+	if parseErr != nil {
+		// parseUUID either returns http.StatusBadRequest or http.StatusNotFound. Both should be
+		// accounted under the RecordPutBadRequest()
+		e.metrics.RecordGetBadRequest()
+		handleException(w, parseErr)
 		return
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	storedData, err := e.backend.Get(ctx, uuid)
+	if err != nil {
+		e.metrics.RecordGetBadRequest()
+		handleException(w, utils.NewPrebidCacheGetError(uuid, err, http.StatusNotFound))
+		return
+	}
+
+	if err := writeGetResponse(w, uuid, storedData); err != nil {
+		e.metrics.RecordGetError()
+		handleException(w, err)
+		return
+	}
+
+	// successfully retrieved value under uuid from the backend storage
+	e.metrics.RecordGetDuration(time.Since(start))
+	return
 }
 
 type GetResponse struct {
 	Value interface{} `json:"value"`
 }
 
-func parseUUID(r *http.Request, allowKeys bool) (string, error, int) {
-	id := r.URL.Query().Get("uuid")
-	if id == "" {
-		return "", utils.MissingKeyError{}, http.StatusBadRequest
+// parseUUID extracts the uuid value from the query and validates its
+// lenght in case custom keys are not allowed.
+func parseUUID(r *http.Request, allowCustomKeys bool) (string, *utils.PrebidCacheGetError) {
+	uuid := r.URL.Query().Get("uuid")
+	if uuid == "" {
+		return "", utils.NewPrebidCacheGetError("", utils.MissingKeyError{}, http.StatusBadRequest)
 	}
-	if len(id) != 36 && (!allowKeys) {
+	if len(uuid) != 36 && (!allowCustomKeys) {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 		// ones before even checking the backend.
-		return id, utils.KeyLengthError{}, http.StatusNotFound
+		return uuid, utils.NewPrebidCacheGetError(uuid, utils.KeyLengthError{}, http.StatusNotFound)
 	}
-	return id, nil, http.StatusOK
+	return uuid, nil
 }
 
-func writeGetResponse(w http.ResponseWriter, id string, value string) (error, int) {
-	if strings.HasPrefix(value, backends.XML_PREFIX) {
+// writeGetResponse writes the "Content-Type" header and sends back the stored data as a response if
+// the sotred data is prefixed by either the "xml" or "json"
+func writeGetResponse(w http.ResponseWriter, id string, storedData string) *utils.PrebidCacheGetError {
+	if strings.HasPrefix(storedData, backends.XML_PREFIX) {
 		w.Header().Set("Content-Type", "application/xml")
-		w.Write([]byte(value)[len(backends.XML_PREFIX):])
-	} else if strings.HasPrefix(value, backends.JSON_PREFIX) {
+		w.Write([]byte(storedData)[len(backends.XML_PREFIX):])
+	} else if strings.HasPrefix(storedData, backends.JSON_PREFIX) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(value)[len(backends.JSON_PREFIX):])
+		w.Write([]byte(storedData)[len(backends.JSON_PREFIX):])
 	} else {
-		return errors.New("Cache data was corrupted. Cannot determine type."), http.StatusInternalServerError
+		return utils.NewPrebidCacheGetError(id, errors.New("Cache data was corrupted. Cannot determine type."), http.StatusInternalServerError)
 	}
-	return nil, http.StatusOK
+	return nil
 }
 
 // handleException will prefix error messages with "GET /cache" and, if uuid string list is passed, will
 // follow with the first element of it in the following fashion: "uuid=FIRST_ELEMENT_ON_UUID_PARAM".
 // Expects non-nil error
-func handleException(w http.ResponseWriter, err error, status int, uuid string) {
-
-	var msg string
-	if len(uuid) > 0 {
-		msg = fmt.Sprintf("GET /cache uuid=%s: %s", uuid, err.Error())
-	} else {
-		msg = fmt.Sprintf("GET /cache: %s", err.Error())
-	}
-
-	logError(err, msg)
-
-	http.Error(w, msg, status)
+func handleException(w http.ResponseWriter, err *utils.PrebidCacheGetError) {
+	logError(err)
+	http.Error(w, err.Error(), err.StatusCode())
 }
 
-func logError(err error, msg string) {
-	if _, isKeyNotFound := err.(utils.KeyNotFoundError); isKeyNotFound {
-		log.Debug(msg)
+// logError uses the logging package Prebid Cache currently uses to log an error message. KeyNotFoundError
+// gets logged at a DEBUG level because it is not considered a system error.
+func logError(e *utils.PrebidCacheGetError) {
+	if e.IsKeyNotFound() {
+		log.Debug(e.Error())
 	} else {
-		log.Error(msg)
+		log.Error(e.Error())
 	}
 }

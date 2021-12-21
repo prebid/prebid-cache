@@ -29,8 +29,8 @@ func (b *sizeCappedBackend) Put(ctx context.Context, key string, value string, t
 	valueLen := len(value)
 	if valueLen == 0 || valueLen > b.limit {
 		return &BadPayloadSize{
-			limit: b.limit,
-			size:  valueLen,
+			Limit: b.limit,
+			Size:  valueLen,
 		}
 	}
 
@@ -38,10 +38,10 @@ func (b *sizeCappedBackend) Put(ctx context.Context, key string, value string, t
 }
 
 type BadPayloadSize struct {
-	limit int
-	size  int
+	Limit int
+	Size  int
 }
 
 func (p *BadPayloadSize) Error() string {
-	return "Payload size " + strconv.Itoa(p.size) + " exceeded max " + strconv.Itoa(p.limit)
+	return "Payload size " + strconv.Itoa(p.Size) + " exceeded max " + strconv.Itoa(p.Limit)
 }
