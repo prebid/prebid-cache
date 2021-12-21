@@ -42,7 +42,7 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	uuid, parseErr := parseUUID(r, e.allowCustomKeys)
 	if parseErr != nil {
 		// parseUUID either returns http.StatusBadRequest or http.StatusNotFound. Both should be
-		// accounted under the RecordPutBadRequest()
+		// accounted using RecordGetBadRequest()
 		e.metrics.RecordGetBadRequest()
 		handleException(w, parseErr)
 		return
@@ -67,10 +67,6 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	// successfully retrieved value under uuid from the backend storage
 	e.metrics.RecordGetDuration(time.Since(start))
 	return
-}
-
-type GetResponse struct {
-	Value interface{} `json:"value"`
 }
 
 // parseUUID extracts the uuid value from the query and validates its
@@ -103,12 +99,12 @@ func writeGetResponse(w http.ResponseWriter, id string, storedData string) *util
 	return nil
 }
 
-// handleException will prefix error messages with "GET /cache" and, if uuid string list is passed, will
-// follow with the first element of it in the following fashion: "uuid=FIRST_ELEMENT_ON_UUID_PARAM".
-// Expects non-nil error
+// handleException logs and replies to the request with the error message and HTTP code
 func handleException(w http.ResponseWriter, err *utils.PrebidCacheGetError) {
-	logError(err)
-	http.Error(w, err.Error(), err.StatusCode())
+	if err != nil {
+		logError(err)
+		http.Error(w, err.Error(), err.StatusCode())
+	}
 }
 
 // logError uses the logging package Prebid Cache currently uses to log an error message. KeyNotFoundError

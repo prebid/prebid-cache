@@ -7,13 +7,6 @@ import (
 // Status code for errors due to a downstream dependency timeout.
 const HttpDependencyTimeout = 597
 
-func formatErrMsg(uuid, errMsg string) string {
-	if len(uuid) > 0 {
-		return fmt.Sprintf("GET /cache uuid=%s: %s", uuid, errMsg)
-	}
-	return fmt.Sprintf("GET /cache: %s", errMsg)
-}
-
 /**************************/
 /* Get errors			  */
 /**************************/
@@ -143,5 +136,5 @@ type PutMaxNumValuesError struct {
 }
 
 func (e PutMaxNumValuesError) Error() string {
-	return fmt.Sprintf("trying to put %d keys which is more than the allowed number allowed: %d", e.NumValues, e.MaxNumValues)
+	return fmt.Sprintf("trying to put %d keys which is more than the number allowed: %d", e.NumValues, e.MaxNumValues)
 }

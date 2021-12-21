@@ -146,7 +146,7 @@ func parsePutObject(p PutObject) (string, error) {
 
 func logBackendError(err error, index int) (error, int) {
 	if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
-		return utils.PutBadPayloadSizeError{err.Error(), index}, http.StatusBadRequest
+		return utils.PutBadPayloadSizeError{Msg: err.Error(), Index: index}, http.StatusBadRequest
 	}
 
 	logrus.Error("POST /cache Error while writing to the backend: ", err)
