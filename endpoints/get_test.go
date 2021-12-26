@@ -23,82 +23,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestJSONString(t *testing.T) {
-	expectStored(
-		t,
-		"{\"puts\":[{\"type\":\"json\",\"value\":\"plain text\"}]}",
-		"\"plain text\"",
-		"application/json")
-}
-
-func TestEscapedString(t *testing.T) {
-	expectStored(
-		t,
-		"{\"puts\":[{\"type\":\"json\",\"value\":\"esca\\\"ped\"}]}",
-		"\"esca\\\"ped\"",
-		"application/json")
-}
-
-func TestUnescapedString(t *testing.T) {
-	expectFailedPut(t, "{\"puts\":[{\"type\":\"json\",\"value\":\"badly-esca\"ped\"}]}")
-}
-
-func TestNumber(t *testing.T) {
-	expectStored(t, "{\"puts\":[{\"type\":\"json\",\"value\":5}]}", "5", "application/json")
-}
-
-func TestObject(t *testing.T) {
-	expectStored(
-		t,
-		"{\"puts\":[{\"type\":\"json\",\"value\":{\"custom_key\":\"foo\"}}]}",
-		"{\"custom_key\":\"foo\"}",
-		"application/json")
-}
-
-func TestNull(t *testing.T) {
-	expectStored(t, "{\"puts\":[{\"type\":\"json\",\"value\":null}]}", "null", "application/json")
-}
-
-func TestBoolean(t *testing.T) {
-	expectStored(t, "{\"puts\":[{\"type\":\"json\",\"value\":true}]}", "true", "application/json")
-}
-
-func TestExtraProperty(t *testing.T) {
-	expectStored(
-		t,
-		"{\"puts\":[{\"type\":\"json\",\"value\":null,\"irrelevant\":\"foo\"}]}",
-		"null",
-		"application/json")
-}
-
-func TestInvalidJSON(t *testing.T) {
-	expectFailedPut(t, "{\"puts\":[{\"type\":\"json\",\"value\":malformed}]}")
-}
-
-func TestMissingProperty(t *testing.T) {
-	expectFailedPut(t, "{\"puts\":[{\"type\":\"json\",\"unrecognized\":true}]}")
-}
-
-func TestMixedValidityPuts(t *testing.T) {
-	expectFailedPut(t, "{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"json\",\"unrecognized\":true}]}")
-}
-
-func TestXMLString(t *testing.T) {
-	expectStored(t, "{\"puts\":[{\"type\":\"xml\",\"value\":\"<tag></tag>\"}]}", "<tag></tag>", "application/xml")
-}
-
-func TestNonJsonNorXMLString(t *testing.T) {
-	expectFailedPut(t, "{\"puts\":[{\"type\":\"yaml\",\"value\":\"<tag></tag>\"}]}")
-}
-
-func TestCrossScriptEscaping(t *testing.T) {
-	expectStored(t, "{\"puts\":[{\"type\":\"xml\",\"value\":\"<tag>esc\\\"aped</tag>\"}]}", "<tag>esc\"aped</tag>", "application/xml")
-}
-
-func TestXMLOther(t *testing.T) {
-	expectFailedPut(t, "{\"puts\":[{\"type\":\"xml\",\"value\":5}]}")
-}
-
 func TestGetInvalidUUIDs(t *testing.T) {
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
@@ -275,7 +199,7 @@ func TestReadinessCheck(t *testing.T) {
 
 func TestNegativeTTL(t *testing.T) {
 	// Input
-	inReqBody := fmt.Sprintf("{\"puts\":[{\"type\":\"json\",\"value\":\"<tag>YourXMLcontentgoeshere.</tag>\",\"ttlseconds\":-1}]}")
+	inReqBody := "{\"puts\":[{\"type\":\"json\",\"value\":\"<tag>YourXMLcontentgoeshere.</tag>\",\"ttlseconds\":-1}]}"
 	inRequest, err := http.NewRequest("POST", "/cache", strings.NewReader(inReqBody))
 	assert.NoError(t, err, "Failed to create a POST request: %v", err)
 
@@ -289,7 +213,6 @@ func TestNegativeTTL(t *testing.T) {
 	m := metricstest.CreateMockMetrics()
 
 	testRouter.POST("/cache", NewPutHandler(testBackend, m, 10, true))
-	testRouter.GET("/cache", NewGetHandler(testBackend, m, true))
 
 	recorder := httptest.NewRecorder()
 
@@ -669,51 +592,6 @@ func doMockPut(t *testing.T, router *httprouter.Router, content string) (string,
 		uuid = parseMockUUID(t, rr.Body.String())
 	}
 	return uuid, rr
-}
-
-// expectStored makes a POST request with the given putBody, and then makes sure that expectedGet
-// is returned by the GET request for whatever UUID the server chose.
-func expectStored(t *testing.T, putBody string, expectedGet string, expectedMimeType string) {
-	router := httprouter.New()
-	backend := backends.NewMemoryBackend()
-	m := metricstest.CreateMockMetrics()
-
-	router.POST("/cache", NewPutHandler(backend, m, 10, true))
-	router.GET("/cache", NewGetHandler(backend, m, true))
-
-	uuid, putTrace := doMockPut(t, router, putBody)
-	if putTrace.Code != http.StatusOK {
-		t.Fatalf("Put command failed. Status: %d, Msg: %v", putTrace.Code, putTrace.Body.String())
-		return
-	}
-
-	getResults := doMockGet(t, router, uuid)
-	if getResults.Code != http.StatusOK {
-		t.Fatalf("Get command failed with status: %d", getResults.Code)
-		return
-	}
-	if getResults.Body.String() != expectedGet {
-		t.Fatalf("Expected GET response %v to equal %v", getResults.Body.String(), expectedGet)
-		return
-	}
-	if getResults.Header().Get("Content-Type") != expectedMimeType {
-		t.Fatalf("Expected GET response Content-Type %v to equal %v", getResults.Header().Get("Content-Type"), expectedMimeType)
-	}
-}
-
-// expectFailedPut makes a POST request with the given request body, and fails unless the server
-// responds with a 400
-func expectFailedPut(t *testing.T, requestBody string) {
-	backend := backends.NewMemoryBackend()
-	router := httprouter.New()
-	m := metricstest.CreateMockMetrics()
-	router.POST("/cache", NewPutHandler(backend, m, 10, true))
-
-	_, putTrace := doMockPut(t, router, requestBody)
-	if putTrace.Code != http.StatusBadRequest {
-		t.Fatalf("Expected 400 response. Got: %d, Msg: %v", putTrace.Code, putTrace.Body.String())
-		return
-	}
 }
 
 func benchmarkPutHandler(b *testing.B, testCase string) {
