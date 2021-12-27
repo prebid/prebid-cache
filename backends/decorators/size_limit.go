@@ -25,7 +25,7 @@ func (b *sizeCappedBackend) Get(ctx context.Context, key string) (string, error)
 	return b.delegate.Get(ctx, key)
 }
 
-func (b *sizeCappedBackend) Put(ctx context.Context, key string, value string) error {
+func (b *sizeCappedBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	valueLen := len(value)
 	if valueLen == 0 || valueLen > b.limit {
 		return &BadPayloadSize{
@@ -34,7 +34,7 @@ func (b *sizeCappedBackend) Put(ctx context.Context, key string, value string) e
 		}
 	}
 
-	return b.delegate.Put(ctx, key, value)
+	return b.delegate.Put(ctx, key, value, ttlSeconds)
 }
 
 type BadPayloadSize struct {

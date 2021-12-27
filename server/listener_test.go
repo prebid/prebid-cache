@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	pbcmetrics "github.com/PubMatic-OpenWrap/prebid-cache/metrics"
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/PubMatic-OpenWrap/prebid-cache/metrics/metricstest"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNormalConnectionMetrics(t *testing.T) {
@@ -23,39 +23,39 @@ func TestCloseErrorMetrics(t *testing.T) {
 }
 
 func doTest(t *testing.T, allowAccept bool, allowClose bool) {
-	connMetrics := pbcmetrics.NewConnectionMetrics(metrics.NewRegistry())
+	m := metricstest.CreateMockMetrics()
 
 	var listener net.Listener = &mockListener{
 		listenSuccess: allowAccept,
 		closeSuccess:  allowClose,
 	}
 
-	listener = &monitorableListener{listener, connMetrics}
+	listener = &monitorableListener{listener, m}
 	conn, err := listener.Accept()
 	if !allowAccept {
 		if err == nil {
 			t.Error("The listener.Accept() error should propagate from the underlying listener.")
 		}
-		assertCount(t, "When Accept() fails, connection count", connMetrics.ActiveConnections.Count(), 0)
-		assertCount(t, "When Accept() fails, Accept() errors", connMetrics.ConnectionAcceptErrors.Count(), 1)
-		assertCount(t, "When Accept() fails, Close() errors", connMetrics.ConnectionCloseErrors.Count(), 0)
+		assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 0.00, "Should not log any connections")
+		assert.Equal(t, int64(1), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
+		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
 		return
 	}
-	assertCount(t, "When Accept() succeeds, active connections", connMetrics.ActiveConnections.Count(), 1)
-	assertCount(t, "When Accept() succeeds, Accept() errors", connMetrics.ConnectionAcceptErrors.Count(), 0)
+	assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
+	assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 1.00, "Should not log any connections")
 
 	err = conn.Close()
 	if allowClose {
-		assertCount(t, "When Accept() and Close() succeed, connection count", connMetrics.ActiveConnections.Count(), 0)
-		assertCount(t, "When Accept() and Close() succeed, Accept() errors", connMetrics.ConnectionAcceptErrors.Count(), 0)
-		assertCount(t, "When Accept() and Close() succeed, Close() errors", connMetrics.ConnectionCloseErrors.Count(), 0)
+		assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 0.00, "Should not log any connections")
+		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
+		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
 	} else {
 		if err == nil {
 			t.Error("The connection.Close() error should propagate from the underlying listener.")
 		}
-		assertCount(t, "When Accept() succeeds sand Close() fails, connection count", connMetrics.ActiveConnections.Count(), 1)
-		assertCount(t, "When Accept() succeeds sand Close() fails, Accept() errors", connMetrics.ConnectionAcceptErrors.Count(), 0)
-		assertCount(t, "When Accept() succeeds sand Close() fails, Close() errors", connMetrics.ConnectionCloseErrors.Count(), 1)
+		assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 1.00, "Should not log any connections")
+		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
+		assert.Equal(t, int64(1), metricstest.MockCounters["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
 	}
 }
 

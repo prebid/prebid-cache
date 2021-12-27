@@ -6,22 +6,32 @@ rate_limiter:
   enabled: true
   num_requests: 100
 request_limits:
+  allow_setting_keys: false
   max_size_bytes: 10240 # 10K
   max_num_values: 10
+  max_ttl_seconds: 3600
 backend:
-  type: "aerospike" # Can also be "aerospike", "azure", "cassandra", or "memcache"
+  type: "memory" # Can also be "aerospike", "cassandra", "memcache" or "redis"
   aerospike:
-    host: "$AEROSPIKE_HOST"
-    port: $AEROSPIKE_PORT
-    namespace: "$AEROSPIKE_NAMESPACE"
-  azure:
-    account: "azure-account-here"
-    key: "azure-key-here"
+    host: "aerospike.prebid.com"
+    port: 3000
+    namespace: "whatever"
   cassandra:
     hosts: "127.0.0.1"
     keyspace: "prebid"
   memcache:
-    hosts: "10.0.0.1:11211" # Can also use an array for multiple hosts
+    config_host: "" # Configuration endpoint for auto discovery. Replaced at docker build.
+    poll_interval_seconds: 30 # Node change polling interval when auto discovery is used
+    hosts: "10.0.0.1:11211" # List of nodes when not using auto discovery. Can also use an array for multiple hosts. 
+  redis:
+    host: "127.0.0.1"
+    port: 6379
+    password: ""
+    db: 1
+    expiration: 10 # in Minutes
+    tls:
+      enabled: false
+      insecure_skip_verify: false
 compression:
   type: "snappy" # Can also be "none"
 metrics:
@@ -31,6 +41,8 @@ metrics:
     database: "some-database"
     username: "influx-username"
     password: "influx-password"
+routes:
+  allow_public_write: true
 stats:
   host: "$STATS_HOST"
   port: "$STATS_PORT"

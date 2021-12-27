@@ -10,17 +10,21 @@ import (
 	"github.com/PubMatic-OpenWrap/prebid-cache/server"
 )
 
+const configFileName = "config"
+
 func main() {
+
 	//log.SetOutput(os.Stdout)
-	cfg := config.NewConfig()
+	cfg := config.NewConfig(configFileName)
 	//setLogLevel(cfg.Log.Level)
 	cfg.ValidateAndLog()
 
-	appMetrics := metrics.CreateMetrics()
+	appMetrics := metrics.CreateMetrics(cfg)
 	backend := backendConfig.NewBackend(cfg, appMetrics)
-	handler := routing.NewHandler(cfg, backend, appMetrics)
-	go appMetrics.Export(cfg.Metrics)
-	server.Listen(cfg, handler, appMetrics.Connections)
+	publicHandler := routing.NewPublicHandler(cfg, backend, appMetrics)
+	adminHandler := routing.NewAdminHandler(cfg, backend, appMetrics)
+	go appMetrics.Export(cfg)
+	server.Listen(cfg, publicHandler, adminHandler, appMetrics)
 }
 
 /*func setLogLevel(logLevel config.LogLevel) {

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"git.pubmatic.com/PubMatic/go-common.git/logger"
-
 	"github.com/PubMatic-OpenWrap/prebid-cache/backends"
 	"github.com/golang/snappy"
 )
@@ -22,12 +21,10 @@ type snappyCompressor struct {
 	delegate backends.Backend
 }
 
-func (s *snappyCompressor) Put(ctx context.Context, key string, value string) error {
-	start := time.Now()
-
-	p := s.delegate.Put(ctx, key, string(snappy.Encode(nil, []byte(value))))
-	end := time.Now()
-	totalTime := (end.Sub(start)).Nanoseconds() / 1000000
+func (s *snappyCompressor) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+	startTime := time.Now()
+	p := s.delegate.Put(ctx, key, string(snappy.Encode(nil, []byte(value))), ttlSeconds)
+	totalTime := time.Now().Sub(startTime)
 	logger.Info("Time for snappy put: %v", totalTime)
 	return p
 }

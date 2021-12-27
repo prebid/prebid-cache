@@ -1,0 +1,56 @@
+port: 9000
+admin_port: 2525
+index_response: "Any index response"
+log:
+  level: "info"
+rate_limiter:
+  enabled: false
+  num_requests: 150
+request_limits:
+  max_size_bytes: 10240
+  max_num_values: 10
+  max_ttl_seconds: 5000
+  allow_setting_keys: true
+backend:
+  type: "memory"
+  aerospike:
+    default_ttl_seconds: 3600
+    host: "aerospike.prebid.com"
+    hosts: ["aerospike2.prebid.com", "aerospike3.prebid.com"]
+    port: 3000
+    namespace: "whatever"
+    user: "foo"
+    password: "bar"
+  cassandra:
+    hosts: "127.0.0.1"
+    keyspace: "prebid"
+    default_ttl_seconds: 60
+  memcache:
+    hosts: ["10.0.0.1:11211","127.0.0.1"]
+  redis:
+    host: "127.0.0.1"
+    port: 6379
+    password: "redis-password"
+    db: 1
+    expiration: 1
+    tls:
+      enabled: false
+      insecure_skip_verify: false
+compression:
+  type: "snappy"
+metrics:
+  type: "none"
+  influx:
+    host: "metrics-host"
+    database: "metrics-database"
+    username: "metrics-username"
+    password: "metrics-password"
+    enabled: true
+  prometheus:
+    port: 8080
+    namespace: "prebid"
+    subsystem: "cache"
+    timeout_ms: 100
+    enabled: true
+routes:
+  allow_public_write: true

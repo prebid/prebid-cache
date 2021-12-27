@@ -1,115 +1,226 @@
 package metrics
 
 import (
-	"fmt"
 	"time"
 
-	"git.pubmatic.com/PubMatic/go-common.git/logger"
 	"github.com/PubMatic-OpenWrap/prebid-cache/config"
-	"github.com/rcrowley/go-metrics"
-	"github.com/vrischmann/go-metrics-influxdb"
+	influx "github.com/PubMatic-OpenWrap/prebid-cache/metrics/influx"
+	prometheus "github.com/PubMatic-OpenWrap/prebid-cache/metrics/prometheus"
 )
 
-type MetricsEntry struct {
-	Duration   metrics.Timer
-	Errors     metrics.Meter
-	BadRequest metrics.Meter
-	Request    metrics.Meter
-}
-
-type MetricsEntryByFormat struct {
-	Duration       metrics.Timer
-	Errors         metrics.Meter
-	BadRequest     metrics.Meter
-	JsonRequest    metrics.Meter
-	XmlRequest     metrics.Meter
-	InvalidRequest metrics.Meter
-	RequestLength  metrics.Histogram
-}
-
-type ConnectionMetrics struct {
-	ActiveConnections      metrics.Counter
-	ConnectionCloseErrors  metrics.Meter
-	ConnectionAcceptErrors metrics.Meter
-}
-
-func NewMetricsEntry(name string, r metrics.Registry) *MetricsEntry {
-	return &MetricsEntry{
-		Duration:   metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
-		Errors:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
-		BadRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
-		Request:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.request_count", name), r),
-	}
-}
-
-func NewMetricsEntryByType(name string, r metrics.Registry) *MetricsEntryByFormat {
-	return &MetricsEntryByFormat{
-		Duration:       metrics.GetOrRegisterTimer(fmt.Sprintf("%s.request_duration", name), r),
-		Errors:         metrics.GetOrRegisterMeter(fmt.Sprintf("%s.error_count", name), r),
-		BadRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.bad_request_count", name), r),
-		JsonRequest:    metrics.GetOrRegisterMeter(fmt.Sprintf("%s.json_request_count", name), r),
-		XmlRequest:     metrics.GetOrRegisterMeter(fmt.Sprintf("%s.xml_request_count", name), r),
-		InvalidRequest: metrics.GetOrRegisterMeter(fmt.Sprintf("%s.unknown_request_count", name), r),
-		RequestLength:  metrics.GetOrRegisterHistogram(name+".request_size_bytes", r, metrics.NewExpDecaySample(1028, 0.015)),
-	}
-}
-
-func NewConnectionMetrics(r metrics.Registry) *ConnectionMetrics {
-	return &ConnectionMetrics{
-		ActiveConnections:      metrics.GetOrRegisterCounter("connections.active_incoming", r),
-		ConnectionAcceptErrors: metrics.GetOrRegisterMeter("connections.accept_errors", r),
-		ConnectionCloseErrors:  metrics.GetOrRegisterMeter("connections.close_errors", r),
-	}
-}
-
+// Metrics provides access to metric engines.
 type Metrics struct {
-	Registry    metrics.Registry
-	Puts        *MetricsEntry
-	Gets        *MetricsEntry
-	PutsBackend *MetricsEntryByFormat
-	GetsBackend *MetricsEntry
-	Connections *ConnectionMetrics
+	MetricEngines []CacheMetrics
 }
 
-// Export begins sending metrics to the configured database.
-// This method blocks indefinitely, so it should probably be run in a goroutine.
-func (m *Metrics) Export(cfg config.Metrics) {
-	switch cfg.Type {
-	case config.MetricsInflux:
-		logger.Info("Metrics will be exported to Influx with host=%s, db=%s, username=%s", cfg.Influx.Host, cfg.Influx.Database, cfg.Influx.Username)
-		influxdb.InfluxDB(
-			m.Registry,          // metrics registry
-			time.Second*10,      // interval
-			cfg.Influx.Host,     // the InfluxDB url
-			cfg.Influx.Database, // your InfluxDB database
-			cfg.Influx.Username, // your InfluxDB user
-			cfg.Influx.Password, // your InfluxDB password
-		)
-	case config.MetricsNone:
-		return
-	default:
-		logger.Fatal("Unrecognized config metrics.type: %s", cfg.Type)
+// Methods so the metrics object executes the methods of the `CacheMetrics` interface
+func (m Metrics) RecordPutError() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutError()
 	}
-	return
 }
 
-func CreateMetrics() *Metrics {
-	flushTime := time.Second * 10
-	r := metrics.NewPrefixedRegistry("prebidcache.")
-	m := &Metrics{
-		Registry:    r,
-		Puts:        NewMetricsEntry("puts.current_url", r),
-		Gets:        NewMetricsEntry("gets.current_url", r),
-		PutsBackend: NewMetricsEntryByType("puts.backend", r),
-		GetsBackend: NewMetricsEntry("gets.backend", r),
-		Connections: NewConnectionMetrics(r),
+func (m Metrics) RecordPutBadRequest() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBadRequest()
 	}
+}
 
-	metrics.RegisterDebugGCStats(m.Registry)
-	metrics.RegisterRuntimeMemStats(m.Registry)
+func (m Metrics) RecordPutTotal() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutTotal()
+	}
+}
 
-	go metrics.CaptureRuntimeMemStats(m.Registry, flushTime)
-	go metrics.CaptureDebugGCStats(m.Registry, flushTime)
+func (m Metrics) RecordPutDuration(duration time.Duration) {
+	for _, me := range m.MetricEngines {
+		me.RecordPutDuration(duration)
+	}
+}
 
-	return m
+func (m Metrics) RecordPutKeyProvided() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutKeyProvided()
+	}
+}
+
+func (m Metrics) RecordGetError() {
+	for _, me := range m.MetricEngines {
+		me.RecordGetError()
+	}
+}
+
+func (m Metrics) RecordGetBadRequest() {
+	for _, me := range m.MetricEngines {
+		me.RecordGetBadRequest()
+	}
+}
+
+func (m Metrics) RecordGetTotal() {
+	for _, me := range m.MetricEngines {
+		me.RecordGetTotal()
+	}
+}
+
+func (m Metrics) RecordGetDuration(duration time.Duration) {
+	for _, me := range m.MetricEngines {
+		me.RecordGetDuration(duration)
+	}
+}
+
+func (m Metrics) RecordPutBackendXml() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendXml()
+	}
+}
+
+func (m Metrics) RecordPutBackendJson() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendJson()
+	}
+}
+
+func (m Metrics) RecordPutBackendInvalid() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendInvalid()
+	}
+}
+
+func (m Metrics) RecordPutBackendDuration(duration time.Duration) {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendDuration(duration)
+	}
+}
+
+func (m Metrics) RecordPutBackendTTLSeconds(duration time.Duration) {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendTTLSeconds(duration)
+	}
+}
+
+func (m Metrics) RecordPutBackendError() {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendError()
+	}
+}
+
+func (m Metrics) RecordPutBackendSize(sizeInBytes float64) {
+	for _, me := range m.MetricEngines {
+		me.RecordPutBackendSize(sizeInBytes)
+	}
+}
+
+func (m Metrics) RecordGetBackendDuration(duration time.Duration) {
+	for _, me := range m.MetricEngines {
+		me.RecordGetBackendDuration(duration)
+	}
+}
+
+func (m Metrics) RecordGetBackendTotal() {
+	for _, me := range m.MetricEngines {
+		me.RecordGetBackendTotal()
+	}
+}
+
+func (m Metrics) RecordGetBackendError() {
+	for _, me := range m.MetricEngines {
+		me.RecordGetBackendError()
+	}
+}
+
+func (m Metrics) RecordKeyNotFoundError() {
+	for _, me := range m.MetricEngines {
+		me.RecordKeyNotFoundError()
+	}
+}
+
+func (m Metrics) RecordMissingKeyError() {
+	for _, me := range m.MetricEngines {
+		me.RecordMissingKeyError()
+	}
+}
+
+func (m Metrics) RecordConnectionOpen() {
+	for _, me := range m.MetricEngines {
+		me.RecordConnectionOpen()
+	}
+}
+
+func (m Metrics) RecordConnectionClosed() {
+	for _, me := range m.MetricEngines {
+		me.RecordConnectionClosed()
+	}
+}
+
+func (m Metrics) RecordCloseConnectionErrors() {
+	for _, me := range m.MetricEngines {
+		me.RecordCloseConnectionErrors()
+	}
+}
+
+func (m Metrics) RecordAcceptConnectionErrors() {
+	for _, me := range m.MetricEngines {
+		me.RecordAcceptConnectionErrors()
+	}
+}
+
+func (m Metrics) Export(cfg config.Configuration) {
+	for _, me := range m.MetricEngines {
+		me.Export(cfg.Metrics)
+	}
+}
+
+func (m Metrics) GetEngineRegistry(name string) interface{} {
+	for _, me := range m.MetricEngines {
+		if name == me.GetMetricsEngineName() {
+			return me.GetEngineRegistry()
+		}
+	}
+	return nil
+}
+
+type CacheMetrics interface {
+	// Auxiliary functions
+	Export(cfg config.Metrics)
+	GetMetricsEngineName() string
+	GetEngineRegistry() interface{}
+
+	// Record, update and log metrics functions
+	RecordPutError()
+	RecordPutBadRequest()
+	RecordPutTotal()
+	RecordPutDuration(duration time.Duration)
+	RecordPutKeyProvided()
+	RecordGetError()
+	RecordGetBadRequest()
+	RecordGetTotal()
+	RecordGetDuration(duration time.Duration)
+	RecordPutBackendXml()
+	RecordPutBackendJson()
+	RecordPutBackendInvalid()
+	RecordPutBackendDuration(duration time.Duration)
+	RecordPutBackendTTLSeconds(duration time.Duration)
+	RecordPutBackendError()
+	RecordPutBackendSize(sizeInBytes float64)
+	RecordGetBackendTotal()
+	RecordGetBackendDuration(duration time.Duration)
+	RecordGetBackendError()
+	RecordKeyNotFoundError()
+	RecordMissingKeyError()
+	RecordConnectionOpen()
+	RecordConnectionClosed()
+	RecordCloseConnectionErrors()
+	RecordAcceptConnectionErrors()
+}
+
+func CreateMetrics(cfg config.Configuration) *Metrics {
+	engineList := make([]CacheMetrics, 0, 2)
+
+	if cfg.Metrics.Influx.Enabled {
+		engineList = append(engineList, influx.CreateInfluxMetrics())
+	}
+	if cfg.Metrics.Prometheus.Enabled {
+		engineList = append(engineList, prometheus.CreatePrometheusMetrics(cfg.Metrics.Prometheus))
+	}
+	return &Metrics{MetricEngines: engineList}
 }
