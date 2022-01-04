@@ -2,7 +2,6 @@ package endpoints
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -44,7 +43,7 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 		// parseUUID either returns http.StatusBadRequest or http.StatusNotFound. Both should be
 		// accounted using RecordGetBadRequest()
 		e.metrics.RecordGetBadRequest()
-		handleException(w, parseErr)
+		handleException(w, parseErr, uuid)
 		return
 	}
 
@@ -54,13 +53,13 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	storedData, err := e.backend.Get(ctx, uuid)
 	if err != nil {
 		e.metrics.RecordGetBadRequest()
-		handleException(w, utils.NewPrebidCacheGetError(uuid, err, http.StatusNotFound))
+		handleException(w, err, uuid)
 		return
 	}
 
 	if err := writeGetResponse(w, uuid, storedData); err != nil {
 		e.metrics.RecordGetError()
-		handleException(w, err)
+		handleException(w, err, uuid)
 		return
 	}
 
@@ -71,22 +70,22 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 
 // parseUUID extracts the uuid value from the query and validates its
 // lenght in case custom keys are not allowed.
-func parseUUID(r *http.Request, allowCustomKeys bool) (string, *utils.PrebidCacheGetError) {
+func parseUUID(r *http.Request, allowCustomKeys bool) (string, error) {
 	uuid := r.URL.Query().Get("uuid")
 	if uuid == "" {
-		return "", utils.NewPrebidCacheGetError("", utils.MissingKeyError{}, http.StatusBadRequest)
+		return "", utils.MissingKeyError{}
 	}
 	if len(uuid) != 36 && (!allowCustomKeys) {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 		// ones before even checking the backend.
-		return uuid, utils.NewPrebidCacheGetError(uuid, utils.KeyLengthError{}, http.StatusNotFound)
+		return uuid, utils.KeyLengthError{}
 	}
 	return uuid, nil
 }
 
 // writeGetResponse writes the "Content-Type" header and sends back the stored data as a response if
 // the sotred data is prefixed by either the "xml" or "json"
-func writeGetResponse(w http.ResponseWriter, id string, storedData string) *utils.PrebidCacheGetError {
+func writeGetResponse(w http.ResponseWriter, id string, storedData string) error {
 	if strings.HasPrefix(storedData, backends.XML_PREFIX) {
 		w.Header().Set("Content-Type", "application/xml")
 		w.Write([]byte(storedData)[len(backends.XML_PREFIX):])
@@ -94,25 +93,22 @@ func writeGetResponse(w http.ResponseWriter, id string, storedData string) *util
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(storedData)[len(backends.JSON_PREFIX):])
 	} else {
-		return utils.NewPrebidCacheGetError(id, errors.New("Cache data was corrupted. Cannot determine type."), http.StatusInternalServerError)
+		return utils.UnknownStoredDataType{}
 	}
 	return nil
 }
 
 // handleException logs and replies to the request with the error message and HTTP code
-func handleException(w http.ResponseWriter, err *utils.PrebidCacheGetError) {
+func handleException(w http.ResponseWriter, err error, uuid string) {
 	if err != nil {
-		logError(err)
-		http.Error(w, err.Error(), err.StatusCode())
-	}
-}
+		errMsg, errCode, isKeyNotFound := utils.GetErrorInfo(err, "GET", uuid)
 
-// logError uses the logging package Prebid Cache currently uses to log an error message. KeyNotFoundError
-// gets logged at a DEBUG level because it is not considered a system error.
-func logError(e *utils.PrebidCacheGetError) {
-	if e.IsKeyNotFound() {
-		log.Debug(e.Error())
-	} else {
-		log.Error(e.Error())
+		if isKeyNotFound {
+			log.Debug(errMsg)
+		} else {
+			log.Error(errMsg)
+		}
+
+		http.Error(w, errMsg, errCode)
 	}
 }

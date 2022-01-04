@@ -606,7 +606,7 @@ func TestParsePutObject(t *testing.T) {
 			PutObject{},
 			testOut{
 				value: "",
-				err:   errors.New("Missing required field value."),
+				err:   utils.MissingValueError{},
 			},
 		},
 		{
@@ -617,7 +617,7 @@ func TestParsePutObject(t *testing.T) {
 			},
 			testOut{
 				value: "",
-				err:   errors.New("ttlseconds must not be negative -1."),
+				err:   utils.NegativeTTLError{-1},
 			},
 		},
 		{
@@ -629,7 +629,7 @@ func TestParsePutObject(t *testing.T) {
 			},
 			testOut{
 				value: "",
-				err:   errors.New("Type must be one of [\"json\", \"xml\"]. Found unknown"),
+				err:   utils.UnsupportedDataToStoreError{"unknown"},
 			},
 		},
 		{
@@ -641,11 +641,11 @@ func TestParsePutObject(t *testing.T) {
 			},
 			testOut{
 				value: "",
-				err:   errors.New("XML messages must have a String value. Found [60 116 97 103 62 88 77 76 60 47 116 97 103 62]"),
+				err:   utils.MalformedXMLError{"XML messages must have a String value. Found [60 116 97 103 62 88 77 76 60 47 116 97 103 62]"},
 			},
 		},
 		{
-			"valid xml input, no errors expected",
+			"xml type value is surrounded by quotes and, therefore, a string. No errors expected",
 			PutObject{
 				Type:       "xml",
 				TTLSeconds: 60,
@@ -721,11 +721,10 @@ func TestLogBackendError(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		// run
-		err, errCode := logBackendError(tc.inError, 0)
+		err := logBackendError(tc.inError, 0)
 
 		// assertions
 		assert.Equal(t, tc.expected.err, err, tc.desc)
-		assert.Equal(t, tc.expected.code, errCode, tc.desc)
 	}
 }
 
