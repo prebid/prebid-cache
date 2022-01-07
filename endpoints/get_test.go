@@ -41,10 +41,17 @@ func TestGetHandler(t *testing.T) {
 		uuid      string
 		allowKeys bool
 	}
+	type metricsRecords struct {
+		totalRequests int64
+		badRequests   int64
+		requestErrs   int64
+		requestDur    float64
+	}
 	type testOutput struct {
-		responseCode int
-		responseBody string
-		logEntries   []logEntry
+		responseCode    int
+		responseBody    string
+		logEntries      []logEntry
+		metricsRecorded metricsRecords
 	}
 
 	testCases := []struct {
@@ -64,6 +71,10 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.ErrorLevel,
 					},
 				},
+				metricsRecorded: metricsRecords{
+					totalRequests: int64(1),
+					badRequests:   int64(1),
+				},
 			},
 		},
 		{
@@ -78,6 +89,10 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.ErrorLevel,
 					},
 				},
+				metricsRecorded: metricsRecords{
+					totalRequests: int64(1),
+					badRequests:   int64(1),
+				},
 			},
 		},
 		{
@@ -90,6 +105,10 @@ func TestGetHandler(t *testing.T) {
 				responseCode: http.StatusOK,
 				responseBody: `{"field":"value"}`,
 				logEntries:   []logEntry{},
+				metricsRecorded: metricsRecords{
+					totalRequests: int64(1),
+					requestDur:    1.00,
+				},
 			},
 		},
 		{
@@ -103,6 +122,10 @@ func TestGetHandler(t *testing.T) {
 						msg: "GET /cache uuid=uuid-not-found-and-links-to-no-value: Key not found",
 						lvl: logrus.DebugLevel,
 					},
+				},
+				metricsRecorded: metricsRecords{
+					totalRequests: int64(1),
+					badRequests:   int64(1),
 				},
 			},
 		},
@@ -118,6 +141,10 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.ErrorLevel,
 					},
 				},
+				metricsRecorded: metricsRecords{
+					totalRequests: int64(1),
+					requestErrs:   int64(1),
+				},
 			},
 		},
 		{
@@ -127,6 +154,10 @@ func TestGetHandler(t *testing.T) {
 				responseCode: http.StatusOK,
 				responseBody: "<tag>xml data here</tag>",
 				logEntries:   []logEntry{},
+				metricsRecorded: metricsRecords{
+					totalRequests: int64(1),
+					requestDur:    1.00,
+				},
 			},
 		},
 	}
@@ -167,6 +198,12 @@ func TestGetHandler(t *testing.T) {
 			// Assert the logger didn't exit the program
 			assert.False(t, fatal, test.desc)
 		}
+
+		// Assert recorded metrics
+		assert.Equal(t, test.out.metricsRecorded.totalRequests, metricstest.MockCounters["gets.current_url.request.total"], "%s - handle function should record every incomming GET request", test.desc)
+		assert.Equal(t, test.out.metricsRecorded.badRequests, metricstest.MockCounters["gets.current_url.request.bad_request"], "%s - Bad request wasn't recorded", test.desc)
+		assert.Equal(t, test.out.metricsRecorded.requestErrs, metricstest.MockCounters["gets.current_url.request.error"], "%s - WriteGetResponse error should have been recorded", test.desc)
+		assert.Equal(t, test.out.metricsRecorded.requestDur, metricstest.MockHistograms["gets.current_url.duration"], "%s - Successful GET request should have recorded duration", test.desc)
 
 		// Reset log
 		hook.Reset()

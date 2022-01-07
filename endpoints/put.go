@@ -150,15 +150,14 @@ func logBackendError(err error, index int) error {
 	}
 
 	logrus.Error("POST /cache Error while writing to the backend: ", err)
-	switch err {
-	case context.DeadlineExceeded:
+
+	if err == context.DeadlineExceeded {
 		logrus.Error("POST /cache timed out:", err)
 		return utils.NewPBCError(utils.PUT_DEADLINE_EXCEEDED)
-	default:
-		logrus.Error("POST /cache had an unexpected error:", err)
-		return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, err.Error())
 	}
-	return nil
+
+	logrus.Error("POST /cache had an unexpected error:", err)
+	return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, err.Error())
 }
 
 // handle is the handler function that gets assigned to the POST method of the `/cache` endpoint
@@ -180,6 +179,7 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 		}
 
 		http.Error(w, err.Error(), statusCode)
+		return
 	}
 
 	// successfully stored all elements in storage service or database, write http
@@ -275,7 +275,6 @@ type putObject struct {
 
 type putResponseObject struct {
 	UUID string `json:"uuid"`
-	//Error string `json:"error,omitempty"`
 }
 
 // PutResponse will be marshaled to be written into the http response
