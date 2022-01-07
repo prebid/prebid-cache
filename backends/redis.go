@@ -85,7 +85,7 @@ func (b *RedisBackend) Get(ctx context.Context, key string) (string, error) {
 	res, err := b.client.Get(key)
 
 	if err == redis.Nil {
-		err = utils.KeyNotFoundError{}
+		err = utils.NewPBCError(utils.KEY_NOT_FOUND)
 	}
 
 	return res, err
@@ -98,7 +98,7 @@ func (b *RedisBackend) Put(ctx context.Context, key string, value string, ttlSec
 
 	success, err := b.client.Put(key, value, ttlSeconds)
 	if !success {
-		return utils.RecordExistsError{}
+		return utils.NewPBCError(utils.RECORD_EXISTS)
 	}
 	return err
 }

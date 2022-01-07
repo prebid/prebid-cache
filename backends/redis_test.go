@@ -36,7 +36,7 @@ func TestRedisClientGet(t *testing.T) {
 			},
 			testExpectedValues{
 				value: "",
-				err:   utils.KeyNotFoundError{},
+				err:   utils.NewPBCError(utils.KEY_NOT_FOUND),
 			},
 		},
 		{
@@ -105,7 +105,7 @@ func TestRedisClientPut(t *testing.T) {
 			},
 			testExpectedValues{
 				"",
-				utils.RecordExistsError{},
+				utils.NewPBCError(utils.RECORD_EXISTS),
 			},
 		},
 		{
@@ -193,7 +193,7 @@ func (gc *goodRedisClient) Get(key string) (string, error) {
 	if key == gc.key {
 		return gc.value, nil
 	}
-	return "", utils.KeyNotFoundError{}
+	return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
 }
 
 func (gc *goodRedisClient) Put(key string, value string, ttlSeconds int) (bool, error) {

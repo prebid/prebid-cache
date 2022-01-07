@@ -87,7 +87,7 @@ func NewCassandraBackend(cfg config.Cassandra) *CassandraBackend {
 func (back *CassandraBackend) Get(ctx context.Context, key string) (string, error) {
 	res, err := back.client.Get(ctx, key)
 	if err == gocql.ErrNotFound {
-		err = utils.KeyNotFoundError{}
+		err = utils.NewPBCError(utils.KEY_NOT_FOUND)
 	}
 
 	return res, err
@@ -100,7 +100,7 @@ func (back *CassandraBackend) Put(ctx context.Context, key string, value string,
 
 	applied, err := back.client.Put(ctx, key, value, ttlSeconds)
 	if !applied {
-		return utils.RecordExistsError{}
+		return utils.NewPBCError(utils.RECORD_EXISTS)
 	}
 	return err
 }

@@ -1,231 +1,100 @@
 package utils
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
+)
+
+// Error types
+const (
+	MISSING_KEY               = iota // GET http.StatusBadRequest
+	RECORD_EXISTS                    // PUT http.StatusBadRequest
+	PUT_MAX_NUM_VALUES               // PUT http.StatusBadRequest
+	PUT_BAD_REQUEST                  // PUT http.StatusBadRequest
+	NEGATIVE_TTL                     // PUT http.StatusBadRequest
+	MALFORMED_XML                    // PUT http.StatusBadRequest
+	UNSUPPORTED_DATA_TO_STORE        // PUT http.StatusBadRequest
+	MISSING_VALUE                    // PUT http.StatusBadRequest
+	BAD_PAYLOAD_SIZE                 // PUT http.StatusBadRequest
+	UNKNOWN_STORED_DATA_TYPE         // GET http.StatusInternalServerError
+	PUT_INTERNAL_SERVER              // PUT http.StatusInternalServerError
+	MARSHAL_RESPONSE                 // PUT http.StatusInternalServerError
+	KEY_NOT_FOUND                    // GET http.StatusNotFound
+	KEY_LENGTH                       // GET http.StatusNotFound
+	PUT_DEADLINE_EXCEEDED            // PUT HttpDependencyTimeout
 )
 
 // Status code for errors due to a downstream dependency timeout.
 const HttpDependencyTimeout = 597
 
-/**************************/
-/* Get errors			  */
-/**************************/
-// Key not found
-type KeyNotFoundError struct{}
-
-func (e KeyNotFoundError) Error() string {
-	return "Key not found"
+// Map Prebid Cache's error codes to their corresponding response status codes
+var errToStatusCodes map[int]int = map[int]int{
+	MISSING_KEY:               http.StatusBadRequest,
+	RECORD_EXISTS:             http.StatusBadRequest,
+	PUT_MAX_NUM_VALUES:        http.StatusBadRequest,
+	PUT_BAD_REQUEST:           http.StatusBadRequest,
+	NEGATIVE_TTL:              http.StatusBadRequest,
+	MALFORMED_XML:             http.StatusBadRequest,
+	UNSUPPORTED_DATA_TO_STORE: http.StatusBadRequest,
+	MISSING_VALUE:             http.StatusBadRequest,
+	BAD_PAYLOAD_SIZE:          http.StatusBadRequest,
+	UNKNOWN_STORED_DATA_TYPE:  http.StatusInternalServerError,
+	PUT_INTERNAL_SERVER:       http.StatusInternalServerError,
+	MARSHAL_RESPONSE:          http.StatusInternalServerError,
+	KEY_NOT_FOUND:             http.StatusNotFound,
+	KEY_LENGTH:                http.StatusNotFound,
+	PUT_DEADLINE_EXCEEDED:     HttpDependencyTimeout,
 }
 
-// Missing UUID error
-type MissingKeyError struct{}
-
-func (e MissingKeyError) Error() string {
-	return "missing required parameter uuid"
+// Map Prebid Cache's error codes to constant error message if they have one. Not all
+// error types are here since some of them have non-constant error messages and are assigned upon
+// creation
+var errToMsgs map[int]string = map[int]string{
+	MISSING_KEY:              "missing required parameter uuid",
+	RECORD_EXISTS:            "Record exists with provided key.",
+	MISSING_VALUE:            "Missing required field value.",
+	UNKNOWN_STORED_DATA_TYPE: "Cache data was corrupted. Cannot determine type.",
+	MARSHAL_RESPONSE:         "Failed to serialize UUIDs into JSON.",
+	KEY_NOT_FOUND:            "Key not found",
+	KEY_LENGTH:               "invalid uuid length",
+	PUT_DEADLINE_EXCEEDED:    "timeout writing value to the backend.",
 }
 
-// Invalid UUID length
-type KeyLengthError struct{}
-
-func (e KeyLengthError) Error() string {
-	return "invalid uuid length"
+// PBCError implements the error interface
+type PBCError struct {
+	Type       int
+	StatusCode int
+	msg        string
 }
 
-// UnknownStoredDataType happens when retrieved data is neither XML nof JSON
-type UnknownStoredDataType struct{}
+func NewPBCError(errType int, msgs ...string) PBCError {
+	// Store error's type
+	re := PBCError{Type: errType}
 
-func (e UnknownStoredDataType) Error() string {
-	return "Cache data was corrupted. Cannot determine type."
-}
-
-// Other Prebid Cache error
-type UnknownPrebidCacheError struct{}
-
-func (e UnknownPrebidCacheError) Error() string {
-	return "Internal Prebid Cache error"
-}
-
-/**************************/
-/* Put errors			  */
-/**************************/
-// Put error wrapper
-func NewPrebidCacheError(e error, statusCode int) *PrebidCacheError {
-	return &PrebidCacheError{e, statusCode}
-}
-
-type PrebidCacheError struct {
-	err    error
-	status int
-}
-
-func (ce *PrebidCacheError) Error() string {
-	return ce.err.Error()
-}
-
-func (ce *PrebidCacheError) StatusCode() int {
-	return ce.status
-}
-
-// Bad request gets returned when incoming request could not get
-// unmarshalled or is invalid JSON
-type PutBadRequestError struct {
-	Body []byte
-}
-
-func (e PutBadRequestError) Error() string {
-	return "Request body " + string(e.Body) + " is not valid JSON."
-}
-
-//
-type MissingValueError struct{}
-
-func (e MissingValueError) Error() string {
-	return "Missing required field value."
-}
-
-//
-type NegativeTTLError struct {
-	TTLSeconds int
-}
-
-func (e NegativeTTLError) Error() string {
-	return fmt.Sprintf("ttlseconds must not be negative %d.", e.TTLSeconds)
-}
-
-//
-type MalformedXMLError struct {
-	Msg string
-}
-
-func (e MalformedXMLError) Error() string {
-	return e.Msg
-}
-
-// Record exists is the error we assign to the different backend errors
-// that describe a failure to put a value under a UUID that is already taken
-type RecordExistsError struct{}
-
-func (e RecordExistsError) Error() string {
-	return "Record exists with provided key."
-}
-
-// UnsupportedDataToStoreError happens when Prebid Cache tries to store
-// data other than XML of JSON
-type UnsupportedDataToStoreError struct {
-	UnknownDataType string
-}
-
-func (e UnsupportedDataToStoreError) Error() string {
-	return fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", e.UnknownDataType)
-}
-
-// PutBadPayloadSizeError happens when a payload gets rejected
-// for going over the configured max size.
-type PutBadPayloadSizeError struct {
-	Msg   string
-	Index int
-}
-
-func (e PutBadPayloadSizeError) Error() string {
-	return fmt.Sprintf("POST /cache element %d exceeded max size: %v", e.Index, e.Msg)
-}
-
-// PutDeadlineExceededError happens when we get a context.DeadlineExceeded:
-type PutDeadlineExceededError struct{}
-
-func (e PutDeadlineExceededError) Error() string {
-	return "timeout writing value to the backend."
-}
-
-// PutInternalServerError when the backend client returns an error
-type PutInternalServerError struct {
-	Msg string
-}
-
-func (e PutInternalServerError) Error() string {
-	return e.Msg
-}
-
-// PutMaxNumValuesError happens when an incomming request tries to put more
-// values than Prebid Cache has been configured to allow in a single request
-type PutMaxNumValuesError struct {
-	NumValues    int
-	MaxNumValues int
-}
-
-func (e PutMaxNumValuesError) Error() string {
-	return fmt.Sprintf("trying to put %d keys which is more than the number allowed: %d", e.NumValues, e.MaxNumValues)
-}
-
-// MarshalResponseError
-type MarshalResponseError struct{}
-
-func (e MarshalResponseError) Error() string {
-	return "Failed to serialize UUIDs into JSON."
-}
-
-/***************************/
-/* Complementary functions */
-/***************************/
-func GetErrorInfo(err interface{}, method, uuid string) (string, int, bool) {
-	errMsgBuilder := strings.Builder{}
-	errStatusCode := http.StatusNotFound
-	isKeyNotFoundError := false
-
-	// Build error message to log and respond with
-	errMsgBuilder.WriteString(method)
-	errMsgBuilder.WriteString(" /cache")
-	if len(uuid) > 0 {
-		errMsgBuilder.WriteString(fmt.Sprintf(" uuid=%s", uuid))
-	}
-	errMsgBuilder.WriteString(fmt.Sprintf(": %s", err.(error).Error()))
-
-	// Status code to respond with depending of the type of error
-	switch err.(type) {
-	case KeyNotFoundError:
-		// http.StatusNotFound
-		isKeyNotFoundError = true
-	case KeyLengthError:
-		// http.StatusNotFound
-	case MissingKeyError:
-		errStatusCode = http.StatusBadRequest
-	case UnknownStoredDataType:
-		errStatusCode = http.StatusInternalServerError
-	default:
-		errStatusCode = http.StatusInternalServerError
+	// Assign a return status code
+	if statusCode, exists := errToStatusCodes[errType]; exists {
+		re.StatusCode = statusCode
 	}
 
-	return errMsgBuilder.String(), errStatusCode, isKeyNotFoundError
+	// If custom error message, assign
+	for _, msg := range msgs {
+		re.msg = re.msg + msg
+	}
+
+	return re
 }
 
-func PutErrorInfo(err interface{}) int {
-	// Status code to respond with depending of the type of error
-	switch err.(type) {
-	case RecordExistsError:
-		return http.StatusBadRequest
-	case PutMaxNumValuesError:
-		return http.StatusBadRequest
-	case PutBadRequestError:
-		return http.StatusBadRequest
-	case NegativeTTLError:
-		return http.StatusBadRequest
-	case MalformedXMLError:
-		return http.StatusBadRequest
-	case UnsupportedDataToStoreError:
-		return http.StatusBadRequest
-	case MissingValueError:
-		return http.StatusBadRequest
-	case PutDeadlineExceededError:
-		return HttpDependencyTimeout
-	case PutInternalServerError:
-		return http.StatusInternalServerError
-	case MarshalResponseError:
-		return http.StatusInternalServerError
-	case PutBadPayloadSizeError:
-		return http.StatusBadRequest
-	default:
-		return http.StatusInternalServerError
+func (e PBCError) Error() string {
+	// If msg field was populated, use it
+	if len(e.msg) > 0 {
+		return e.msg
 	}
+
+	// Find its corresponding error message according to its errType
+	if msg, exists := errToMsgs[e.Type]; exists {
+		return msg
+	}
+
+	// If we couldn't find an error message for this errType and error
+	// didn't come with a msg field, return an empty string
+	return ""
 }

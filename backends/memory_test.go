@@ -41,7 +41,7 @@ func TestMemoryBackend(t *testing.T) {
 				err := b.Put(context.TODO(), "someKey", "someValye", 0)
 				return "", err
 			},
-			expected: testExpectedValues{"", utils.RecordExistsError{}},
+			expected: testExpectedValues{"", utils.NewPBCError(utils.RECORD_EXISTS)},
 		},
 		{
 			desc:    "succesful get",
@@ -63,7 +63,7 @@ func TestMemoryBackend(t *testing.T) {
 			run: func(b *MemoryBackend) (string, error) {
 				return b.Get(context.TODO(), "anotherKey")
 			},
-			expected: testExpectedValues{"", utils.KeyNotFoundError{}},
+			expected: testExpectedValues{"", utils.NewPBCError(utils.KEY_NOT_FOUND)},
 		},
 	}
 

@@ -73,12 +73,12 @@ func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumVal
 // corresponding error is returned
 func (e *PutHandler) parseRequest(r *http.Request) (*PutRequest, error) {
 	if r == nil {
-		return nil, utils.PutBadRequestError{}
+		return nil, utils.NewPBCError(utils.PUT_BAD_REQUEST)
 	}
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, utils.PutBadRequestError{}
+		return nil, utils.NewPBCError(utils.PUT_BAD_REQUEST)
 	}
 	defer r.Body.Close()
 
@@ -89,13 +89,13 @@ func (e *PutHandler) parseRequest(r *http.Request) (*PutRequest, error) {
 	if err := json.Unmarshal(body, put); err != nil {
 		// place memory back in sync pool
 		e.memory.requestPool.Put(put)
-		return nil, utils.PutBadRequestError{body}
+		return nil, utils.NewPBCError(utils.PUT_BAD_REQUEST, string(body))
 	}
 
 	if len(put.Puts) > e.cfg.maxNumValues {
 		// place memory back in sync pool
 		e.memory.requestPool.Put(put)
-		return nil, utils.PutMaxNumValuesError{len(put.Puts), e.cfg.maxNumValues}
+		return nil, utils.NewPBCError(utils.PUT_MAX_NUM_VALUES, fmt.Sprintf("trying to put %d keys which is more than the number allowed: %d", len(put.Puts), e.cfg.maxNumValues))
 	}
 
 	return put, nil
@@ -112,32 +112,32 @@ func parsePutObject(p PutObject) (string, error) {
 
 	// Make sure there's data to store
 	if len(p.Value) == 0 {
-		return "", utils.MissingValueError{}
+		return "", utils.NewPBCError(utils.MISSING_VALUE)
 	}
 
 	// Make sure a non-negative time-to-live quantity was provided
 	if p.TTLSeconds < 0 {
-		return "", utils.NegativeTTLError{p.TTLSeconds}
+		return "", utils.NewPBCError(utils.NEGATIVE_TTL, fmt.Sprintf("ttlseconds must not be negative %d.", p.TTLSeconds))
 	}
 
 	// Limit the type of data to XML or JSON
 	if p.Type == backends.XML_PREFIX {
 		if p.Value[0] != byte('"') || p.Value[len(p.Value)-1] != byte('"') {
-			return "", utils.MalformedXMLError{fmt.Sprintf("XML messages must have a String value. Found %v", p.Value)}
+			return "", utils.NewPBCError(utils.MALFORMED_XML, fmt.Sprintf("XML messages must have a String value. Found %v", p.Value))
 		}
 
 		// Be careful about the the cross-script escaping issues here. JSON requires quotation marks to be escaped,
 		// for example... so we'll need to un-escape it before we consider it to be XML content.
 		var interpreted string
 		if err := json.Unmarshal(p.Value, &interpreted); err != nil {
-			return "", utils.MalformedXMLError{fmt.Sprintf("Error unmarshalling XML value: %v", p.Value)}
+			return "", utils.NewPBCError(utils.MALFORMED_XML, fmt.Sprintf("Error unmarshalling XML value: %v", p.Value))
 		}
 
 		toCache = p.Type + interpreted
 	} else if p.Type == backends.JSON_PREFIX {
 		toCache = p.Type + string(p.Value)
 	} else {
-		return "", utils.UnsupportedDataToStoreError{p.Type}
+		return "", utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type))
 	}
 
 	return toCache, nil
@@ -145,17 +145,17 @@ func parsePutObject(p PutObject) (string, error) {
 
 func logBackendError(err error, index int) error {
 	if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
-		return utils.PutBadPayloadSizeError{Msg: err.Error(), Index: index}
+		return utils.NewPBCError(utils.BAD_PAYLOAD_SIZE, fmt.Sprintf("POST /cache element %d exceeded max size: %v", index, err.Error()))
 	}
 
 	logrus.Error("POST /cache Error while writing to the backend: ", err)
 	switch err {
 	case context.DeadlineExceeded:
 		logrus.Error("POST /cache timed out:", err)
-		return utils.PutDeadlineExceededError{}
+		return utils.NewPBCError(utils.PUT_DEADLINE_EXCEEDED)
 	default:
 		logrus.Error("POST /cache had an unexpected error:", err)
-		return utils.PutInternalServerError{err.Error()}
+		return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, err.Error())
 	}
 	return nil
 }
@@ -168,7 +168,7 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 
 	bytes, err := e.processPutRequest(r)
 	if err != nil {
-		statusCode := utils.PutErrorInfo(err)
+		statusCode := err.(utils.PBCError).StatusCode
 
 		// At least one of the elements in the incomming request could not be stored
 		// write the http error and log corresponding metrics
@@ -212,7 +212,7 @@ func (e *PutHandler) processPutRequest(r *http.Request) ([]byte, error) {
 	// Marshal Prebid Cache's response
 	bytes, err := json.Marshal(resps)
 	if err != nil {
-		return nil, utils.MarshalResponseError{}
+		return nil, utils.NewPBCError(utils.MARSHAL_RESPONSE)
 	}
 
 	return bytes, nil
@@ -236,7 +236,7 @@ func (e *PutHandler) putElements(put *PutRequest, resps *PutResponse) error {
 			resps.Responses[i].UUID = p.Key
 			e.metrics.RecordPutKeyProvided()
 		} else if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
-			return utils.PutInternalServerError{"Error generating version 4 UUID"}
+			return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, "Error generating version 4 UUID")
 		}
 
 		// If we have a blank UUID, don't store anything.
@@ -248,7 +248,7 @@ func (e *PutHandler) putElements(put *PutRequest, resps *PutResponse) error {
 
 			err = e.backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
 			if err != nil {
-				if _, ok := err.(utils.RecordExistsError); ok {
+				if pbcErr, isPbcErr := err.(utils.PBCError); isPbcErr && pbcErr.Type == utils.RECORD_EXISTS {
 					// Record didn't get overwritten, return a reponse with an empty UUID string
 					resps.Responses[i].UUID = ""
 				} else {

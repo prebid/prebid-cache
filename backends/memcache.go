@@ -71,7 +71,7 @@ func (mc *MemcacheBackend) Get(ctx context.Context, key string) (string, error) 
 
 	if err != nil {
 		if err == memcache.ErrCacheMiss {
-			err = utils.KeyNotFoundError{}
+			err = utils.NewPBCError(utils.KEY_NOT_FOUND)
 		}
 		return "", err
 	}
@@ -84,7 +84,7 @@ func (mc *MemcacheBackend) Get(ctx context.Context, key string) (string, error) 
 func (mc *MemcacheBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	err := mc.memcache.Put(key, value, ttlSeconds)
 	if err != nil && err == memcache.ErrNotStored {
-		return utils.RecordExistsError{}
+		return utils.NewPBCError(utils.RECORD_EXISTS)
 	}
 	return err
 }

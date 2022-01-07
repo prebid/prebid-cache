@@ -18,7 +18,7 @@ func (b *MemoryBackend) Get(ctx context.Context, key string) (string, error) {
 
 	v, ok := b.db[key]
 	if !ok {
-		return "", utils.KeyNotFoundError{}
+		return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
 	}
 
 	return v, nil
@@ -30,7 +30,7 @@ func (b *MemoryBackend) Put(ctx context.Context, key string, value string, ttlSe
 
 	// If the record already exists, don't write and throw error
 	if _, ok := b.db[key]; ok {
-		return utils.RecordExistsError{}
+		return utils.NewPBCError(utils.RECORD_EXISTS)
 	}
 
 	b.db[key] = value

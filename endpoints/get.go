@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -73,12 +74,12 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 func parseUUID(r *http.Request, allowCustomKeys bool) (string, error) {
 	uuid := r.URL.Query().Get("uuid")
 	if uuid == "" {
-		return "", utils.MissingKeyError{}
+		return "", utils.NewPBCError(utils.MISSING_KEY)
 	}
 	if len(uuid) != 36 && (!allowCustomKeys) {
 		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 		// ones before even checking the backend.
-		return uuid, utils.KeyLengthError{}
+		return uuid, utils.NewPBCError(utils.KEY_LENGTH)
 	}
 	return uuid, nil
 }
@@ -93,7 +94,7 @@ func writeGetResponse(w http.ResponseWriter, id string, storedData string) error
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(storedData)[len(backends.JSON_PREFIX):])
 	} else {
-		return utils.UnknownStoredDataType{}
+		return utils.NewPBCError(utils.UNKNOWN_STORED_DATA_TYPE)
 	}
 	return nil
 }
@@ -101,14 +102,31 @@ func writeGetResponse(w http.ResponseWriter, id string, storedData string) error
 // handleException logs and replies to the request with the error message and HTTP code
 func handleException(w http.ResponseWriter, err error, uuid string) {
 	if err != nil {
-		errMsg, errCode, isKeyNotFound := utils.GetErrorInfo(err, "GET", uuid)
+		// Build error message
+		errMsgBuilder := strings.Builder{}
+		errMsgBuilder.WriteString("GET /cache")
+		if len(uuid) > 0 {
+			errMsgBuilder.WriteString(fmt.Sprintf(" uuid=%s", uuid))
+		}
+		errMsgBuilder.WriteString(fmt.Sprintf(": %s", err.Error()))
+		errMsg := errMsgBuilder.String()
 
+		// Determine the response status code based on error type
+		errCode := http.StatusInternalServerError
+		isKeyNotFound := false
+		if pbcErr, isPBCErr := err.(utils.PBCError); isPBCErr {
+			errCode = pbcErr.StatusCode
+			isKeyNotFound = pbcErr.Type == utils.KEY_NOT_FOUND
+		}
+
+		// Determine lob level
 		if isKeyNotFound {
 			log.Debug(errMsg)
 		} else {
 			log.Error(errMsg)
 		}
 
+		// Write error response
 		http.Error(w, errMsg, errCode)
 	}
 }

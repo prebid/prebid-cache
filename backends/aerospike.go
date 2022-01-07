@@ -126,10 +126,10 @@ func classifyAerospikeError(err error) error {
 	if err != nil {
 		if aerr, ok := err.(as_types.AerospikeError); ok {
 			if aerr.ResultCode() == as_types.KEY_NOT_FOUND_ERROR {
-				return utils.KeyNotFoundError{}
+				return utils.NewPBCError(utils.KEY_NOT_FOUND)
 			}
 			if aerr.ResultCode() == as_types.KEY_EXISTS_ERROR {
-				return utils.RecordExistsError{}
+				return utils.NewPBCError(utils.RECORD_EXISTS)
 			}
 		}
 	}

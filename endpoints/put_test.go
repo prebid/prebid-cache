@@ -536,7 +536,7 @@ func TestParseRequest(t *testing.T) {
 		{
 			"nil request",
 			func() *http.Request { return nil },
-			testOut{nil, utils.PutBadRequestError{}},
+			testOut{nil, utils.NewPBCError(utils.PUT_BAD_REQUEST)},
 		},
 		{
 			"request with malformed body throws unmarshal error",
@@ -544,7 +544,7 @@ func TestParseRequest(t *testing.T) {
 				r, _ := http.NewRequest("POST", "http://fakeurl.com", bytes.NewBuffer([]byte(`malformed`)))
 				return r
 			},
-			testOut{nil, utils.PutBadRequestError{[]byte(`malformed`)}},
+			testOut{nil, utils.NewPBCError(utils.PUT_BAD_REQUEST, "malformed")},
 		},
 		{
 			"valid request body. Expect no error",
@@ -569,7 +569,7 @@ func TestParseRequest(t *testing.T) {
 				r, _ := http.NewRequest("POST", "http://fakeurl.com", bytes.NewBuffer(requestBody))
 				return r
 			},
-			testOut{nil, utils.PutMaxNumValuesError{2, 1}},
+			testOut{nil, utils.NewPBCError(utils.PUT_MAX_NUM_VALUES, "trying to put 2 keys which is more than the number allowed: 1")},
 		},
 	}
 	for _, tc := range testCases {
@@ -606,7 +606,7 @@ func TestParsePutObject(t *testing.T) {
 			PutObject{},
 			testOut{
 				value: "",
-				err:   utils.MissingValueError{},
+				err:   utils.NewPBCError(utils.MISSING_VALUE),
 			},
 		},
 		{
@@ -617,7 +617,7 @@ func TestParsePutObject(t *testing.T) {
 			},
 			testOut{
 				value: "",
-				err:   utils.NegativeTTLError{-1},
+				err:   utils.NewPBCError(utils.NEGATIVE_TTL, "ttlseconds must not be negative -1."),
 			},
 		},
 		{
@@ -629,7 +629,7 @@ func TestParsePutObject(t *testing.T) {
 			},
 			testOut{
 				value: "",
-				err:   utils.UnsupportedDataToStoreError{"unknown"},
+				err:   utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, "Type must be one of [\"json\", \"xml\"]. Found unknown"),
 			},
 		},
 		{
@@ -641,7 +641,7 @@ func TestParsePutObject(t *testing.T) {
 			},
 			testOut{
 				value: "",
-				err:   utils.MalformedXMLError{"XML messages must have a String value. Found [60 116 97 103 62 88 77 76 60 47 116 97 103 62]"},
+				err:   utils.NewPBCError(utils.MALFORMED_XML, "XML messages must have a String value. Found [60 116 97 103 62 88 77 76 60 47 116 97 103 62]"),
 			},
 		},
 		{
@@ -695,10 +695,7 @@ func TestLogBackendError(t *testing.T) {
 			"Bad payload size error",
 			&backendDecorators.BadPayloadSize{Limit: 1, Size: 2},
 			testOutput{
-				utils.PutBadPayloadSizeError{
-					Msg:   "Payload size 2 exceeded max 1",
-					Index: 0,
-				},
+				utils.NewPBCError(utils.BAD_PAYLOAD_SIZE, "POST /cache element 0 exceeded max size: Payload size 2 exceeded max 1"),
 				http.StatusBadRequest,
 			},
 		},
@@ -706,15 +703,15 @@ func TestLogBackendError(t *testing.T) {
 			"DeadlineExceeded error",
 			context.DeadlineExceeded,
 			testOutput{
-				utils.PutDeadlineExceededError{},
+				utils.NewPBCError(utils.PUT_DEADLINE_EXCEEDED),
 				utils.HttpDependencyTimeout,
 			},
 		},
 		{
 			"Backend client error",
-			errors.New("Key exist error"),
+			errors.New("Server memory error"),
 			testOutput{
-				utils.PutInternalServerError{"Key exist error"},
+				utils.NewPBCError(utils.PUT_INTERNAL_SERVER, "Server memory error"),
 				http.StatusInternalServerError,
 			},
 		},
