@@ -12,6 +12,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// RedisDB is an interface that helps us communicate with an instance of a
+// Redis database. Its implementation is intended to use the "github.com/go-redis/redis"
+// client
 type RedisDB interface {
 	Get(key string) (string, error)
 	Put(key string, value string, ttlSeconds int) (bool, error)
@@ -35,13 +38,14 @@ func (db RedisDBClient) Put(key string, value string, ttlSeconds int) (bool, err
 	return db.client.SetNX(key, value, time.Duration(ttlSeconds)*time.Second).Result()
 }
 
-// Instantiates, and configures the Redis client, it also performs Get
-// and Put operations and monitors results. Implements the Backend interface
+// RedisBackend when initialized will instantiate, and configure the Redis client. It implements
+// the Backend interface.
 type RedisBackend struct {
 	cfg    config.Redis
 	client RedisDB
 }
 
+// NewRedisBackend initializes the redis client and pings to make sure connection was successful
 func NewRedisBackend(cfg config.Redis) *RedisBackend {
 	constr := cfg.Host + ":" + strconv.Itoa(cfg.Port)
 

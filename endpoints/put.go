@@ -35,6 +35,7 @@ type syncPools struct {
 	putResponsePool sync.Pool
 }
 
+// NewPutHandler returns the handle function for the "/cache" endpoint when it gets receives a POST request
 func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	putHandler := &PutHandler{}
 
@@ -54,7 +55,7 @@ func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumVal
 	putHandler.memory = syncPools{
 		requestPool: sync.Pool{
 			New: func() interface{} {
-				return &PutRequest{}
+				return &putRequest{}
 			},
 		},
 		putResponsePool: sync.Pool{
@@ -71,7 +72,7 @@ func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumVal
 // the incoming request could not be unmarshalled or if the request comes with more
 // elements to put than the maximum allowed in Prebid Cache's configuration, the
 // corresponding error is returned
-func (e *PutHandler) parseRequest(r *http.Request) (*PutRequest, error) {
+func (e *PutHandler) parseRequest(r *http.Request) (*putRequest, error) {
 	if r == nil {
 		return nil, utils.NewPBCError(utils.PUT_BAD_REQUEST)
 	}
@@ -83,8 +84,8 @@ func (e *PutHandler) parseRequest(r *http.Request) (*PutRequest, error) {
 	defer r.Body.Close()
 
 	// Allocate a PutRequest object in thread-safe memory
-	put := e.memory.requestPool.Get().(*PutRequest)
-	put.Puts = make([]PutObject, 0)
+	put := e.memory.requestPool.Get().(*putRequest)
+	put.Puts = make([]putObject, 0)
 
 	if err := json.Unmarshal(body, put); err != nil {
 		// place memory back in sync pool
@@ -107,7 +108,7 @@ func (e *PutHandler) parseRequest(r *http.Request) (*PutRequest, error) {
 //     prepended by its type
 //   - JSON content gets prepended by its type
 // No other formats are supported.
-func parsePutObject(p PutObject) (string, error) {
+func parsePutObject(p putObject) (string, error) {
 	var toCache string
 
 	// Make sure there's data to store
@@ -201,7 +202,7 @@ func (e *PutHandler) processPutRequest(r *http.Request) ([]byte, error) {
 
 	// Allocate a PutResponse object in thread-safe memory
 	resps := e.memory.putResponsePool.Get().(*PutResponse)
-	resps.Responses = make([]PutResponseObject, len(put.Puts))
+	resps.Responses = make([]putResponseObject, len(put.Puts))
 	defer e.memory.putResponsePool.Put(resps)
 
 	// Send elements to storage service or database
@@ -224,7 +225,7 @@ func (e *PutHandler) processPutRequest(r *http.Request) ([]byte, error) {
 // TODO: Rewrite this function to operate in parallel
 // TODO: For those storage clients that support storing multiple elements in a single call, build a batch and send them together
 // TODO: store errors in resps and allow Prebid Cache to provide error details in an "errors" field in the response
-func (e *PutHandler) putElements(put *PutRequest, resps *PutResponse) error {
+func (e *PutHandler) putElements(put *putRequest, resps *PutResponse) error {
 	for i, p := range put.Puts {
 		toCache, err := parsePutObject(p)
 		if err != nil {
@@ -235,7 +236,7 @@ func (e *PutHandler) putElements(put *PutRequest, resps *PutResponse) error {
 		if e.cfg.allowKeys && len(p.Key) > 0 {
 			resps.Responses[i].UUID = p.Key
 			e.metrics.RecordPutKeyProvided()
-		} else if resps.Responses[i].UUID, err = utils.GenerateRandomId(); err != nil {
+		} else if resps.Responses[i].UUID, err = utils.GenerateRandomID(); err != nil {
 			return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, "Error generating version 4 UUID")
 		}
 
@@ -261,22 +262,23 @@ func (e *PutHandler) putElements(put *PutRequest, resps *PutResponse) error {
 	return nil
 }
 
-type PutRequest struct {
-	Puts []PutObject `json:"puts"`
+type putRequest struct {
+	Puts []putObject `json:"puts"`
 }
 
-type PutObject struct {
+type putObject struct {
 	Type       string          `json:"type"`
 	TTLSeconds int             `json:"ttlseconds"`
 	Value      json.RawMessage `json:"value"`
 	Key        string          `json:"key"`
 }
 
-type PutResponseObject struct {
+type putResponseObject struct {
 	UUID string `json:"uuid"`
 	//Error string `json:"error,omitempty"`
 }
 
+// PutResponse will be marshaled to be written into the http response
 type PutResponse struct {
-	Responses []PutResponseObject `json:"responses"`
+	Responses []putResponseObject `json:"responses"`
 }

@@ -23,8 +23,8 @@ const (
 	PUT_DEADLINE_EXCEEDED            // PUT HttpDependencyTimeout
 )
 
-// Status code for errors due to a downstream dependency timeout.
-const HttpDependencyTimeout = 597
+// HTTPDependencyTimeout is the status code for errors due to a downstream dependency timeout.
+const HTTPDependencyTimeout = 597
 
 // Map Prebid Cache's error codes to their corresponding response status codes
 var errToStatusCodes map[int]int = map[int]int{
@@ -42,7 +42,7 @@ var errToStatusCodes map[int]int = map[int]int{
 	MARSHAL_RESPONSE:          http.StatusInternalServerError,
 	KEY_NOT_FOUND:             http.StatusNotFound,
 	KEY_LENGTH:                http.StatusNotFound,
-	PUT_DEADLINE_EXCEEDED:     HttpDependencyTimeout,
+	PUT_DEADLINE_EXCEEDED:     HTTPDependencyTimeout,
 }
 
 // Map Prebid Cache's error codes to constant error message if they have one. Not all

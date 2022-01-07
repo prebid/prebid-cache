@@ -7,11 +7,14 @@ import (
 	"github.com/prebid/prebid-cache/utils"
 )
 
+// MemoryBackend stores information in the local memory heap. Stored data dissapears upon
+// Prebid Cache restart
 type MemoryBackend struct {
 	db map[string]string
 	mu sync.Mutex
 }
 
+// Get retrieves from the local memory and uses a mutex lock to aviod data race scenarios
 func (b *MemoryBackend) Get(ctx context.Context, key string) (string, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -24,6 +27,7 @@ func (b *MemoryBackend) Get(ctx context.Context, key string) (string, error) {
 	return v, nil
 }
 
+// Put stores data in local memory and uses a mutex lock to aviod data race scenarios
 func (b *MemoryBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -37,6 +41,7 @@ func (b *MemoryBackend) Put(ctx context.Context, key string, value string, ttlSe
 	return nil
 }
 
+// NewMemoryBackend returns a MemoryBackend
 func NewMemoryBackend() *MemoryBackend {
 	return &MemoryBackend{
 		db: make(map[string]string),

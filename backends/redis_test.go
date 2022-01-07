@@ -111,14 +111,14 @@ func TestRedisClientPut(t *testing.T) {
 		{
 			"RedisBackend.Put() throws an error different from error redis.Nil, which gets returned when key does not exist.",
 			testInput{
-				&errorProneRedisClient{success: true, errorToThrow: errors.New("Some other Redis error.")},
+				&errorProneRedisClient{success: true, errorToThrow: errors.New("some other Redis error")},
 				"someKey",
 				"someValue",
 				10,
 			},
 			testExpectedValues{
 				"",
-				errors.New("Some other Redis error."),
+				errors.New("some other Redis error"),
 			},
 		},
 		{

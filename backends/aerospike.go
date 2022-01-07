@@ -15,36 +15,42 @@ import (
 const setName = "uuid"
 const binValue = "value"
 
-// Wrapper for the Aerospike client
+// AerospikeDB is a wrapper for the Aerospike client
 type AerospikeDB interface {
-	NewUuidKey(namespace string, key string) (*as.Key, error)
+	NewUUIDKey(namespace string, key string) (*as.Key, error)
 	Get(key *as.Key) (*as.Record, error)
 	Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error
 }
 
+// AerospikeDBClient implements the AerospikeDB interface
 type AerospikeDBClient struct {
 	client *as.Client
 }
 
+// Get performs the as.Client Get operation
 func (db AerospikeDBClient) Get(key *as.Key) (*as.Record, error) {
 	return db.client.Get(nil, key, binValue)
 }
 
+// Put performs the as.Client Put operation
 func (db AerospikeDBClient) Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error {
 	return db.client.Put(policy, key, binMap)
 }
 
-func (db *AerospikeDBClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
+// NewUUIDKey creates an aerospike key so we can store data under it
+func (db *AerospikeDBClient) NewUUIDKey(namespace string, key string) (*as.Key, error) {
 	return as.NewKey(namespace, setName, key)
 }
 
-// Instantiates, and configures the Aerospike client, it also performs Get and Put operations and monitors results
+// AerospikeBackend upon creation will instantiates, and configure the Aerospike client. Implements
+// the Backend interface
 type AerospikeBackend struct {
 	namespace string
 	client    AerospikeDB
 	metrics   *metrics.Metrics
 }
 
+// NewAerospikeBackend validates config.Aerospike and returns an AerospikeBackend
 func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *AerospikeBackend {
 	var hosts []*as.Host
 
@@ -77,8 +83,10 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 	}
 }
 
+// Get creates an aerospike key based on the UUID key parameter, perfomrs the client's Get call
+// and validates results. Can return a KEY_NOT_FOUND error or other Aerospike server errors
 func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) {
-	asKey, err := a.client.NewUuidKey(a.namespace, key)
+	asKey, err := a.client.NewUUIDKey(a.namespace, key)
 	if err != nil {
 		return "", classifyAerospikeError(err)
 	}
@@ -103,8 +111,10 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 	return str, nil
 }
 
+// Put creates an aerospike key based on the UUID key parameter and stores the value using the client's Put
+// implementaion. Can return a RECORD_EXISTS error or other Aerospike server errors
 func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	asKey, err := a.client.NewUuidKey(a.namespace, key)
+	asKey, err := a.client.NewUUIDKey(a.namespace, key)
 	if err != nil {
 		return classifyAerospikeError(err)
 	}

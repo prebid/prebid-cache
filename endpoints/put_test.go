@@ -226,7 +226,7 @@ func TestCustomKey(t *testing.T) {
 	type aTest struct {
 		desc         string
 		inCustomKey  string
-		expectedUuid string
+		expectedUUID string
 	}
 	testGroups := []struct {
 		allowSettingKeys bool
@@ -238,12 +238,12 @@ func TestCustomKey(t *testing.T) {
 				{
 					desc:         "Custom key maps to element in cache but setting keys is not allowed, set value with random UUID",
 					inCustomKey:  "36-char-key-maps-to-actual-xml-value",
-					expectedUuid: `[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}`,
+					expectedUUID: `[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}`,
 				},
 				{
 					desc:         "Custom key maps to no element in cache, set value with random UUID and respond 200",
 					inCustomKey:  "36-char-key-maps-to-actual-xml-value",
-					expectedUuid: `[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}`,
+					expectedUUID: `[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}`,
 				},
 			},
 		},
@@ -253,12 +253,12 @@ func TestCustomKey(t *testing.T) {
 				{
 					desc:         "Setting keys allowed but key already maps to an element in cache, don't set value and respond with blank UUID",
 					inCustomKey:  "36-char-key-maps-to-actual-xml-value",
-					expectedUuid: "",
+					expectedUUID: "",
 				},
 				{
 					desc:         "Custom key maps to no element in cache, set value and respond with 200 and the custom UUID",
 					inCustomKey:  "cust-key-maps-to-no-value-in-backend",
-					expectedUuid: "cust-key-maps-to-no-value-in-backend",
+					expectedUUID: "cust-key-maps-to-no-value-in-backend",
 				},
 			},
 		},
@@ -288,10 +288,10 @@ func TestCustomKey(t *testing.T) {
 			assert.Equal(t, http.StatusOK, recorder.Code, tc.desc)
 
 			// Assert response UUID
-			if tc.expectedUuid == "" {
+			if tc.expectedUUID == "" {
 				assert.Equalf(t, `{"responses":[{"uuid":""}]}`, recorder.Body.String(), tc.desc)
 			} else {
-				re, err := regexp.Compile(tc.expectedUuid)
+				re, err := regexp.Compile(tc.expectedUUID)
 				assert.NoError(t, err, tc.desc)
 				assert.Greater(t, len(re.Find(recorder.Body.Bytes())), 0, tc.desc)
 			}
@@ -425,7 +425,7 @@ func TestInternalPutClientError(t *testing.T) {
 	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"text longer than size limit\"}]}"
 
 	// Use mock client that will return an error
-	backend := NewErrorReturningBackend()
+	backend := newErrorReturningBackend()
 
 	// Run client
 	router := httprouter.New()
@@ -509,7 +509,7 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"text longer than size limit\"}]}"
 
 	// Use mock client that will return an error
-	backend := NewDeadlineExceededBackend()
+	backend := newDeadlineExceededBackend()
 
 	// Run client
 	router := httprouter.New()
@@ -519,13 +519,13 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 	_, httpTestRecorder := doMockPut(t, router, reqBody)
 
 	// Assert
-	assert.Equal(t, HttpDependencyTimeout, httpTestRecorder.Code, "Put should have failed because we are using a MockDeadlineExceededBackend")
+	assert.Equal(t, utils.HTTPDependencyTimeout, httpTestRecorder.Code, "Put should have failed because we are using a MockDeadlineExceededBackend")
 }
 
 // TestParseRequest asserts *PutHandler's parseRequest(r *http.Request) method
 func TestParseRequest(t *testing.T) {
 	type testOut struct {
-		put *PutRequest
+		put *putRequest
 		err error
 	}
 	testCases := []struct {
@@ -554,8 +554,8 @@ func TestParseRequest(t *testing.T) {
 				return r
 			},
 			testOut{
-				&PutRequest{
-					Puts: []PutObject{
+				&putRequest{
+					Puts: []putObject{
 						{Type: "json", Value: json.RawMessage(`{"valueField":5}`)},
 					},
 				},
@@ -577,7 +577,7 @@ func TestParseRequest(t *testing.T) {
 		putHandler := &PutHandler{
 			memory: syncPools{
 				requestPool: sync.Pool{
-					New: func() interface{} { return &PutRequest{} },
+					New: func() interface{} { return &putRequest{} },
 				},
 			},
 			cfg: putHandlerConfig{maxNumValues: 1},
@@ -598,12 +598,12 @@ func TestParsePutObject(t *testing.T) {
 	}
 	testCases := []struct {
 		desc     string
-		in       PutObject
+		in       putObject
 		expected testOut
 	}{
 		{
 			"empty value, expect error",
-			PutObject{},
+			putObject{},
 			testOut{
 				value: "",
 				err:   utils.NewPBCError(utils.MISSING_VALUE),
@@ -611,7 +611,7 @@ func TestParsePutObject(t *testing.T) {
 		},
 		{
 			"negative time-to-live, expect error",
-			PutObject{
+			putObject{
 				TTLSeconds: -1,
 				Value:      json.RawMessage(`<tag>Your XML content goes here.</tag>`),
 			},
@@ -622,7 +622,7 @@ func TestParsePutObject(t *testing.T) {
 		},
 		{
 			"non xml nor json type, expect error",
-			PutObject{
+			putObject{
 				Type:       "unknown",
 				TTLSeconds: 60,
 				Value:      json.RawMessage(`<tag>Your XML content goes here.</tag>`),
@@ -634,7 +634,7 @@ func TestParsePutObject(t *testing.T) {
 		},
 		{
 			"xml type value is not a string, expect error",
-			PutObject{
+			putObject{
 				Type:       "xml",
 				TTLSeconds: 60,
 				Value:      json.RawMessage(`<tag>XML</tag>`),
@@ -646,7 +646,7 @@ func TestParsePutObject(t *testing.T) {
 		},
 		{
 			"xml type value is surrounded by quotes and, therefore, a string. No errors expected",
-			PutObject{
+			putObject{
 				Type:       "xml",
 				TTLSeconds: 60,
 				Value:      json.RawMessage(`"<tag>XML</tag>"`),
@@ -658,7 +658,7 @@ func TestParsePutObject(t *testing.T) {
 		},
 		{
 			"valid JSON input, no errors expected",
-			PutObject{
+			putObject{
 				Type:       "json",
 				TTLSeconds: 60,
 				Value:      json.RawMessage(`{"native":"{\"context\":1,\"plcmttype\":1,\"assets\":[{\"img\":{\"wmin\":30}}]}}`),
@@ -704,7 +704,7 @@ func TestLogBackendError(t *testing.T) {
 			context.DeadlineExceeded,
 			testOutput{
 				utils.NewPBCError(utils.PUT_DEADLINE_EXCEEDED),
-				utils.HttpDependencyTimeout,
+				utils.HTTPDependencyTimeout,
 			},
 		},
 		{
@@ -870,7 +870,7 @@ func (b *errorReturningBackend) Put(ctx context.Context, key string, value strin
 	return fmt.Errorf("This is a mock backend that returns this error on Put() operation")
 }
 
-func NewErrorReturningBackend() *errorReturningBackend {
+func newErrorReturningBackend() *errorReturningBackend {
 	return &errorReturningBackend{}
 }
 
@@ -901,6 +901,6 @@ func (b *deadlineExceedingBackend) Put(ctx context.Context, key string, value st
 	return err
 }
 
-func NewDeadlineExceededBackend() *deadlineExceedingBackend {
+func newDeadlineExceededBackend() *deadlineExceedingBackend {
 	return &deadlineExceedingBackend{}
 }

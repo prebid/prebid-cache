@@ -9,6 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// CassandraDB is an interface that helps us communicate with a cassandra storage service
+// using the cassandra "github.com/gocql/gocql" client
 type CassandraDB interface {
 	Init() error
 	Get(ctx context.Context, key string) (string, error)

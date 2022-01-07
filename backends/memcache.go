@@ -10,6 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// MemcacheDataStore is an interface that helps us communicate with an instance of the
+// memcached cache server. Its implementation is intended to use the
+// "github.com/bradfitz/gomemcache/memcache" client
 type MemcacheDataStore interface {
 	Get(key string) (*memcache.Item, error)
 	Put(key string, value string, ttlSeconds int) error

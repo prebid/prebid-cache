@@ -292,7 +292,7 @@ type errorProneAerospikeClient struct {
 	errorThrowingFunction string
 }
 
-func (c *errorProneAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
+func (c *errorProneAerospikeClient) NewUUIDKey(namespace string, key string) (*as.Key, error) {
 	if c.errorThrowingFunction == "TEST_KEY_GEN_ERROR" {
 		return nil, as_types.NewAerospikeError(as_types.NOT_AUTHENTICATED)
 	}
@@ -344,6 +344,6 @@ func (c *goodAerospikeClient) Put(policy *as.WritePolicy, aeKey *as.Key, binMap 
 	return as_types.NewAerospikeError(as_types.KEY_MISMATCH)
 }
 
-func (c *goodAerospikeClient) NewUuidKey(namespace string, key string) (*as.Key, error) {
+func (c *goodAerospikeClient) NewUUIDKey(namespace string, key string) (*as.Key, error) {
 	return as.NewKey(namespace, setName, key)
 }
