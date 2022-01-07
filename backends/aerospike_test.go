@@ -117,7 +117,7 @@ func TestClassifyAerospikeError(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			desc:        "Generic non-nil error, expect same error as output",
+			desc:        "Generic non-nil error, expect same error in output",
 			inErr:       fmt.Errorf("client.Get returned nil record"),
 			expectedErr: fmt.Errorf("client.Get returned nil record"),
 		},

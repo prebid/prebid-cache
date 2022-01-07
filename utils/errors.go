@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-// Error types
+// Prebid Cache error types
 const (
 	MISSING_KEY               = iota // GET http.StatusBadRequest
 	RECORD_EXISTS                    // PUT http.StatusBadRequest
@@ -45,9 +45,9 @@ var errToStatusCodes map[int]int = map[int]int{
 	PUT_DEADLINE_EXCEEDED:     HTTPDependencyTimeout,
 }
 
-// Map Prebid Cache's error codes to constant error message if they have one. Not all
-// error types are here since some of them have non-constant error messages and are assigned upon
-// creation
+// Map Prebid Cache's error codes to their corresponding constant error message if they have one.
+// Not all error types are found here since some of them have non-constant error messages and
+// are assigned custom messages upon creation
 var errToMsgs map[int]string = map[int]string{
 	MISSING_KEY:              "missing required parameter uuid",
 	RECORD_EXISTS:            "Record exists with provided key.",
@@ -66,16 +66,21 @@ type PBCError struct {
 	msg        string
 }
 
+// NewPBCError returns an error with either a custom error message or not. The only
+// required parameter is errType
 func NewPBCError(errType int, msgs ...string) PBCError {
 	// Store error's type
 	re := PBCError{Type: errType}
 
-	// Assign a return status code
+	// Assign a status code value. If not found in the errToStatusCodes
+	// map, defaults to zero
 	if statusCode, exists := errToStatusCodes[errType]; exists {
 		re.StatusCode = statusCode
 	}
 
-	// If custom error message, assign
+	// If custom error message, assign. Note that if a constant error
+	// message if found for this particular error type, the custom one
+	// takes priority inside the Error() method implementation of PBCError
 	for _, msg := range msgs {
 		re.msg = re.msg + msg
 	}
@@ -83,6 +88,7 @@ func NewPBCError(errType int, msgs ...string) PBCError {
 	return re
 }
 
+// Error() implementation
 func (e PBCError) Error() string {
 	// If msg field was populated, use it
 	if len(e.msg) > 0 {

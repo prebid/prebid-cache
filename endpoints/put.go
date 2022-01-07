@@ -168,13 +168,21 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 
 	bytes, err := e.processPutRequest(r)
 	if err != nil {
-		statusCode := err.(utils.PBCError).StatusCode
-
 		// At least one of the elements in the incomming request could not be stored
 		// write the http error and log corresponding metrics
-		if statusCode >= 400 && statusCode < 500 {
-			e.metrics.RecordPutBadRequest()
+		var statusCode int
+		if pbcErr, isPBCErr := err.(utils.PBCError); isPBCErr {
+			statusCode = pbcErr.StatusCode
+			if statusCode >= 400 && statusCode < 500 {
+				e.metrics.RecordPutBadRequest()
+			} else {
+				e.metrics.RecordPutError()
+			}
 		} else {
+			// All errors returned by e.processPutRequest(r) should be utils.PBCErrors
+			// if not, consider it an interval server error with a http.StatusInternalServerError
+			// status code and accounted under RecordPutError()
+			statusCode = http.StatusInternalServerError
 			e.metrics.RecordPutError()
 		}
 

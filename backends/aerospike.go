@@ -111,8 +111,8 @@ func (a *AerospikeBackend) Get(ctx context.Context, key string) (string, error) 
 	return str, nil
 }
 
-// Put creates an aerospike key based on the UUID key parameter and stores the value using the client's Put
-// implementaion. Can return a RECORD_EXISTS error or other Aerospike server errors
+// Put creates an aerospike key based on the UUID key parameter and stores the value using the
+// client's Put implementaion. Can return a RECORD_EXISTS error or other Aerospike server errors
 func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	asKey, err := a.client.NewUUIDKey(a.namespace, key)
 	if err != nil {

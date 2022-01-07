@@ -38,7 +38,7 @@ func (db RedisDBClient) Put(key string, value string, ttlSeconds int) (bool, err
 	return db.client.SetNX(key, value, time.Duration(ttlSeconds)*time.Second).Result()
 }
 
-// RedisBackend when initialized will instantiate, and configure the Redis client. It implements
+// RedisBackend when initialized will instantiate and configure the Redis client. It implements
 // the Backend interface.
 type RedisBackend struct {
 	cfg    config.Redis

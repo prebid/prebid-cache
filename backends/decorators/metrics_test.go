@@ -3,7 +3,6 @@ package decorators
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/prebid/prebid-cache/backends"
@@ -53,7 +52,7 @@ func TestGetErrorMetrics(t *testing.T) {
 				{
 					"Failed get backend request should be accounted under the error label",
 					"gets.backends.request.error",
-					fmt.Errorf("Other backend error"),
+					errors.New("other backend error"),
 				},
 			},
 		},
@@ -80,7 +79,7 @@ func TestGetErrorMetrics(t *testing.T) {
 	errsTotal := 0
 	for _, group := range testGroups {
 		for _, test := range group.tests {
-			// Create backend, assign metrics and a defective test backend
+			// Create backend with a mock storage that will fail and assign metrics
 			backend := LogMetrics(&failedBackend{test.outError}, m)
 
 			// Run test

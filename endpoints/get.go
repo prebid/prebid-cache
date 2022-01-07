@@ -45,7 +45,7 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 		// parseUUID either returns http.StatusBadRequest or http.StatusNotFound. Both should be
 		// accounted using RecordGetBadRequest()
 		e.metrics.RecordGetBadRequest()
-		handleException(w, parseErr, uuid)
+		handleException(w, uuid, parseErr)
 		return
 	}
 
@@ -55,13 +55,13 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	storedData, err := e.backend.Get(ctx, uuid)
 	if err != nil {
 		e.metrics.RecordGetBadRequest()
-		handleException(w, err, uuid)
+		handleException(w, uuid, err)
 		return
 	}
 
 	if err := writeGetResponse(w, uuid, storedData); err != nil {
 		e.metrics.RecordGetError()
-		handleException(w, err, uuid)
+		handleException(w, uuid, err)
 		return
 	}
 
@@ -101,9 +101,9 @@ func writeGetResponse(w http.ResponseWriter, id string, storedData string) error
 }
 
 // handleException logs and replies to the request with the error message and HTTP code
-func handleException(w http.ResponseWriter, err error, uuid string) {
+func handleException(w http.ResponseWriter, uuid string, err error) {
 	if err != nil {
-		// Build error message
+		// Prefix error message with "GET /cache " or "GET /cache uuid=..."
 		errMsgBuilder := strings.Builder{}
 		errMsgBuilder.WriteString("GET /cache")
 		if len(uuid) > 0 {

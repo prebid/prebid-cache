@@ -111,7 +111,7 @@ func TestCassandraClientPut(t *testing.T) {
 			},
 		},
 		{
-			"CassandraBackend.Put() throws some other storage server error. Not even sure if this scenario is feasible in practice",
+			"CassandraBackend.Put() returns the 'applied' boolean value as 'true' in addition to a Cassandra server error. Not even sure if this scenario is feasible in practice",
 			testInput{
 				cassandraClient: &errorProneCassandraClient{applied: true, err: gocql.ErrNoConnections},
 				key:             "someKey",
