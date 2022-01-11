@@ -6,9 +6,9 @@ rate_limiter:
   enabled: true
   num_requests: 100
 request_limits:
-  allow_setting_keys: false
-  max_size_bytes: 10240 # 10K
-  max_num_values: 10
+  allow_setting_keys: true
+  max_size_bytes: 40960 # 10K
+  max_num_values: 50
   max_ttl_seconds: 3600
 backend:
   type: "memory" # Can also be "aerospike", "cassandra", "memcache" or "redis"

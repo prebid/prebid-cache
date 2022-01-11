@@ -51,7 +51,7 @@ var errToStatusCodes map[int]int = map[int]int{
 var errToMsgs map[int]string = map[int]string{
 	MISSING_KEY:              "missing required parameter uuid",
 	RECORD_EXISTS:            "Record exists with provided key.",
-	MISSING_VALUE:            "Missing required field value.",
+	MISSING_VALUE:            "Missing value.",
 	UNKNOWN_STORED_DATA_TYPE: "Cache data was corrupted. Cannot determine type.",
 	MARSHAL_RESPONSE:         "Failed to serialize UUIDs into JSON.",
 	KEY_NOT_FOUND:            "Key not found",

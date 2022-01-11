@@ -96,7 +96,7 @@ func (e *PutHandler) parseRequest(r *http.Request) (*putRequest, error) {
 	if len(put.Puts) > e.cfg.maxNumValues {
 		// place memory back in sync pool
 		e.memory.requestPool.Put(put)
-		return nil, utils.NewPBCError(utils.PUT_MAX_NUM_VALUES, fmt.Sprintf("trying to put %d keys which is more than the number allowed: %d", len(put.Puts), e.cfg.maxNumValues))
+		return nil, utils.NewPBCError(utils.PUT_MAX_NUM_VALUES, fmt.Sprintf("More keys than allowed: %d", e.cfg.maxNumValues))
 	}
 
 	return put, nil

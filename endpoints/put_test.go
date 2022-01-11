@@ -750,7 +750,7 @@ func TestParseRequest(t *testing.T) {
 				r, _ := http.NewRequest("POST", "http://fakeurl.com", bytes.NewBuffer(requestBody))
 				return r
 			},
-			testOut{nil, utils.NewPBCError(utils.PUT_MAX_NUM_VALUES, "trying to put 2 keys which is more than the number allowed: 1")},
+			testOut{nil, utils.NewPBCError(utils.PUT_MAX_NUM_VALUES, "More keys than allowed: 1")},
 		},
 	}
 	for _, tc := range testCases {
