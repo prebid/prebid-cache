@@ -335,6 +335,9 @@ func TestPutNegativeTTL(t *testing.T) {
 	assert.Equal(t, 0.00, metricstest.MockHistograms["puts.current_url.duration"], "Successful GET request should have recorded duration")
 }
 
+// TestCustomKey will assert the correct behavior when we try to store values that come with their own custom keys both
+// when `cfg.allowKeys` is set to `true` and `false`. It will use two custom keys, one that is already holding data in our
+// backend storage (36-char-key-maps-to-actual-xml-value) and one that doesn't (cust-key-maps-to-no-value-in-backend).
 func TestCustomKey(t *testing.T) {
 	type metricRecords struct {
 		totalRequests  int64
@@ -358,7 +361,7 @@ func TestCustomKey(t *testing.T) {
 			allowSettingKeys: false,
 			testCases: []aTest{
 				{
-					desc:         "Custom key maps to element in cache but setting keys is not allowed, set value with random UUID",
+					desc:         "Custom key exists in cache but, because allowKeys is set to false we store the value using a random UUID and respond 200",
 					inCustomKey:  "36-char-key-maps-to-actual-xml-value",
 					expectedUUID: `[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}`,
 					expectedMetrics: metricRecords{
@@ -367,8 +370,8 @@ func TestCustomKey(t *testing.T) {
 					},
 				},
 				{
-					desc:         "Custom key maps to no element in cache, set value with random UUID and respond 200",
-					inCustomKey:  "36-char-key-maps-to-actual-xml-value",
+					desc:         "Custom key doesn't exist in cache but we can't store data under it because allowKeys is set to false. Store value with random UUID and respond 200",
+					inCustomKey:  "cust-key-maps-to-no-value-in-backend",
 					expectedUUID: `[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}`,
 					expectedMetrics: metricRecords{
 						totalRequests: int64(1),
@@ -381,7 +384,7 @@ func TestCustomKey(t *testing.T) {
 			allowSettingKeys: true,
 			testCases: []aTest{
 				{
-					desc:         "Setting keys allowed but key already maps to an element in cache, don't set value and respond with blank UUID",
+					desc:         "Setting keys allowed but key already maps to an element in cache, don't overwrite the value in the data storage and simply respond with blank UUID and a 200 code",
 					inCustomKey:  "36-char-key-maps-to-actual-xml-value",
 					expectedUUID: "",
 					expectedMetrics: metricRecords{
@@ -391,7 +394,7 @@ func TestCustomKey(t *testing.T) {
 					},
 				},
 				{
-					desc:         "Custom key maps to no element in cache, set value and respond with 200 and the custom UUID",
+					desc:         "Custom key maps to no element in cache, store value using custom key and respond with a 200 code and the custom UUID",
 					inCustomKey:  "cust-key-maps-to-no-value-in-backend",
 					expectedUUID: "cust-key-maps-to-no-value-in-backend",
 					expectedMetrics: metricRecords{
@@ -438,9 +441,7 @@ func TestCustomKey(t *testing.T) {
 			if tc.expectedUUID == "" {
 				assert.Equalf(t, `{"responses":[{"uuid":""}]}`, recorder.Body.String(), tc.desc)
 			} else {
-				re, err := regexp.Compile(tc.expectedUUID)
-				assert.NoError(t, err, tc.desc)
-				assert.Greater(t, len(re.Find(recorder.Body.Bytes())), 0, tc.desc)
+				assert.Regexp(t, regexp.MustCompile(tc.expectedUUID), recorder.Body.String(), tc.desc)
 			}
 		}
 	}
@@ -936,8 +937,11 @@ func TestLogBackendError(t *testing.T) {
 		// run
 		err := logBackendError(tc.inError, 0)
 
-		// assertions
+		// assert error type:
 		assert.Equal(t, tc.expected.err, err, tc.desc)
+
+		// assert error code:
+		assert.Equal(t, tc.expected.code, err.(utils.PBCError).StatusCode, tc.desc)
 	}
 }
 
