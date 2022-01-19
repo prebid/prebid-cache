@@ -41,7 +41,7 @@ func (b *MemoryBackend) Put(ctx context.Context, key string, value string, ttlSe
 	return nil
 }
 
-// NewMemoryBackend returns a MemoryBackend
+// NewMemoryBackend instances a MemoryBackend struct
 func NewMemoryBackend() *MemoryBackend {
 	return &MemoryBackend{
 		db: make(map[string]string),

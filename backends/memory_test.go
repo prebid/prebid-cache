@@ -14,68 +14,85 @@ func TestMemoryBackend(t *testing.T) {
 		err   error
 	}
 
-	testCases := []struct {
+	type aTest struct {
 		desc     string
 		backend  *MemoryBackend
 		setup    func(b *MemoryBackend)
 		run      func(b *MemoryBackend) (string, error)
 		expected testExpectedValues
+	}
+
+	testGroups := []struct {
+		desc      string
+		testCases []aTest
 	}{
 		{
-			desc:    "succesful put",
-			backend: NewMemoryBackend(),
-			setup:   func(b *MemoryBackend) {},
-			run: func(b *MemoryBackend) (string, error) {
-				err := b.Put(context.TODO(), "someKey", "someValye", 0)
-				return "", err
+			"Put tests",
+			[]aTest{
+				{
+					desc:    "succesful put",
+					backend: NewMemoryBackend(),
+					setup:   func(b *MemoryBackend) {},
+					run: func(b *MemoryBackend) (string, error) {
+						err := b.Put(context.TODO(), "someKey", "someValye", 0)
+						return "", err
+					},
+					expected: testExpectedValues{err: nil},
+				},
+				{
+					desc:    "Put returns a RecordExistsError",
+					backend: NewMemoryBackend(),
+					setup: func(b *MemoryBackend) {
+						b.Put(context.TODO(), "someKey", "someValue", 0)
+					},
+					run: func(b *MemoryBackend) (string, error) {
+						err := b.Put(context.TODO(), "someKey", "someValye", 0)
+						return "", err
+					},
+					expected: testExpectedValues{"", utils.NewPBCError(utils.RECORD_EXISTS)},
+				},
 			},
-			expected: testExpectedValues{err: nil},
 		},
 		{
-			desc:    "Put returns a RecordExistsError",
-			backend: NewMemoryBackend(),
-			setup: func(b *MemoryBackend) {
-				b.Put(context.TODO(), "someKey", "someValue", 0)
+			"Get tests",
+			[]aTest{
+				{
+					desc:    "succesful get",
+					backend: NewMemoryBackend(),
+					setup: func(b *MemoryBackend) {
+						b.Put(context.TODO(), "someKey", "someValue", 0)
+					},
+					run: func(b *MemoryBackend) (string, error) {
+						return b.Get(context.TODO(), "someKey")
+					},
+					expected: testExpectedValues{"someValue", nil},
+				},
+				{
+					desc:    "Get returns a Key not found error",
+					backend: NewMemoryBackend(),
+					setup: func(b *MemoryBackend) {
+						b.Put(context.TODO(), "someKey", "someValue", 0)
+					},
+					run: func(b *MemoryBackend) (string, error) {
+						return b.Get(context.TODO(), "anotherKey")
+					},
+					expected: testExpectedValues{"", utils.NewPBCError(utils.KEY_NOT_FOUND)},
+				},
 			},
-			run: func(b *MemoryBackend) (string, error) {
-				err := b.Put(context.TODO(), "someKey", "someValye", 0)
-				return "", err
-			},
-			expected: testExpectedValues{"", utils.NewPBCError(utils.RECORD_EXISTS)},
-		},
-		{
-			desc:    "succesful get",
-			backend: NewMemoryBackend(),
-			setup: func(b *MemoryBackend) {
-				b.Put(context.TODO(), "someKey", "someValue", 0)
-			},
-			run: func(b *MemoryBackend) (string, error) {
-				return b.Get(context.TODO(), "someKey")
-			},
-			expected: testExpectedValues{"someValue", nil},
-		},
-		{
-			desc:    "Get returns a Key not found error",
-			backend: NewMemoryBackend(),
-			setup: func(b *MemoryBackend) {
-				b.Put(context.TODO(), "someKey", "someValue", 0)
-			},
-			run: func(b *MemoryBackend) (string, error) {
-				return b.Get(context.TODO(), "anotherKey")
-			},
-			expected: testExpectedValues{"", utils.NewPBCError(utils.KEY_NOT_FOUND)},
 		},
 	}
 
-	for _, tc := range testCases {
-		// Setup
-		tc.setup(tc.backend)
+	for _, group := range testGroups {
+		for _, tc := range group.testCases {
+			// Setup
+			tc.setup(tc.backend)
 
-		//Run
-		resultingValue, resultingError := tc.run(tc.backend)
+			//Run
+			resultingValue, resultingError := tc.run(tc.backend)
 
-		//Assert
-		assert.Equal(t, tc.expected.value, resultingValue, tc.desc)
-		assert.Equal(t, tc.expected.err, resultingError, tc.desc)
+			//Assert
+			assert.Equal(t, tc.expected.value, resultingValue, "%s - %s", group.desc, tc.desc)
+			assert.Equal(t, tc.expected.err, resultingError, "%s - %s", group.desc, tc.desc)
+		}
 	}
 }
