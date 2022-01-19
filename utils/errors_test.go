@@ -56,7 +56,8 @@ func TestPBCError(t *testing.T) {
 				errType: 100,
 			},
 			expected: PBCError{
-				Type: 100,
+				Type:       100,
+				StatusCode: http.StatusInternalServerError,
 			},
 		},
 		{
@@ -66,8 +67,9 @@ func TestPBCError(t *testing.T) {
 				msgs:    "Some error message",
 			},
 			expected: PBCError{
-				Type: 100,
-				msg:  "Some error message",
+				Type:       100,
+				StatusCode: http.StatusInternalServerError,
+				msg:        "Some error message",
 			},
 		},
 	}

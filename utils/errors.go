@@ -70,7 +70,10 @@ type PBCError struct {
 // required parameter is errType
 func NewPBCError(errType int, msgs ...string) PBCError {
 	// Store error's type
-	re := PBCError{Type: errType}
+	re := PBCError{
+		Type:       errType,
+		StatusCode: http.StatusInternalServerError,
+	}
 
 	// Assign a status code value. If not found in the errToStatusCodes
 	// map, defaults to zero
