@@ -6,21 +6,21 @@ import (
 
 // Prebid Cache error types
 const (
-	MISSING_KEY               = iota // GET http.StatusBadRequest
-	RECORD_EXISTS                    // PUT http.StatusBadRequest
-	PUT_MAX_NUM_VALUES               // PUT http.StatusBadRequest
-	PUT_BAD_REQUEST                  // PUT http.StatusBadRequest
-	NEGATIVE_TTL                     // PUT http.StatusBadRequest
-	MALFORMED_XML                    // PUT http.StatusBadRequest
-	UNSUPPORTED_DATA_TO_STORE        // PUT http.StatusBadRequest
-	MISSING_VALUE                    // PUT http.StatusBadRequest
-	BAD_PAYLOAD_SIZE                 // PUT http.StatusBadRequest
-	UNKNOWN_STORED_DATA_TYPE         // GET http.StatusInternalServerError
-	PUT_INTERNAL_SERVER              // PUT http.StatusInternalServerError
-	MARSHAL_RESPONSE                 // PUT http.StatusInternalServerError
-	KEY_NOT_FOUND                    // GET http.StatusNotFound
-	KEY_LENGTH                       // GET http.StatusNotFound
-	PUT_DEADLINE_EXCEEDED            // PUT HttpDependencyTimeout
+	MISSING_KEY               = iota // GET http.StatusBadRequest 400
+	RECORD_EXISTS                    // PUT http.StatusBadRequest 400
+	PUT_MAX_NUM_VALUES               // PUT http.StatusBadRequest 400
+	PUT_BAD_REQUEST                  // PUT http.StatusBadRequest 400
+	NEGATIVE_TTL                     // PUT http.StatusBadRequest 400
+	MALFORMED_XML                    // PUT http.StatusBadRequest 400
+	UNSUPPORTED_DATA_TO_STORE        // PUT http.StatusBadRequest 400
+	MISSING_VALUE                    // PUT http.StatusBadRequest 400
+	BAD_PAYLOAD_SIZE                 // PUT http.StatusBadRequest 400
+	KEY_NOT_FOUND                    // GET http.StatusNotFound 404
+	KEY_LENGTH                       // GET http.StatusNotFound 404
+	UNKNOWN_STORED_DATA_TYPE         // GET http.StatusInternalServerError 500
+	PUT_INTERNAL_SERVER              // PUT http.StatusInternalServerError 500
+	MARSHAL_RESPONSE                 // PUT http.StatusInternalServerError 500
+	PUT_DEADLINE_EXCEEDED            // PUT HttpDependencyTimeout 597
 )
 
 // HTTPDependencyTimeout is the status code for errors due to a downstream dependency timeout.

@@ -44,8 +44,7 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	if parseErr != nil {
 		// parseUUID either returns http.StatusBadRequest or http.StatusNotFound. Both should be
 		// accounted using RecordGetBadRequest()
-		e.metrics.RecordGetBadRequest()
-		handleException(w, uuid, parseErr)
+		e.handleException(w, uuid, parseErr)
 		return
 	}
 
@@ -54,14 +53,12 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 
 	storedData, err := e.backend.Get(ctx, uuid)
 	if err != nil {
-		e.metrics.RecordGetBadRequest()
-		handleException(w, uuid, err)
+		e.handleException(w, uuid, err)
 		return
 	}
 
-	if err := writeGetResponse(w, uuid, storedData); err != nil {
-		e.metrics.RecordGetError()
-		handleException(w, uuid, err)
+	if err := writeGetResponse(w, storedData); err != nil {
+		e.handleException(w, uuid, err)
 		return
 	}
 
@@ -77,9 +74,10 @@ func parseUUID(r *http.Request, allowCustomKeys bool) (string, error) {
 	if uuid == "" {
 		return "", utils.NewPBCError(utils.MISSING_KEY)
 	}
+	// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
+	// ones before even checking the backend.
+	// TODO: allow for custom keys with a length of 36 chars
 	if len(uuid) != 36 && (!allowCustomKeys) {
-		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
-		// ones before even checking the backend.
 		return uuid, utils.NewPBCError(utils.KEY_LENGTH)
 	}
 	return uuid, nil
@@ -87,21 +85,27 @@ func parseUUID(r *http.Request, allowCustomKeys bool) (string, error) {
 
 // writeGetResponse writes the "Content-Type" header and sends back the stored data as a response if
 // the sotred data is prefixed by either the "xml" or "json"
-func writeGetResponse(w http.ResponseWriter, id string, storedData string) error {
-	if strings.HasPrefix(storedData, backends.XML_PREFIX) {
-		w.Header().Set("Content-Type", "application/xml")
-		w.Write([]byte(storedData)[len(backends.XML_PREFIX):])
-	} else if strings.HasPrefix(storedData, backends.JSON_PREFIX) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(storedData)[len(backends.JSON_PREFIX):])
-	} else {
+func writeGetResponse(w http.ResponseWriter, storedData string) error {
+	switch storedData[0] {
+	case 'x':
+		if strings.HasPrefix(storedData, backends.XML_PREFIX) {
+			w.Header().Set("Content-Type", "application/xml")
+			w.Write([]byte(storedData)[len(backends.XML_PREFIX):])
+		}
+	case 'j':
+		if strings.HasPrefix(storedData, backends.JSON_PREFIX) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(storedData)[len(backends.JSON_PREFIX):])
+		}
+	default:
 		return utils.NewPBCError(utils.UNKNOWN_STORED_DATA_TYPE)
 	}
 	return nil
 }
 
-// handleException logs and replies to the request with the error message and HTTP code
-func handleException(w http.ResponseWriter, uuid string, err error) {
+// handleException logs the error message, updates the error metrics based on error type and replies
+// back with the error message and an HTTP error code
+func (e *GetHandler) handleException(w http.ResponseWriter, uuid string, err error) {
 	if err != nil {
 		// Prefix error message with "GET /cache " or "GET /cache uuid=..."
 		errMsgBuilder := strings.Builder{}
@@ -120,7 +124,15 @@ func handleException(w http.ResponseWriter, uuid string, err error) {
 			isKeyNotFound = pbcErr.Type == utils.KEY_NOT_FOUND
 		}
 
-		// Determine lob level
+		// Log error metrics based on error type
+		switch {
+		case errCode >= http.StatusInternalServerError: // 500
+			e.metrics.RecordGetError()
+		case errCode >= http.StatusBadRequest: // 400
+			e.metrics.RecordGetBadRequest()
+		}
+
+		// Determine log level
 		if isKeyNotFound {
 			log.Debug(errMsg)
 		} else {

@@ -61,7 +61,10 @@ func TestGetHandler(t *testing.T) {
 	}{
 		{
 			"Missing UUID. Return http error but don't interrupt server's execution",
-			testInput{uuid: ""},
+			testInput{
+				uuid:      "",
+				allowKeys: false,
+			},
 			testOutput{
 				responseCode: http.StatusBadRequest,
 				responseBody: "GET /cache: missing required parameter uuid\n",
@@ -78,8 +81,11 @@ func TestGetHandler(t *testing.T) {
 			},
 		},
 		{
-			"Test uses backend that doesn't allow for keys different than 36 char long. Respond with http error and don't interrupt server's execution",
-			testInput{uuid: "non-36-char-key-maps-to-json"},
+			"Prebid Cache wasn't configured to allow custom keys therefore, it doesn't allow for keys different than 36 char long. Respond with http error and don't interrupt server's execution",
+			testInput{
+				uuid:      "non-36-char-key-maps-to-json",
+				allowKeys: false,
+			},
 			testOutput{
 				responseCode: http.StatusNotFound,
 				responseBody: "GET /cache uuid=non-36-char-key-maps-to-json: invalid uuid length\n",
@@ -96,7 +102,7 @@ func TestGetHandler(t *testing.T) {
 			},
 		},
 		{
-			"Test uses backend that allows for different than 36 char long uuids. Since the uuid maps to a value, return it along a 200 status code",
+			"Configuration that allows custom keys. These are not required to be 36 char long. Since the uuid maps to a value, return it along a 200 status code",
 			testInput{
 				uuid:      "non-36-char-key-maps-to-json",
 				allowKeys: true,

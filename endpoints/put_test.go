@@ -649,7 +649,7 @@ func TestEmptyPutRequests(t *testing.T) {
 				jsonResponse:      `Missing value`,
 				statusCode:        http.StatusBadRequest,
 				metricsBadRequest: 1,
-				metricsDuration:   0.00, //why?
+				metricsDuration:   0.00,
 			},
 		},
 		{
