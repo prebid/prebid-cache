@@ -15,13 +15,12 @@ jobs:
         id: get_version
         run: |
           echo ::set-output name=tag::${GITHUB_REF/refs\/tags\/}
-          echo ::set-output name=version::${GITHUB_REF/refs\/tags\/v}
       - name: Create & Publish Release
         uses: release-drafter/release-drafter@v5.12.1
         with:
-          name: ${{ steps.get_version.outputs.version }}
+          name: ${{ steps.get_version.outputs.tag }}
           tag: ${{ steps.get_version.outputs.tag }}
-          version: ${{ steps.get_version.outputs.version }}
+          version: ${{ steps.get_version.outputs.tag }}
           publish: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
