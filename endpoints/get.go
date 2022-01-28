@@ -76,7 +76,6 @@ func parseUUID(r *http.Request, allowCustomKeys bool) (string, error) {
 	}
 	// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
 	// ones before even checking the backend.
-	// TODO: allow for custom keys with a length of 36 chars
 	if len(uuid) != 36 && (!allowCustomKeys) {
 		return uuid, utils.NewPBCError(utils.KEY_LENGTH)
 	}

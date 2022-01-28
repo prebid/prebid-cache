@@ -230,9 +230,6 @@ func (e *PutHandler) processPutRequest(r *http.Request) ([]byte, error) {
 // putElements calls the backend storage Put() implementation for every element in put.Puts array and stores the
 // corresponding UUID's inside the corresponding PutResponse objects. If an error is found, exits even if the
 // rest of the put elements have not been stored.
-// TODO: Rewrite this function to operate in parallel
-// TODO: For those storage clients that support storing multiple elements in a single call, build a batch and send them together
-// TODO: store errors in resps and allow Prebid Cache to provide error details in an "errors" field in the response
 func (e *PutHandler) putElements(put *putRequest, resps *PutResponse) error {
 	for i, p := range put.Puts {
 		toCache, err := parsePutObject(p)
