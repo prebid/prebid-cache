@@ -39,7 +39,7 @@ func TestMemcacheGet(t *testing.T) {
 			},
 			testExpectedValues{
 				value: "",
-				err:   utils.KeyNotFoundError{},
+				err:   utils.NewPBCError(utils.KEY_NOT_FOUND),
 			},
 		},
 		{
@@ -121,7 +121,7 @@ func TestMemcachePut(t *testing.T) {
 			},
 			testExpectedValues{
 				"",
-				utils.RecordExistsError{},
+				utils.NewPBCError(utils.RECORD_EXISTS),
 			},
 		},
 		{
@@ -251,7 +251,7 @@ func (gc *goodMemcache) Get(key string) (*memcache.Item, error) {
 	if key == gc.key {
 		return &memcache.Item{Key: gc.key, Value: []byte(gc.value)}, nil
 	}
-	return nil, utils.KeyNotFoundError{}
+	return nil, utils.NewPBCError(utils.KEY_NOT_FOUND)
 }
 
 func (gc *goodMemcache) Put(key string, value string, ttlSeconds int) error {

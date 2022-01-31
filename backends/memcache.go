@@ -10,6 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// MemcacheDataStore is an interface that helps us communicate with an instance of the
+// memcached cache server. Its implementation is intended to use the
+// "github.com/bradfitz/gomemcache/memcache" client
 type MemcacheDataStore interface {
 	Get(key string) (*memcache.Item, error)
 	Put(key string, value string, ttlSeconds int) error
@@ -71,7 +74,7 @@ func (mc *MemcacheBackend) Get(ctx context.Context, key string) (string, error) 
 
 	if err != nil {
 		if err == memcache.ErrCacheMiss {
-			err = utils.KeyNotFoundError{}
+			err = utils.NewPBCError(utils.KEY_NOT_FOUND)
 		}
 		return "", err
 	}
@@ -84,7 +87,7 @@ func (mc *MemcacheBackend) Get(ctx context.Context, key string) (string, error) 
 func (mc *MemcacheBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 	err := mc.memcache.Put(key, value, ttlSeconds)
 	if err != nil && err == memcache.ErrNotStored {
-		return utils.RecordExistsError{}
+		return utils.NewPBCError(utils.RECORD_EXISTS)
 	}
 	return err
 }

@@ -23,10 +23,15 @@ func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error
 	if err == nil {
 		b.metrics.RecordGetBackendDuration(time.Since(start))
 	} else {
-		if _, isKeyNotFound := err.(utils.KeyNotFoundError); isKeyNotFound {
-			b.metrics.RecordKeyNotFoundError()
-		} else if _, isMissingUuidError := err.(utils.MissingKeyError); isMissingUuidError {
-			b.metrics.RecordMissingKeyError()
+		if pbcErr, isPBCErr := err.(utils.PBCError); isPBCErr {
+			// If error Type is either KEY_NOT_FOUND or MISSING_KEY, account under the
+			// metrics below in addition of RecordGetBackendError()
+			switch pbcErr.Type {
+			case utils.KEY_NOT_FOUND:
+				b.metrics.RecordKeyNotFoundError()
+			case utils.MISSING_KEY:
+				b.metrics.RecordMissingKeyError()
+			}
 		}
 		b.metrics.RecordGetBackendError()
 	}

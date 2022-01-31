@@ -52,7 +52,7 @@ func TestGetErrorMetrics(t *testing.T) {
 				{
 					"Failed get backend request should be accounted under the error label",
 					"gets.backends.request.error",
-					errors.New("Other backend error"),
+					errors.New("other backend error"),
 				},
 			},
 		},
@@ -62,12 +62,12 @@ func TestGetErrorMetrics(t *testing.T) {
 				{
 					"Failed get backend request should be accounted as a key not found error",
 					"gets.backend_error.key_not_found",
-					utils.KeyNotFoundError{},
+					utils.NewPBCError(utils.KEY_NOT_FOUND),
 				},
 				{
 					"Failed get backend request should be accounted as a missing key (uuid) error",
 					"gets.backend_error.missing_key",
-					utils.MissingKeyError{},
+					utils.NewPBCError(utils.MISSING_KEY),
 				},
 			},
 		},
@@ -79,7 +79,7 @@ func TestGetErrorMetrics(t *testing.T) {
 	errsTotal := 0
 	for _, group := range testGroups {
 		for _, test := range group.tests {
-			// Create backend, assign metrics and defective test backend
+			// Create backend with a mock storage that will fail and assign metrics
 			backend := LogMetrics(&failedBackend{test.outError}, m)
 
 			// Run test
@@ -87,9 +87,7 @@ func TestGetErrorMetrics(t *testing.T) {
 			errsTotal++
 
 			// Assert
-			if group.groupName == "Special errors" {
-				assert.Equal(t, int64(1), metricstest.MockCounters[test.inMetricName], test.desc)
-			}
+			assert.Equal(t, int64(1), metricstest.MockCounters[test.inMetricName], test.desc)
 			assert.Equal(t, int64(errsTotal), metricstest.MockCounters["gets.backends.request.error"], test.desc)
 			assert.Equal(t, int64(errsTotal), metricstest.MockCounters["gets.backends.request.total"], test.desc)
 		}
