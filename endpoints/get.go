@@ -2,7 +2,7 @@ package endpoints
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -21,6 +21,7 @@ type GetHandler struct {
 	allowCustomKeys bool
 }
 
+// NewGetHandler returns the handle function for the "/cache" endpoint when it receives a GET request
 func NewGetHandler(storage backends.Backend, metrics *metrics.Metrics, allowCustomKeys bool) func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	getHandler := &GetHandler{
 		// Assign storage client to get endpoint
@@ -42,9 +43,8 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	uuid, parseErr := parseUUID(r, e.allowCustomKeys)
 	if parseErr != nil {
 		// parseUUID either returns http.StatusBadRequest or http.StatusNotFound. Both should be
-		// accounted under the RecordPutBadRequest()
-		e.metrics.RecordGetBadRequest()
-		handleException(w, parseErr)
+		// accounted using RecordGetBadRequest()
+		e.handleException(w, uuid, parseErr)
 		return
 	}
 
@@ -53,14 +53,12 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 
 	storedData, err := e.backend.Get(ctx, uuid)
 	if err != nil {
-		e.metrics.RecordGetBadRequest()
-		handleException(w, utils.NewPrebidCacheGetError(uuid, err, http.StatusNotFound))
+		e.handleException(w, uuid, err)
 		return
 	}
 
-	if err := writeGetResponse(w, uuid, storedData); err != nil {
-		e.metrics.RecordGetError()
-		handleException(w, err)
+	if err := writeGetResponse(w, storedData); err != nil {
+		e.handleException(w, uuid, err)
 		return
 	}
 
@@ -69,28 +67,24 @@ func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	return
 }
 
-type GetResponse struct {
-	Value interface{} `json:"value"`
-}
-
 // parseUUID extracts the uuid value from the query and validates its
 // lenght in case custom keys are not allowed.
-func parseUUID(r *http.Request, allowCustomKeys bool) (string, *utils.PrebidCacheGetError) {
+func parseUUID(r *http.Request, allowCustomKeys bool) (string, error) {
 	uuid := r.URL.Query().Get("uuid")
 	if uuid == "" {
-		return "", utils.NewPrebidCacheGetError("", utils.MissingKeyError{}, http.StatusBadRequest)
+		return "", utils.NewPBCError(utils.MISSING_KEY)
 	}
+	// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
+	// ones before even checking the backend.
 	if len(uuid) != 36 && (!allowCustomKeys) {
-		// UUIDs are 36 characters long... so this quick check lets us filter out most invalid
-		// ones before even checking the backend.
-		return uuid, utils.NewPrebidCacheGetError(uuid, utils.KeyLengthError{}, http.StatusNotFound)
+		return uuid, utils.NewPBCError(utils.KEY_LENGTH)
 	}
 	return uuid, nil
 }
 
 // writeGetResponse writes the "Content-Type" header and sends back the stored data as a response if
 // the sotred data is prefixed by either the "xml" or "json"
-func writeGetResponse(w http.ResponseWriter, id string, storedData string) *utils.PrebidCacheGetError {
+func writeGetResponse(w http.ResponseWriter, storedData string) error {
 	if strings.HasPrefix(storedData, backends.XML_PREFIX) {
 		w.Header().Set("Content-Type", "application/xml")
 		w.Write([]byte(storedData)[len(backends.XML_PREFIX):])
@@ -98,25 +92,48 @@ func writeGetResponse(w http.ResponseWriter, id string, storedData string) *util
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(storedData)[len(backends.JSON_PREFIX):])
 	} else {
-		return utils.NewPrebidCacheGetError(id, errors.New("Cache data was corrupted. Cannot determine type."), http.StatusInternalServerError)
+		return utils.NewPBCError(utils.UNKNOWN_STORED_DATA_TYPE)
 	}
 	return nil
 }
 
-// handleException will prefix error messages with "GET /cache" and, if uuid string list is passed, will
-// follow with the first element of it in the following fashion: "uuid=FIRST_ELEMENT_ON_UUID_PARAM".
-// Expects non-nil error
-func handleException(w http.ResponseWriter, err *utils.PrebidCacheGetError) {
-	logError(err)
-	http.Error(w, err.Error(), err.StatusCode())
-}
+// handleException logs the error message, updates the error metrics based on error type and replies
+// back with the error message and an HTTP error code
+func (e *GetHandler) handleException(w http.ResponseWriter, uuid string, err error) {
+	if err != nil {
+		// Prefix error message with "GET /cache " or "GET /cache uuid=..."
+		errMsgBuilder := strings.Builder{}
+		errMsgBuilder.WriteString("GET /cache")
+		if len(uuid) > 0 {
+			errMsgBuilder.WriteString(fmt.Sprintf(" uuid=%s", uuid))
+		}
+		errMsgBuilder.WriteString(fmt.Sprintf(": %s", err.Error()))
+		errMsg := errMsgBuilder.String()
 
-// logError uses the logging package Prebid Cache currently uses to log an error message. KeyNotFoundError
-// gets logged at a DEBUG level because it is not considered a system error.
-func logError(e *utils.PrebidCacheGetError) {
-	if e.IsKeyNotFound() {
-		log.Debug(e.Error())
-	} else {
-		log.Error(e.Error())
+		// Determine the response status code based on error type
+		errCode := http.StatusInternalServerError
+		isKeyNotFound := false
+		if pbcErr, isPBCErr := err.(utils.PBCError); isPBCErr {
+			errCode = pbcErr.StatusCode
+			isKeyNotFound = pbcErr.Type == utils.KEY_NOT_FOUND
+		}
+
+		// Log error metrics based on error type
+		switch {
+		case errCode >= http.StatusInternalServerError: // 500
+			e.metrics.RecordGetError()
+		case errCode >= http.StatusBadRequest: // 400
+			e.metrics.RecordGetBadRequest()
+		}
+
+		// Determine log level
+		if isKeyNotFound {
+			log.Debug(errMsg)
+		} else {
+			log.Error(errMsg)
+		}
+
+		// Write error response
+		http.Error(w, errMsg, errCode)
 	}
 }

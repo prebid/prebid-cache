@@ -31,18 +31,18 @@ func TestCassandraClientGet(t *testing.T) {
 		{
 			"CassandraBackend.Get() throws a Cassandra ErrNotFound error",
 			testInput{
-				&errorProneCassandraClient{errorToThrow: gocql.ErrNotFound},
+				&errorProneCassandraClient{err: gocql.ErrNotFound},
 				"someKeyThatWontBeFound",
 			},
 			testExpectedValues{
 				value: "",
-				err:   utils.KeyNotFoundError{},
+				err:   utils.NewPBCError(utils.KEY_NOT_FOUND),
 			},
 		},
 		{
 			"CassandraBackend.Get() throws an error different from Cassandra ErrNotFound error",
 			testInput{
-				&errorProneCassandraClient{errorToThrow: errors.New("some other get error")},
+				&errorProneCassandraClient{err: errors.New("some other get error")},
 				"someKey",
 			},
 			testExpectedValues{
@@ -98,9 +98,22 @@ func TestCassandraClientPut(t *testing.T) {
 		expected testExpectedValues
 	}{
 		{
-			"CassandraBackend.Put() throws error",
+			"CassandraBackend.Put() didn't store the value under the corresponding key. Because the 'applied' return value was false, expect a RECORD_EXISTS error",
 			testInput{
-				cassandraClient: &errorProneCassandraClient{errorToThrow: gocql.ErrNoConnections},
+				cassandraClient: &errorProneCassandraClient{applied: false},
+				key:             "someKey",
+				valueToStore:    "someValue",
+				ttl:             10,
+			},
+			testExpectedValues{
+				value: "",
+				err:   utils.NewPBCError(utils.RECORD_EXISTS),
+			},
+		},
+		{
+			"CassandraBackend.Put() returns the 'applied' boolean value as 'true' in addition to a Cassandra server error. Not even sure if this scenario is feasible in practice",
+			testInput{
+				cassandraClient: &errorProneCassandraClient{applied: true, err: gocql.ErrNoConnections},
 				key:             "someKey",
 				valueToStore:    "someValue",
 				ttl:             10,
@@ -159,7 +172,8 @@ func TestCassandraClientPut(t *testing.T) {
 
 // Cassandra client that always throws an error
 type errorProneCassandraClient struct {
-	errorToThrow error
+	applied bool
+	err     error
 }
 
 func (ec *errorProneCassandraClient) Init() error {
@@ -167,15 +181,11 @@ func (ec *errorProneCassandraClient) Init() error {
 }
 
 func (ec *errorProneCassandraClient) Get(ctx context.Context, key string) (string, error) {
-	return "", ec.errorToThrow
+	return "", ec.err
 }
 
 func (ec *errorProneCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
-	rv := true
-	if _, ok := ec.errorToThrow.(utils.RecordExistsError); ok {
-		rv = false
-	}
-	return rv, ec.errorToThrow
+	return ec.applied, ec.err
 }
 
 // Cassandra client client that does not throw errors
@@ -192,7 +202,7 @@ func (gc *goodCassandraClient) Get(ctx context.Context, key string) (string, err
 	if key == gc.key {
 		return gc.value, nil
 	}
-	return "", utils.KeyNotFoundError{}
+	return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
 }
 
 func (gc *goodCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {

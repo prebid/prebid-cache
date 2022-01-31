@@ -1,147 +1,109 @@
 package utils
 
 import (
-	"fmt"
+	"net/http"
 )
 
-// Status code for errors due to a downstream dependency timeout.
-const HttpDependencyTimeout = 597
+// Prebid Cache error types
+const (
+	MISSING_KEY               = iota // GET http.StatusBadRequest 400
+	RECORD_EXISTS                    // PUT http.StatusBadRequest 400
+	PUT_MAX_NUM_VALUES               // PUT http.StatusBadRequest 400
+	PUT_BAD_REQUEST                  // PUT http.StatusBadRequest 400
+	NEGATIVE_TTL                     // PUT http.StatusBadRequest 400
+	MALFORMED_XML                    // PUT http.StatusBadRequest 400
+	UNSUPPORTED_DATA_TO_STORE        // PUT http.StatusBadRequest 400
+	MISSING_VALUE                    // PUT http.StatusBadRequest 400
+	BAD_PAYLOAD_SIZE                 // PUT http.StatusBadRequest 400
+	KEY_NOT_FOUND                    // GET http.StatusNotFound 404
+	KEY_LENGTH                       // GET http.StatusNotFound 404
+	UNKNOWN_STORED_DATA_TYPE         // GET http.StatusInternalServerError 500
+	PUT_INTERNAL_SERVER              // PUT http.StatusInternalServerError 500
+	MARSHAL_RESPONSE                 // PUT http.StatusInternalServerError 500
+	PUT_DEADLINE_EXCEEDED            // PUT HttpDependencyTimeout 597
+)
 
-func formatErrMsg(uuid, errMsg string) string {
-	if len(uuid) > 0 {
-		return fmt.Sprintf("GET /cache uuid=%s: %s", uuid, errMsg)
+// HTTPDependencyTimeout is the status code for errors due to a downstream dependency timeout.
+const HTTPDependencyTimeout = 597
+
+// Map Prebid Cache's error codes to their corresponding response status codes
+var errToStatusCodes map[int]int = map[int]int{
+	MISSING_KEY:               http.StatusBadRequest,
+	RECORD_EXISTS:             http.StatusBadRequest,
+	PUT_MAX_NUM_VALUES:        http.StatusBadRequest,
+	PUT_BAD_REQUEST:           http.StatusBadRequest,
+	NEGATIVE_TTL:              http.StatusBadRequest,
+	MALFORMED_XML:             http.StatusBadRequest,
+	UNSUPPORTED_DATA_TO_STORE: http.StatusBadRequest,
+	MISSING_VALUE:             http.StatusBadRequest,
+	BAD_PAYLOAD_SIZE:          http.StatusBadRequest,
+	UNKNOWN_STORED_DATA_TYPE:  http.StatusInternalServerError,
+	PUT_INTERNAL_SERVER:       http.StatusInternalServerError,
+	MARSHAL_RESPONSE:          http.StatusInternalServerError,
+	KEY_NOT_FOUND:             http.StatusNotFound,
+	KEY_LENGTH:                http.StatusNotFound,
+	PUT_DEADLINE_EXCEEDED:     HTTPDependencyTimeout,
+}
+
+// Map Prebid Cache's error codes to their corresponding constant error message if they have one.
+// Not all error types are found here since some of them have non-constant error messages and
+// are assigned custom messages upon creation
+var errToMsgs map[int]string = map[int]string{
+	MISSING_KEY:              "missing required parameter uuid",
+	RECORD_EXISTS:            "Record exists with provided key.",
+	MISSING_VALUE:            "Missing value.",
+	UNKNOWN_STORED_DATA_TYPE: "Cache data was corrupted. Cannot determine type.",
+	MARSHAL_RESPONSE:         "Failed to serialize UUIDs into JSON.",
+	KEY_NOT_FOUND:            "Key not found",
+	KEY_LENGTH:               "invalid uuid length",
+	PUT_DEADLINE_EXCEEDED:    "timeout writing value to the backend.",
+}
+
+// PBCError implements the error interface
+type PBCError struct {
+	Type       int
+	StatusCode int
+	msg        string
+}
+
+// NewPBCError returns an error with either a custom error message or not. The only
+// required parameter is errType
+func NewPBCError(errType int, msgs ...string) PBCError {
+	// Store error's type
+	re := PBCError{
+		Type:       errType,
+		StatusCode: http.StatusInternalServerError,
 	}
-	return fmt.Sprintf("GET /cache: %s", errMsg)
-}
 
-/**************************/
-/* Get errors			  */
-/**************************/
-// Put error wrapper
-func NewPrebidCacheGetError(uuid string, err error, statusCode int) *PrebidCacheGetError {
-	return &PrebidCacheGetError{
-		uuid:   uuid,
-		err:    err,
-		status: statusCode,
+	// Assign a status code value. If not found in the errToStatusCodes
+	// map, defaults to zero
+	if statusCode, exists := errToStatusCodes[errType]; exists {
+		re.StatusCode = statusCode
 	}
-}
 
-type PrebidCacheGetError struct {
-	uuid   string
-	err    error
-	status int
-}
-
-func (ce *PrebidCacheGetError) Error() string {
-	if len(ce.uuid) > 0 {
-		return fmt.Sprintf("GET /cache uuid=%s: %s", ce.uuid, ce.err.Error())
+	// If custom error message, assign. Note that if a constant error
+	// message if found for this particular error type, the custom one
+	// takes priority inside the Error() method implementation of PBCError
+	for _, msg := range msgs {
+		re.msg = re.msg + msg
 	}
-	return fmt.Sprintf("GET /cache: %s", ce.err.Error())
+
+	return re
 }
 
-func (ce *PrebidCacheGetError) StatusCode() int {
-	return ce.status
-}
+// Error() implementation
+func (e PBCError) Error() string {
+	// If msg field was populated, use it
+	if len(e.msg) > 0 {
+		return e.msg
+	}
 
-func (ce *PrebidCacheGetError) IsKeyNotFound() bool {
-	_, isKeyNotFound := ce.err.(KeyNotFoundError)
-	return isKeyNotFound
-}
+	// Find its corresponding error message according to its errType
+	if msg, exists := errToMsgs[e.Type]; exists {
+		return msg
+	}
 
-// Key not found
-type KeyNotFoundError struct{}
-
-func (e KeyNotFoundError) Error() string {
-	return "Key not found"
-}
-
-// Missing UUID error
-type MissingKeyError struct{}
-
-func (e MissingKeyError) Error() string {
-	return "missing required parameter uuid"
-}
-
-// Invalid UUID length
-type KeyLengthError struct{}
-
-func (e KeyLengthError) Error() string {
-	return "invalid uuid length"
-}
-
-/**************************/
-/* Put errors			  */
-/**************************/
-// Put error wrapper
-func NewPrebidCacheError(e error, statusCode int) *PrebidCacheError {
-	return &PrebidCacheError{e, statusCode}
-}
-
-type PrebidCacheError struct {
-	err    error
-	status int
-}
-
-func (ce *PrebidCacheError) Error() string {
-	return ce.err.Error()
-}
-
-func (ce *PrebidCacheError) StatusCode() int {
-	return ce.status
-}
-
-// Bad request gets returned when incoming request could not get
-// unmarshalled or is invalid JSON
-type PutBadRequestError struct {
-	Body []byte
-}
-
-func (e PutBadRequestError) Error() string {
-	return "Request body " + string(e.Body) + " is not valid JSON."
-}
-
-// Record exists is the error we assign to the different backend errors
-// that describe a failure to put a value under a UUID that is already taken
-type RecordExistsError struct{}
-
-func (e RecordExistsError) Error() string {
-	return "Record exists with provided key."
-}
-
-// PutBadPayloadSizeError happens when a payload gets rejected
-// for going over the configured max size.
-type PutBadPayloadSizeError struct {
-	Msg   string
-	Index int
-}
-
-func (e PutBadPayloadSizeError) Error() string {
-	return fmt.Sprintf("POST /cache element %d exceeded max size: %v", e.Index, e.Msg)
-}
-
-// PutDeadlineExceededError happens when we get a context.DeadlineExceeded:
-type PutDeadlineExceededError struct{}
-
-func (e PutDeadlineExceededError) Error() string {
-	return "timeout writing value to the backend."
-}
-
-// PutInternalServerError when the backend client returns an error
-type PutInternalServerError struct {
-	Msg string
-}
-
-func (e PutInternalServerError) Error() string {
-	return e.Msg
-}
-
-// PutMaxNumValuesError happens when an incomming request tries to put more
-// values than Prebid Cache has been configured to allow in a single request
-type PutMaxNumValuesError struct {
-	NumValues    int
-	MaxNumValues int
-}
-
-func (e PutMaxNumValuesError) Error() string {
-	return fmt.Sprintf("trying to put %d keys which is more than the allowed number allowed: %d", e.NumValues, e.MaxNumValues)
+	// If we couldn't find an error message for this errType and error
+	// didn't come with a msg field, return an empty string
+	return ""
 }
