@@ -49,7 +49,7 @@ var errToStatusCodes map[int]int = map[int]int{
 // Not all error types are found here since some of them have non-constant error messages and
 // are assigned custom messages upon creation
 var errToMsgs map[int]string = map[int]string{
-	MISSING_KEY:              "missing required parameter uuid",
+	MISSING_KEY:              "Missing required parameter uuid",
 	RECORD_EXISTS:            "Record exists with provided key.",
 	MISSING_VALUE:            "Missing value.",
 	UNKNOWN_STORED_DATA_TYPE: "Cache data was corrupted. Cannot determine type.",
