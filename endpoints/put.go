@@ -164,8 +164,9 @@ func logBackendError(err error) {
 
 	if pbcErr, isPBCErr := err.(utils.PBCError); isPBCErr && pbcErr.StatusCode == utils.PUT_DEADLINE_EXCEEDED {
 		logrus.Error("POST /cache timed out:", err)
+	} else {
+		logrus.Error("POST /cache had an unexpected error:", err)
 	}
-	logrus.Error("POST /cache had an unexpected error:", err)
 }
 
 // handle is the handler function that gets assigned to the POST method of the `/cache` endpoint
