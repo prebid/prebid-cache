@@ -25,7 +25,7 @@ func TestPBCError(t *testing.T) {
 			expected: PBCError{
 				Type:       MISSING_KEY,
 				StatusCode: http.StatusBadRequest,
-				msg:        "missing required parameter uuid",
+				msg:        "Missing required parameter uuid",
 			},
 		},
 		{

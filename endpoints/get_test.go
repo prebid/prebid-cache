@@ -67,10 +67,10 @@ func TestGetHandler(t *testing.T) {
 			},
 			testOutput{
 				responseCode: http.StatusBadRequest,
-				responseBody: "GET /cache: missing required parameter uuid\n",
+				responseBody: "GET /cache: Missing required parameter uuid\n",
 				logEntries: []logEntry{
 					{
-						msg: "GET /cache: missing required parameter uuid",
+						msg: "GET /cache: Missing required parameter uuid",
 						lvl: logrus.ErrorLevel,
 					},
 				},
