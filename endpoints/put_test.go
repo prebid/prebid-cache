@@ -897,7 +897,7 @@ func TestParsePutObject(t *testing.T) {
 }
 
 // TestLogBackendError asserts this package's logBackendError(err error, index int) function
-func TestLogBackendError(t *testing.T) {
+func TestClassifyBackendError(t *testing.T) {
 	type testOutput struct {
 		err  error
 		code int
@@ -935,7 +935,7 @@ func TestLogBackendError(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		// run
-		err := logBackendError(tc.inError, 0)
+		err := classifyBackendError(tc.inError, 0)
 
 		// assert error type:
 		assert.Equal(t, tc.expected.err, err, tc.desc)

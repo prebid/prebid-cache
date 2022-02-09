@@ -35,7 +35,7 @@ type syncPools struct {
 	putResponsePool sync.Pool
 }
 
-// NewPutHandler returns the handle function for the "/cache" endpoint when it gets receives a POST request
+// NewPutHandler returns the handle function for the "/cache" endpoint when it receives a POST request
 func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	putHandler := &PutHandler{}
 
@@ -102,7 +102,7 @@ func (e *PutHandler) parseRequest(r *http.Request) (*putRequest, error) {
 	return put, nil
 }
 
-// parsePutObject returns an error if the PutObject comes with an invalid field
+// parsePutObject returns an error if the putObject comes with an invalid field
 // and formats the string according to its type:
 //   - XML content gets unmarshaled in order to un-escape it and then gets
 //     prepended by its type
@@ -127,7 +127,7 @@ func parsePutObject(p putObject) (string, error) {
 			return "", utils.NewPBCError(utils.MALFORMED_XML, fmt.Sprintf("XML messages must have a String value. Found %v", p.Value))
 		}
 
-		// Be careful about the the cross-script escaping issues here. JSON requires quotation marks to be escaped,
+		// Be careful about the cross-script escaping issues here. JSON requires quotation marks to be escaped,
 		// for example... so we'll need to un-escape it before we consider it to be XML content.
 		var interpreted string
 		if err := json.Unmarshal(p.Value, &interpreted); err != nil {
@@ -144,20 +144,29 @@ func parsePutObject(p putObject) (string, error) {
 	return toCache, nil
 }
 
-func logBackendError(err error, index int) error {
+func classifyBackendError(err error, index int) error {
 	if _, ok := err.(*backendDecorators.BadPayloadSize); ok {
 		return utils.NewPBCError(utils.BAD_PAYLOAD_SIZE, fmt.Sprintf("POST /cache element %d exceeded max size: %v", index, err.Error()))
 	}
 
-	logrus.Error("POST /cache Error while writing to the backend: ", err)
-
-	if err == context.DeadlineExceeded {
-		logrus.Error("POST /cache timed out:", err)
+	switch err {
+	case context.DeadlineExceeded:
 		return utils.NewPBCError(utils.PUT_DEADLINE_EXCEEDED)
+	default:
+		return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, err.Error())
 	}
 
-	logrus.Error("POST /cache had an unexpected error:", err)
-	return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, err.Error())
+	return nil
+}
+
+func logBackendError(err error) {
+	logrus.Error("POST /cache Error while writing to the back-end: ", err)
+
+	if pbcErr, isPBCErr := err.(utils.PBCError); isPBCErr && pbcErr.StatusCode == utils.PUT_DEADLINE_EXCEEDED {
+		logrus.Error("POST /cache timed out:", err)
+	} else {
+		logrus.Error("POST /cache had an unexpected error:", err)
+	}
 }
 
 // handle is the handler function that gets assigned to the POST method of the `/cache` endpoint
@@ -168,7 +177,7 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 
 	bytes, err := e.processPutRequest(r)
 	if err != nil {
-		// At least one of the elements in the incomming request could not be stored
+		// At least one of the elements in the incoming request could not be stored
 		// write the http error and log corresponding metrics
 		var statusCode int
 		if pbcErr, isPBCErr := err.(utils.PBCError); isPBCErr {
@@ -197,29 +206,29 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	e.metrics.RecordPutDuration(time.Since(start))
 }
 
-// processPutRequest parses, unmarshals, and validates the incoming request; then calls the backend Put()
+// processPutRequest parses, unmarshals, and validates the incoming request; then calls the back-end Put()
 // implementation on every element of the "puts" array. This function exits after all elements in the
-// "puts" array have been stored in the backend, or after the first error is found
+// "puts" array have been stored in the back-end, or after the first error is found
 func (e *PutHandler) processPutRequest(r *http.Request) ([]byte, error) {
-	// Parse and validate incomming request
-	put, err := e.parseRequest(r)
+	// Parse and validate incoming request
+	putRequest, err := e.parseRequest(r)
 	if err != nil {
 		return nil, err
 	}
-	defer e.memory.requestPool.Put(put)
+	defer e.memory.requestPool.Put(putRequest)
 
 	// Allocate a PutResponse object in thread-safe memory
-	resps := e.memory.putResponsePool.Get().(*PutResponse)
-	resps.Responses = make([]putResponseObject, len(put.Puts))
-	defer e.memory.putResponsePool.Put(resps)
+	putResponse := e.memory.putResponsePool.Get().(*PutResponse)
+	putResponse.Responses = make([]putResponseObject, len(putRequest.Puts))
+	defer e.memory.putResponsePool.Put(putResponse)
 
 	// Send elements to storage service or database
-	if pcErr := e.putElements(put, resps); pcErr != nil {
+	if pcErr := e.putElements(putRequest, putResponse); pcErr != nil {
 		return nil, pcErr
 	}
 
 	// Marshal Prebid Cache's response
-	bytes, err := json.Marshal(resps)
+	bytes, err := json.Marshal(putResponse)
 	if err != nil {
 		return nil, utils.NewPBCError(utils.MARSHAL_RESPONSE)
 	}
@@ -227,44 +236,76 @@ func (e *PutHandler) processPutRequest(r *http.Request) ([]byte, error) {
 	return bytes, nil
 }
 
-// putElements calls the backend storage Put() implementation for every element in put.Puts array and stores the
-// corresponding UUID's inside the corresponding PutResponse objects. If an error is found, exits even if the
-// rest of the put elements have not been stored.
+// putElements calls put(po *putObject, wg *sync.WaitGroup) in parallel and if any of those calls generates an error, logs the
+// first one in the order its corresponding putObject came inside the []PutRequest.Puts array
+//
+// TODO: For those storage clients that support storing multiple elements in a single call, build a batch and send them together
+// TODO: Allow Prebid Cache to provide error details in an "errors" field in the response
 func (e *PutHandler) putElements(put *putRequest, resps *PutResponse) error {
-	for i, p := range put.Puts {
-		toCache, err := parsePutObject(p)
-		if err != nil {
-			return err
-		}
+	// Call Put() implementation of storage back-end in parrallel
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(put.Puts))
 
-		// Only allow setting a provided key if configured (and ensure a key is provided).
-		if e.cfg.allowKeys && len(p.Key) > 0 {
-			resps.Responses[i].UUID = p.Key
-			e.metrics.RecordPutKeyProvided()
-		} else if resps.Responses[i].UUID, err = utils.GenerateRandomID(); err != nil {
-			return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, "Error generating version 4 UUID")
-		}
+	for i := 0; i < len(put.Puts); i++ {
+		go e.put(&put.Puts[i], &resps.Responses[i], i, &waitGroup)
+	}
+	waitGroup.Wait()
 
-		// If we have a blank UUID, don't store anything.
-		// Eventually we may want to provide error details, but as of today this is the only non-fatal error
-		// Future error details could go into a second property of the Responses object, such as "errors"
-		if len(resps.Responses[i].UUID) > 0 {
-			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-			defer cancel()
-
-			err = e.backend.Put(ctx, resps.Responses[i].UUID, toCache, p.TTLSeconds)
-			if err != nil {
-				if pbcErr, isPbcErr := err.(utils.PBCError); isPbcErr && pbcErr.Type == utils.RECORD_EXISTS {
-					// Record didn't get overwritten, return a reponse with an empty UUID string
-					resps.Responses[i].UUID = ""
-				} else {
-					return logBackendError(err, i)
-				}
-			}
-			logrus.Tracef("PUT /cache uuid=%s", resps.Responses[i].UUID)
+	// Log the first element found and return it
+	for _, resp := range resps.Responses {
+		if resp.err != nil {
+			logBackendError(resp.err)
+			return resp.err
 		}
 	}
+
 	return nil
+}
+
+// put parses the putObject, validates it and calls the back-end storage Put() function this Prebid Cache instance
+// is using. Returns a putResponseObject storing either the corresponding UUID's data was stored under, or an error
+// if any.
+func (e *PutHandler) put(po *putObject, resp *putResponseObject, index int, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	toCache, err := parsePutObject(*po)
+	if err != nil {
+		resp.err = err
+	}
+
+	// Only allow setting a provided key if configured (and ensure a key is provided).
+	if e.cfg.allowKeys && len(po.Key) > 0 {
+		// put object comes with custom key, which we are allowed to use
+		resp.UUID = po.Key
+		e.metrics.RecordPutKeyProvided()
+	} else {
+		// Either put object doesn't come with a custom key or Prebid Cache is configured
+		// to not use custom keys. Generate a random UUID
+		if resp.UUID, err = utils.GenerateRandomID(); err != nil {
+			resp.UUID = ""
+			resp.err = utils.NewPBCError(utils.PUT_INTERNAL_SERVER, "Error generating version 4 UUID")
+			return
+		}
+	}
+
+	// If we have a blank UUID, don't store anything.
+	// Eventually we may want to provide error details, but as of today this is the only non-fatal error
+	// Future error details could go into a second property of the Responses object, such as "errors"
+	if len(resp.UUID) > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+
+		err = e.backend.Put(ctx, resp.UUID, toCache, po.TTLSeconds)
+		if err != nil {
+			if pbcErr, isPbcErr := err.(utils.PBCError); isPbcErr && pbcErr.Type == utils.RECORD_EXISTS {
+				// Record didn't get overwritten, return a response with an empty UUID string
+				resp.UUID = ""
+			} else {
+				resp.err = classifyBackendError(err, index)
+			}
+		}
+	}
+	return
 }
 
 type putRequest struct {
@@ -280,6 +321,7 @@ type putObject struct {
 
 type putResponseObject struct {
 	UUID string `json:"uuid"`
+	err  error
 }
 
 // PutResponse will be marshaled to be written into the http response
