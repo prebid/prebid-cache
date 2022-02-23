@@ -32,7 +32,7 @@ WORKDIR /usr/local/bin/
 COPY --from=build /app/prebid-cache/prebid-cache .
 RUN chmod a+xr prebid-cache
 COPY --from=build /app/prebid-cache/config.yaml .
-RUN chmod -R a+r config.yaml
+RUN chmod a+r config.yaml
 RUN adduser prebid_user
 USER prebid_user
 EXPOSE 2424
