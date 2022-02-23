@@ -3,8 +3,8 @@ RUN apt-get update && \
     apt-get -y upgrade && \
     apt-get install -y wget
 ENV GO_INSTALLER=go1.16.4.linux-amd64.tar.gz
-RUN cd /tmp && \
-    wget https://dl.google.com/go/$GO_INSTALLER && \
+WORKDIR /tmp
+RUN wget https://dl.google.com/go/$GO_INSTALLER && \
     tar -C /usr/local -xzf $GO_INSTALLER
 RUN mkdir -p /app/prebid-cache/
 WORKDIR /app/prebid-cache/
@@ -30,7 +30,11 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 WORKDIR /usr/local/bin/
 COPY --from=build /app/prebid-cache/prebid-cache .
+RUN chmod a+xr prebid-cache
 COPY --from=build /app/prebid-cache/config.yaml .
+RUN chmod -R a+r config.yaml
+RUN adduser prebid_user
+USER prebid_user
 EXPOSE 2424
 EXPOSE 2525
 ENTRYPOINT ["/usr/local/bin/prebid-cache"]
