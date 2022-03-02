@@ -1,20 +1,18 @@
 module github.com/prebid/prebid-cache
 
-go 1.13
-
-replace github.com/bradfitz/gomemcache => github.com/google/gomemcache v0.0.0-20200326162346-94281991662a
+go 1.16
 
 require (
 	github.com/BurntSushi/toml v1.0.0 // indirect
 	github.com/aerospike/aerospike-client-go v4.0.0+incompatible
 	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
-	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737
 	github.com/didip/tollbooth v2.2.0+incompatible
 	github.com/go-redis/redis v6.12.1-0.20180718122851-ee41b9092371+incompatible
 	github.com/gocql/gocql v0.0.0-20180617115710-e06f8c1bcd78
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/golang/snappy v0.0.4
+	github.com/google/gomemcache v0.0.0-20210709172713-c1c93e4523ee
 	github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce // indirect
 	github.com/influxdata/influxdb v1.6.0 // indirect
 	github.com/julienschmidt/httprouter v1.2.0
