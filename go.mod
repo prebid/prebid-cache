@@ -34,5 +34,4 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/vrischmann/go-metrics-influxdb v0.0.0-20160917065939-43af8332c303
 	github.com/yuin/gopher-lua v0.0.0-20180630135845-46796da1b0b4 // indirect
-	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 )
