@@ -30,3 +30,9 @@ else
 fi
 
 go test $(go list ./... | grep -v /vendor/)
+
+if $VET; then
+  COMMAND="go vet"
+  echo "Running: $COMMAND"
+  `$COMMAND`
+fi
