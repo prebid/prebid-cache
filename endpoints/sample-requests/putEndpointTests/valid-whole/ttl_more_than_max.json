@@ -1,0 +1,20 @@
+{
+  "description": "Put request wants to store object for more seconds than Prebid Cache maximum. Cap at the 'max_ttl_seconds' value and store successfully",
+  "testConfig": {
+    "max_ttl_seconds": 5
+  },
+  "mockRequest": {
+    "puts": [
+       {
+         "type": "xml",
+         "ttlseconds": 6,
+         "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+       }
+    ]
+  },
+  "expectedResponse": {
+    "responses": [
+      {"uuid": "random"}
+    ]
+  }
+}

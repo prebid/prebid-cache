@@ -1,0 +1,17 @@
+{
+  "description": "Key field missing and custom keys are not allowed anyways. Store under random UUID",
+  "mockRequest": {
+    "puts": [
+       {
+         "type": "xml",
+         "ttlseconds": 60,
+         "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+       }
+    ]
+  },
+  "expectedResponse": {
+    "responses": [
+      {"uuid": "random"}
+    ]
+  }
+}

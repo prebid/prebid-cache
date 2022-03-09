@@ -1,0 +1,12 @@
+{
+  "description": "Prebid Cache only allows to store JSON or XML types and the type field is required. Respond with error",
+  "mockRequest": {
+    "puts": [
+       {
+         "ttlseconds": 60,
+         "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+       }
+    ]
+  },
+  "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 0 exceeded max 50\n"
+}

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -16,12 +17,201 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
+	backendConfig "github.com/prebid/prebid-cache/backends/config"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
+	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/prebid/prebid-cache/utils"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+func TestPutJsonTests(t *testing.T) {
+	testGroups := []struct {
+		desc        string
+		expectError bool
+		tests       []string
+	}{
+		{
+			desc:        "Valid put requests. Expect 200 response",
+			expectError: false,
+			tests: []string{
+				"sample-requests/putEndpointTests/valid-whole/single_element_to_store.json",
+				"sample-requests/putEndpointTests/valid-whole/no_elements_to_store.json",
+				"sample-requests/putEndpointTests/valid-whole/multiple_elements_to_store.json",
+				"sample-requests/putEndpointTests/valid-whole/valid_type_json.json",
+				"sample-requests/putEndpointTests/valid-whole/valid_type_xml.json",
+				"sample-requests/putEndpointTests/valid-whole/ttl_more_than_max.json",
+				"sample-requests/putEndpointTests/valid-whole/ttl_missing.json",
+			},
+		},
+		{
+			desc:        "Request tries to store more elements than the max allowed. Return error",
+			expectError: true,
+			tests: []string{
+				"sample-requests/putEndpointTests/invalid-number-of-elements/puts_max_num_values.json",
+			},
+		},
+		{
+			desc:        "Invalid 'type' field values, expect error",
+			expectError: true,
+			tests: []string{
+				"sample-requests/putEndpointTests/invalid-types/type_missing.json",
+				"sample-requests/putEndpointTests/invalid-types/type_unknown.json",
+			},
+		},
+		{
+			desc:        "invalid 'value' field values, expect error",
+			expectError: true,
+			tests: []string{
+				"sample-requests/putEndpointTests/invalid-value/value_missing.json",
+				"sample-requests/putEndpointTests/invalid-value/value_greater_than_max.json",
+			},
+		},
+		{
+			desc:        "Valid when storing under custom keys is allowed, expect 200 responses",
+			expectError: false,
+			tests: []string{
+				"sample-requests/putEndpointTests/custom_keys/allowed/exemplary/key_field_included.json",
+				"sample-requests/putEndpointTests/custom_keys/allowed/exemplary/key_field_missing.json",
+			},
+		},
+		{
+			desc:        "Valid when storing under custom keys is not allowed, expect 200 responses",
+			expectError: false,
+			tests: []string{
+				"sample-requests/putEndpointTests/custom_keys/not_allowed/exemplary/key_field_missing.json",
+				"sample-requests/putEndpointTests/custom_keys/not_allowed/exemplary/key_field_included.json",
+			},
+		},
+	}
+
+	for _, group := range testGroups {
+		for _, testFile := range group.tests {
+			// TEST SETUP
+			//   Read file
+			testInfo, err := parseTestInfo(testFile)
+			if !assert.NoError(t, err, "%v", err) {
+				continue
+			}
+
+			//   Read test config
+			v := buildViperConfig(testInfo)
+			cfg := config.Configuration{}
+			err = v.Unmarshal(&cfg)
+			if !assert.NoError(t, err, "Viper could not parse configuration from test file: %s. Error:%s\n", testFile, err) {
+				continue
+			}
+
+			//   Instantiate memory backend, request, router, recorder
+			m := metricstest.CreateMockMetrics()
+			backend := backendConfig.NewBackend(cfg, m)
+			router := httprouter.New()
+			router.POST("/cache", NewPutHandler(backend, m, testInfo.Cfg.MaxNumValues, testInfo.Cfg.AllowSettingKeys))
+			request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(testInfo.JsonPutRequest)))
+			assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err)
+			rr := httptest.NewRecorder()
+
+			// RUN TEST
+			router.ServeHTTP(rr, request)
+
+			// DO ASSERTIONS
+			// If error is expected, assert error message and non-200 status code
+			if group.expectError {
+				// Given that Prebid Cache still doesn't provide error details in an "errors" field describing the particular issues
+				// of each element that could not be stored, compare the entire response body that will contain the error message of
+				// the element that could not be stored.
+				assert.NotEqual(t, http.StatusOK, rr.Code, "Test %s failed. Expected error status code.", testFile)
+				assert.Equal(t, testInfo.ExpectedError, rr.Body.String(), "Error message differs from expected. Test file: %s", testFile)
+				continue
+			}
+			// Given that no error is expected, assert a 200 status code was returned
+			if !assert.Equal(t, http.StatusOK, rr.Code, "Test %s failed. StatusCode = %d. Returned error: %s", testFile, rr.Code, rr.Body.String()) {
+				continue
+			}
+
+			// Assert we returned the exact same elements in the 'Responses' array than in the request 'Puts' array
+			actualPutResponse := PutResponse{}
+			err = json.Unmarshal(rr.Body.Bytes(), &actualPutResponse)
+			if !assert.NoError(t, err, "Could not unmarshal %s. Test file: %s. Error:%s\n", rr.Body.String(), testFile, err) {
+				continue
+			}
+			assert.Len(t, actualPutResponse.Responses, len(testInfo.ExpectedResponse.Responses), "Actual response elements differ with expected. Test file: %s", testFile)
+
+			// If custom keys are allowed, assert they are found in the actualPutResponse.Responses array
+			if testInfo.Cfg.AllowSettingKeys {
+				customKeyIndexes := []int{}
+
+				// Unmarshal test request to extract custom keys
+				put := &putRequest{
+					Puts: make([]putObject, 0),
+				}
+				err = json.Unmarshal(testInfo.JsonPutRequest, put)
+				if !assert.NoError(t, err, "Could not put request %s. Test file: %s. Error:%s\n", testInfo.JsonPutRequest, testFile, err) {
+					continue
+				}
+				for i, testInputElem := range put.Puts {
+					if len(testInputElem.Key) > 0 {
+						customKeyIndexes = append(customKeyIndexes, i)
+					}
+				}
+
+				// Custom keys values must match and their position in the `actualPutResponse.Responses` array must be the exact same as they came in
+				// the incoming request
+				for _, index := range customKeyIndexes {
+					assert.Equal(t, testInfo.ExpectedResponse.Responses[index].UUID, actualPutResponse.Responses[index].UUID, "Custom key differs from expected in position %d. Test file: %s", index, testFile)
+				}
+			}
+		}
+	}
+}
+
+type testData struct {
+	Cfg              testConfig      `json:"testConfig"`
+	JsonPutRequest   json.RawMessage `json:"mockRequest"`
+	ExpectedResponse PutResponse     `json:"expectedResponse"`
+	ExpectedError    string          `json:"expectedErrorMessage"`
+}
+
+type testConfig struct {
+	AllowSettingKeys  bool `json:"custom_keys"`
+	ValueMaxSizeBytes int  `json:"max_size_bytes"`
+	MaxNumValues      int  `json:"max_num_values"`
+	MaxTTLSeconds     int  `json:"max_ttl_seconds"`
+}
+
+func parseTestInfo(testFile string) (*testData, error) {
+	var jsonTest []byte
+	var err error
+	if jsonTest, err = ioutil.ReadFile(testFile); err != nil {
+		return nil, fmt.Errorf("Could not read test file: %s. Error: %v \n", testFile, err)
+	}
+
+	testInfo := &testData{}
+	if err = json.Unmarshal(jsonTest, testInfo); err != nil {
+		return nil, fmt.Errorf("Could not unmarshal test file: %s. Error:%s\n", testFile, err)
+	}
+	return testInfo, nil
+}
+
+func buildViperConfig(testInfo *testData) *viper.Viper {
+	v := viper.New()
+	v.SetDefault("backend.type", "memory")
+	v.SetDefault("compression.type", "none")
+	v.SetDefault("request_limits.allow_setting_keys", testInfo.Cfg.AllowSettingKeys)
+	if testInfo.Cfg.ValueMaxSizeBytes == 0 {
+		testInfo.Cfg.ValueMaxSizeBytes = 50
+	}
+	v.SetDefault("request_limits.max_size_bytes", testInfo.Cfg.ValueMaxSizeBytes)
+
+	if testInfo.Cfg.MaxNumValues == 0 {
+		testInfo.Cfg.MaxNumValues = 1
+	}
+	v.SetDefault("request_limits.max_num_values", testInfo.Cfg.MaxNumValues)
+	v.SetDefault("request_limits.max_ttl_seconds", testInfo.Cfg.MaxTTLSeconds)
+	return v
+}
 
 // TestStatusEndpointReadiness asserts the http://<prebid-cache-host>/status endpoint
 // is responds as expected.

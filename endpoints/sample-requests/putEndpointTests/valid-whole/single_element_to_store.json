@@ -1,0 +1,17 @@
+{
+  "description": "Put request wants to store a single element of valid type no larger than the maximum size allowed. Store under a random UUID",
+  "mockRequest": {
+    "puts": [
+       {
+         "type": "xml",
+         "ttlseconds": 60,
+         "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+       }
+    ]
+  },
+  "expectedResponse": {
+    "responses": [
+      {"uuid": "random"}
+    ]
+  }
+}

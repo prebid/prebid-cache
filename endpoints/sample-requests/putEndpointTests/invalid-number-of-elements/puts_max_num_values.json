@@ -1,0 +1,13 @@
+{
+  "description": "Put request wants to store more elements than allowed in the 'max_num_values' configuration. Don't store and return error",
+  "testConfig": {
+      "max_num_values": 1
+  },
+  "mockRequest": {
+    "puts": [
+       {"type":"xml","ttlseconds":5,"value":"<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"},
+       {"type":"json","ttlseconds":5,"value":"{\"field\":100}"}
+    ]
+  },
+  "expectedErrorMessage": "More keys than allowed: 1\n"
+}

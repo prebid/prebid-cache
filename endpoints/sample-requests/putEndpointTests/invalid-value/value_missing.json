@@ -1,0 +1,12 @@
+{
+  "description": "Prebid Cache does not allow the storage of empty values. Respond with error",
+  "mockRequest": {
+    "puts": [
+       {
+         "type": "xml",
+         "ttlseconds": 60
+       }
+    ]
+  },
+  "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 0 exceeded max 50\n"
+}

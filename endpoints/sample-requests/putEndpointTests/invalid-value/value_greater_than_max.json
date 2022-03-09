@@ -1,0 +1,16 @@
+{
+  "description": "Put request wants to store an element with a size that exceeds the 'max_size_bytes' value. Don't store and return error",
+  "testConfig": {
+    "max_size_bytes": 5
+  },
+  "mockRequest": {
+    "puts": [
+       {
+         "type": "xml",
+         "ttlseconds": 5,
+         "value": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<VAST version=\"2.0\"><\\/VAST>\r\n"
+       }
+    ]
+  },
+  "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 73 exceeded max 5\n"
+}

@@ -1,0 +1,12 @@
+{
+  "mockRequest": {
+    "puts": [
+       {
+         "type": "unknown",
+         "ttlseconds": 60,
+         "value": "some-value"
+       }
+    ]
+  },
+  "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 0 exceeded max 50\n"
+}
