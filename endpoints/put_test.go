@@ -21,6 +21,7 @@ import (
 	"github.com/prebid/prebid-cache/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // TestStatusEndpointReadiness asserts the http://<prebid-cache-host>/status endpoint
@@ -169,29 +170,38 @@ func TestSuccessfulPut(t *testing.T) {
 			router.GET("/cache", NewGetHandler(backend, m, true))
 
 			// Feed the tests input put request to the endpoint's handle
-			uuid, putTrace := doMockPut(t, router, tc.inPutBody)
-			if !assert.Equal(t, http.StatusOK, putTrace.Code, "%s - %s: Put() call failed. Status: %d, Msg: %v", group.groupDesc, tc.desc, putTrace.Code, putTrace.Body.String()) {
+			putResponse := doPut(t, router, tc.inPutBody)
+			if !assert.Equal(t, http.StatusOK, putResponse.Code, "%s - %s: Put() call failed. Status: %d, Msg: %v", group.groupDesc, tc.desc, putResponse.Code, putResponse.Body.String()) {
 				return
 			}
 
-			// assert the put call above acurately stored the expected test data.
-			getResults := doMockGet(t, router, uuid)
-			if !assert.Equal(t, http.StatusOK, getResults.Code, "%s - %s: Get() failed with status: %d", group.groupDesc, tc.desc, getResults.Code) {
-				return
-			}
-			if !assert.Equal(t, tc.expectedStoredValue, getResults.Body.String(), "%s - %s: Put() call didn't store the expected value", group.groupDesc, tc.desc) {
-				return
-			}
-			if getResults.Header().Get("Content-Type") != group.expectedResponseType {
-				t.Fatalf("%s - %s: Expected GET response Content-Type %v to equal %v", group.groupDesc, tc.desc, getResults.Header().Get("Content-Type"), group.expectedResponseType)
+			// Response was a 200, extract responses
+			var parsed PutResponse
+			err := json.Unmarshal(putResponse.Body.Bytes(), &parsed)
+			assert.NoError(t, err, "Response from POST doesn't conform to the expected format: %s", putResponse.Body.String())
+
+			// Assert responses
+			for _, putResponse := range parsed.Responses {
+				// assert the put call above acurately stored the expected test data.
+				getResults := doMockGet(t, router, putResponse.UUID)
+				if !assert.Equal(t, http.StatusOK, getResults.Code, "%s - %s: Get() failed with status: %d", group.groupDesc, tc.desc, getResults.Code) {
+					return
+				}
+				if !assert.Equal(t, tc.expectedStoredValue, getResults.Body.String(), "%s - %s: Put() call didn't store the expected value", group.groupDesc, tc.desc) {
+					return
+				}
+				if getResults.Header().Get("Content-Type") != group.expectedResponseType {
+					t.Fatalf("%s - %s: Expected GET response Content-Type %v to equal %v", group.groupDesc, tc.desc, getResults.Header().Get("Content-Type"), group.expectedResponseType)
+				}
+
+				// assert the put call above logged expected metrics
+				assert.Equal(t, tc.expectedMetrics.totalRequests, metricstest.MockCounters["puts.current_url.request.total"], "%s - handle function should record every incomming PUT request", tc.desc)
+				assert.Equal(t, tc.expectedMetrics.keyWasProvided, metricstest.MockCounters["puts.current_url.request.custom_key"], "%s - custom key was provided for put request and was not accounted for", tc.desc)
+				assert.Equal(t, tc.expectedMetrics.badRequests, metricstest.MockCounters["puts.current_url.request.bad_request"], "%s - Bad request wasn't recorded", tc.desc)
+				assert.Equal(t, tc.expectedMetrics.requestErrs, metricstest.MockCounters["puts.current_url.request.error"], "%s - WriteGetResponse error should have been recorded", tc.desc)
+				assert.Equal(t, tc.expectedMetrics.requestDur, metricstest.MockHistograms["puts.current_url.duration"], "%s - Successful GET request should have recorded duration", tc.desc)
 			}
 
-			// assert the put call above logged expected metrics
-			assert.Equal(t, tc.expectedMetrics.totalRequests, metricstest.MockCounters["puts.current_url.request.total"], "%s - handle function should record every incomming PUT request", tc.desc)
-			assert.Equal(t, tc.expectedMetrics.keyWasProvided, metricstest.MockCounters["puts.current_url.request.custom_key"], "%s - custom key was provided for put request and was not accounted for", tc.desc)
-			assert.Equal(t, tc.expectedMetrics.badRequests, metricstest.MockCounters["puts.current_url.request.bad_request"], "%s - Bad request wasn't recorded", tc.desc)
-			assert.Equal(t, tc.expectedMetrics.requestErrs, metricstest.MockCounters["puts.current_url.request.error"], "%s - WriteGetResponse error should have been recorded", tc.desc)
-			assert.Equal(t, tc.expectedMetrics.requestDur, metricstest.MockHistograms["puts.current_url.duration"], "%s - Successful GET request should have recorded duration", tc.desc)
 		}
 	}
 }
@@ -199,81 +209,69 @@ func TestSuccessfulPut(t *testing.T) {
 // TestMalformedOrInvalidValue asserts the *PuntHandler.handle() function successfully responds
 // with a http.StatusBadRequest given malformed or missing `value` field
 func TestMalformedOrInvalidValue(t *testing.T) {
-	type metricRecords struct {
-		totalRequests  int64
-		keyWasProvided int64
-		badRequests    int64
-		requestErrs    int64
-		requestDur     float64
-	}
-
 	testCases := []struct {
-		desc            string
-		inPutBody       string
-		expectedMetrics metricRecords
+		desc             string
+		inPutBody        string
+		expectedError    error
+		expectedPutCalls int
 	}{
 		{
-			"Badly escaped character in value field",
-			"{\"puts\":[{\"type\":\"json\",\"value\":\"badly-esca\"ped\"}]}",
-			metricRecords{
-				totalRequests: int64(1),
-				badRequests:   int64(1),
-			},
+			desc:             "Badly escaped character in value field",
+			inPutBody:        `{"puts":[{"type":"json","value":"badly-esca"ped"}]}`,
+			expectedError:    utils.NewPBCError(utils.PUT_BAD_REQUEST, `{"puts":[{"type":"json","value":"badly-esca"ped"}]}`),
+			expectedPutCalls: 0,
 		},
 		{
-			"Malformed JSON in value field",
-			"{\"puts\":[{\"type\":\"json\",\"value\":malformed}]}",
-			metricRecords{
-				totalRequests: int64(1),
-				badRequests:   int64(1),
-			},
+			desc:             "Malformed JSON in value field",
+			inPutBody:        `{"puts":[{"type":"json","value":malformed}]}`,
+			expectedError:    utils.NewPBCError(utils.PUT_BAD_REQUEST, `{"puts":[{"type":"json","value":malformed}]}`),
+			expectedPutCalls: 0,
 		},
 		{
-			"Missing value field in sole element of puts array",
-			"{\"puts\":[{\"type\":\"json\",\"unrecognized\":true}]}",
-			metricRecords{
-				totalRequests: int64(1),
-				badRequests:   int64(1),
-			},
+			desc:             "Missing value field in sole element of puts array",
+			inPutBody:        `{"puts":[{"type":"json","unrecognized":true}]}`,
+			expectedError:    utils.NewPBCError(utils.MISSING_VALUE),
+			expectedPutCalls: 0,
 		},
 		{
-			"Missing value field in at least one element of puts array",
-			"{\"puts\":[{\"type\":\"json\",\"value\":true}, {\"type\":\"json\",\"unrecognized\":true}]}",
-			metricRecords{
-				totalRequests: int64(1),
-				badRequests:   int64(1),
-			},
+			desc:             "Missing value field in at least one element of puts array",
+			inPutBody:        `{"puts":[{"type":"json","value":true}, {"type":"json","unrecognized":true}]}`,
+			expectedError:    utils.NewPBCError(utils.MISSING_VALUE),
+			expectedPutCalls: 1,
 		},
 		{
-			"Invalid XML",
-			"{\"puts\":[{\"type\":\"xml\",\"value\":5}]}",
-			metricRecords{
-				totalRequests: int64(1),
-				badRequests:   int64(1),
-			},
+			desc:             "Invalid XML",
+			inPutBody:        `{"puts":[{"type":"xml","value":5}]}`,
+			expectedError:    utils.NewPBCError(utils.MALFORMED_XML, "XML messages must have a String value. Found [53]"),
+			expectedPutCalls: 0,
 		},
 	}
 
 	for _, tc := range testCases {
-		// setup test
 		router := httprouter.New()
-		backend := backends.NewMemoryBackend()
+
+		backend := &mockBackend{}
+		backend.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
 		m := metricstest.CreateMockMetrics()
 
 		router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
 		// Run test
-		_, putTrace := doMockPut(t, router, tc.inPutBody)
+		putResponse := doPut(t, router, tc.inPutBody)
 
-		// Assert
-		assert.Equal(t, http.StatusBadRequest, putTrace.Code, "%s: Put() call expected 400 response. Got: %d, Msg: %v", tc.desc, putTrace.Code, putTrace.Body.String())
+		// Assert expected response
+		assert.Equal(t, http.StatusBadRequest, putResponse.Code, "%s: Put() call expected 400 response. Got: %d, Msg: %v", tc.desc, putResponse.Code, putResponse.Body.String())
+		assert.Equal(t, tc.expectedError.Error()+"\n", putResponse.Body.String(), "%s: Put() return error doesn't match expected.", tc.desc)
+
+		backend.AssertNumberOfCalls(t, "Put", tc.expectedPutCalls)
 
 		// assert the put call above logged expected metrics
-		assert.Equal(t, tc.expectedMetrics.totalRequests, metricstest.MockCounters["puts.current_url.request.total"], "%s - handle function should record every incomming PUT request", tc.desc)
-		assert.Equal(t, tc.expectedMetrics.keyWasProvided, metricstest.MockCounters["puts.current_url.request.custom_key"], "%s - custom key was provided for put request and was not accounted for", tc.desc)
-		assert.Equal(t, tc.expectedMetrics.badRequests, metricstest.MockCounters["puts.current_url.request.bad_request"], "%s - Bad request wasn't recorded", tc.desc)
-		assert.Equal(t, tc.expectedMetrics.requestErrs, metricstest.MockCounters["puts.current_url.request.error"], "%s - WriteGetResponse error should have been recorded", tc.desc)
-		assert.Equal(t, tc.expectedMetrics.requestDur, metricstest.MockHistograms["puts.current_url.duration"], "%s - Successful GET request should have recorded duration", tc.desc)
+		assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "%s - handle function should record every incomming PUT request", tc.desc)
+		assert.Equal(t, int64(0), metricstest.MockCounters["puts.current_url.request.custom_key"], "%s - custom key was provided for put request and was not accounted for", tc.desc)
+		assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.bad_request"], "%s - Bad request wasn't recorded", tc.desc)
+		assert.Equal(t, int64(0), metricstest.MockCounters["puts.current_url.request.error"], "%s - WriteGetResponse error should have been recorded", tc.desc)
+		assert.Equal(t, float64(0), metricstest.MockHistograms["puts.current_url.duration"], "%s - Successful GET request should have recorded duration", tc.desc)
 	}
 }
 
@@ -281,25 +279,27 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 // with a http.StatusBadRequest code if the value under the incomming request's `type` field
 // refers to an unsupported data type.
 func TestNonSupportedType(t *testing.T) {
-	requestBody := "{\"puts\":[{\"type\":\"yaml\",\"value\":\"<tag></tag>\"}]}"
+	requestBody := `{"puts":[{"type":"yaml","value":"<tag></tag>"}]}`
 
-	backend := backends.NewMemoryBackend()
+	backend := &mockBackend{}
+	backend.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
 	router := httprouter.New()
 	m := metricstest.CreateMockMetrics()
 	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
-	_, putTrace := doMockPut(t, router, requestBody)
-	if putTrace.Code != http.StatusBadRequest {
-		t.Fatalf("Expected 400 response. Got: %d, Msg: %v", putTrace.Code, putTrace.Body.String())
-		return
-	}
-	// assert the put call above logged expected metrics
+	putResponse := doPut(t, router, requestBody)
+
+	require.Equal(t, http.StatusBadRequest, putResponse.Code, "Expected 400 response. Got: %d, Msg: %v", putResponse.Code, putResponse.Body.String())
+	require.Equal(t, "Type must be one of [\"json\", \"xml\"]. Found yaml\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
+
+	backend.AssertNotCalled(t, "Put")
+
 	assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "Handle function should record every incomming PUT request")
 	assert.Equal(t, int64(0), metricstest.MockCounters["puts.current_url.request.custom_key"], "Custom key was provided for put request and was not accounted for")
 	assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.bad_request"], "Bad request wasn't recorded")
 	assert.Equal(t, int64(0), metricstest.MockCounters["puts.current_url.request.error"], "WriteGetResponse error should have been recorded")
 	assert.Equal(t, 0.00, metricstest.MockHistograms["puts.current_url.duration"], "Successful GET request should have recorded duration")
-
 }
 
 func TestPutNegativeTTL(t *testing.T) {
@@ -482,22 +482,27 @@ func TestRequestReadError(t *testing.T) {
 func TestTooManyPutElements(t *testing.T) {
 	// Test case: request with more than elements than put handler's max number of values
 	putElements := []string{
-		"{\"type\":\"json\",\"value\":true}",
-		"{\"type\":\"xml\",\"value\":\"plain text\"}",
-		"{\"type\":\"xml\",\"value\":\"2\"}",
+		`{"type":"json","value":true}`,
+		`{"type":"xml","value":"plain text"}`,
+		`{"type":"xml","value":"2"}`,
 	}
-	reqBody := fmt.Sprintf("{\"puts\":[%s, %s, %s]}", putElements[0], putElements[1], putElements[2])
+	reqBody := fmt.Sprintf(`{"puts":[%s, %s, %s]}`, putElements[0], putElements[1], putElements[2])
 
 	//Set up server with capacity to handle less than putElements.size()
-	backend := backends.NewMemoryBackend()
+	backend := &mockBackend{}
+	backend.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
 	router := httprouter.New()
 	m := metricstest.CreateMockMetrics()
 	router.POST("/cache", NewPutHandler(backend, m, len(putElements)-1, true))
 
-	_, httpTestRecorder := doMockPut(t, router, reqBody)
-	assert.Equalf(t, http.StatusBadRequest, httpTestRecorder.Code, "doMockPut should have failed when trying to store %d elements because capacity is %d ", len(putElements), len(putElements)-1)
+	putResponse := doPut(t, router, reqBody)
 
-	// assert the put call above logged expected metrics
+	assert.Equalf(t, http.StatusBadRequest, putResponse.Code, "doPut should have failed when trying to store %d elements because capacity is %d ", len(putElements), len(putElements)-1)
+	assert.Equal(t, "More keys than allowed: 2\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
+
+	backend.AssertNotCalled(t, "Put")
+
 	assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "Handle function should record every incomming PUT request")
 	assert.Equal(t, int64(0), metricstest.MockCounters["puts.current_url.request.custom_key"], "Custom key was provided for put request and was not accounted for")
 	assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.bad_request"], "Bad request wasn't recorded")
@@ -593,10 +598,12 @@ func TestBadPayloadSizePutError(t *testing.T) {
 	m := metricstest.CreateMockMetrics()
 	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
-	_, httpTestRecorder := doMockPut(t, router, reqBody)
+	putResponse := doPut(t, router, reqBody)
 
-	// Assert status code
-	assert.Equal(t, http.StatusBadRequest, httpTestRecorder.Code, "doMockPut should have failed when trying to store elements in sizeCappedBackend")
+	// Assert expected response
+	assert.Equal(t, http.StatusBadRequest, putResponse.Code, "doPut should have failed when trying to store elements in sizeCappedBackend")
+	assert.Equal(t, "POST /cache element 0 exceeded max size: Payload size 30 exceeded max 3\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
+
 	//   metrics
 	assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "Handle function should record every incomming PUT request")
 	assert.Equal(t, int64(0), metricstest.MockCounters["puts.current_url.request.custom_key"], "Custom key was provided for put request and was not accounted for")
@@ -607,7 +614,7 @@ func TestBadPayloadSizePutError(t *testing.T) {
 
 func TestInternalPutClientError(t *testing.T) {
 	// Valid request
-	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"text longer than size limit\"}]}"
+	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"some data\"}]}"
 
 	// Use mock client that will return an error
 	backend := newErrorReturningBackend()
@@ -617,10 +624,12 @@ func TestInternalPutClientError(t *testing.T) {
 	m := metricstest.CreateMockMetrics()
 	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
-	_, httpTestRecorder := doMockPut(t, router, reqBody)
+	putResponse := doPut(t, router, reqBody)
 
-	// Assert status code
-	assert.Equal(t, http.StatusInternalServerError, httpTestRecorder.Code, "Put should have failed because we are using an MockReturnErrorBackend")
+	// Assert expected response
+	assert.Equal(t, http.StatusInternalServerError, putResponse.Code, "Put should have failed because we are using an MockReturnErrorBackend")
+	assert.Equal(t, "This is a mock backend that returns this error on Put() operation\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
+
 	//   metrics
 	assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "Handle function should record every incomming PUT request")
 	assert.Equal(t, int64(0), metricstest.MockCounters["puts.current_url.request.custom_key"], "Custom key was provided for put request and was not accounted for")
@@ -717,7 +726,7 @@ func TestEmptyPutRequests(t *testing.T) {
 
 func TestPutClientDeadlineExceeded(t *testing.T) {
 	// Valid request
-	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"text longer than size limit\"}]}"
+	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"some data\"}]}"
 
 	// Use mock client that will return an error
 	backend := newDeadlineExceededBackend()
@@ -727,10 +736,12 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 	m := metricstest.CreateMockMetrics()
 	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
-	_, httpTestRecorder := doMockPut(t, router, reqBody)
+	putResponse := doPut(t, router, reqBody)
 
-	// Assert status code
-	assert.Equal(t, utils.HTTPDependencyTimeout, httpTestRecorder.Code, "Put should have failed because we are using a MockDeadlineExceededBackend")
+	// Assert expected response
+	assert.Equal(t, utils.HTTPDependencyTimeout, putResponse.Code, "Put should have failed because we are using a MockDeadlineExceededBackend")
+	assert.Equal(t, "timeout writing value to the backend.\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
+
 	// Assert this request is accounted under the "puts.current_url.request.error" metrics
 	assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "Handle function should record every incomming PUT request")
 	assert.Equal(t, int64(0), metricstest.MockCounters["puts.current_url.request.custom_key"], "Custom key was provided for put request and was not accounted for")
@@ -989,30 +1000,16 @@ func doMockGet(t *testing.T, router *httprouter.Router, id string) *httptest.Res
 	return requestRecorder
 }
 
-func doMockPut(t *testing.T, router *httprouter.Router, content string) (string, *httptest.ResponseRecorder) {
-	var parseMockUUID = func(t *testing.T, putResponse string) string {
-		var parsed PutResponse
-		err := json.Unmarshal([]byte(putResponse), &parsed)
-		if err != nil {
-			t.Errorf("Response from POST doesn't conform to the expected format: %v", putResponse)
-		}
-		return parsed.Responses[0].UUID
-	}
-
+func doPut(t *testing.T, router *httprouter.Router, content string) *httptest.ResponseRecorder {
 	rr := httptest.NewRecorder()
 
 	request, err := http.NewRequest("POST", "/cache", strings.NewReader(content))
 	if err != nil {
 		t.Fatalf("Failed to create a POST request: %v", err)
-		return "", rr
 	}
-
 	router.ServeHTTP(rr, request)
-	uuid := ""
-	if rr.Code == http.StatusOK {
-		uuid = parseMockUUID(t, rr.Body.String())
-	}
-	return uuid, rr
+
+	return rr
 }
 
 func benchmarkPutHandler(b *testing.B, testCase string) {
@@ -1108,4 +1105,18 @@ func (b *deadlineExceedingBackend) Put(ctx context.Context, key string, value st
 
 func newDeadlineExceededBackend() *deadlineExceedingBackend {
 	return &deadlineExceedingBackend{}
+}
+
+type mockBackend struct {
+	mock.Mock
+}
+
+func (m *mockBackend) Get(ctx context.Context, key string) (string, error) {
+	args := m.Called(ctx, key)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockBackend) Put(ctx context.Context, key, value string, ttlSeconds int) error {
+	args := m.Called(ctx, key, value, ttlSeconds)
+	return args.Error(0)
 }
