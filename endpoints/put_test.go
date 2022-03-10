@@ -498,7 +498,7 @@ func TestTooManyPutElements(t *testing.T) {
 
 	putResponse := doPut(t, router, reqBody)
 
-	assert.Equalf(t, http.StatusBadRequest, putResponse.Code, "doMockPut should have failed when trying to store %d elements because capacity is %d ", len(putElements), len(putElements)-1)
+	assert.Equalf(t, http.StatusBadRequest, putResponse.Code, "doPut should have failed when trying to store %d elements because capacity is %d ", len(putElements), len(putElements)-1)
 	assert.Equal(t, "More keys than allowed: 2\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
 
 	backend.AssertNotCalled(t, "Put")
@@ -601,7 +601,7 @@ func TestBadPayloadSizePutError(t *testing.T) {
 	putResponse := doPut(t, router, reqBody)
 
 	// Assert expected response
-	assert.Equal(t, http.StatusBadRequest, putResponse.Code, "doMockPut should have failed when trying to store elements in sizeCappedBackend")
+	assert.Equal(t, http.StatusBadRequest, putResponse.Code, "doPut should have failed when trying to store elements in sizeCappedBackend")
 	assert.Equal(t, "POST /cache element 0 exceeded max size: Payload size 30 exceeded max 3\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
 
 	//   metrics
