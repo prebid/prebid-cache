@@ -11,6 +11,7 @@ import (
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/endpoints"
 	"github.com/prebid/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/version"
 	"github.com/rs/cors"
 )
 
@@ -37,6 +38,7 @@ func addReadRoutes(cfg config.Configuration, dataStore backends.Backend, appMetr
 	router.GET("/", endpoints.NewIndexHandler(cfg.IndexResponse)) // Default route handler
 	router.GET("/status", endpoints.Status)                       // Determines whether the server is ready for more traffic.
 	router.GET("/cache", endpoints.NewGetHandler(dataStore, appMetrics, cfg.RequestLimits.AllowSettingKeys))
+	r.Handler("GET", "/version", endpoints.NewVersionEndpoint(version.Ver))
 }
 
 func addWriteRoutes(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics, router *httprouter.Router) {
