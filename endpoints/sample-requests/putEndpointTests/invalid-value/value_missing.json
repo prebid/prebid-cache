@@ -8,5 +8,5 @@
        }
     ]
   },
-  "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 0 exceeded max 50\n"
+  "expectedErrorMessage": "Missing value.\n"
 }
