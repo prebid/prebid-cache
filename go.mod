@@ -14,7 +14,6 @@ require (
 	github.com/go-redis/redis v6.12.1-0.20180718122851-ee41b9092371+incompatible
 	github.com/gocql/gocql v0.0.0-20180617115710-e06f8c1bcd78
 	github.com/gofrs/uuid v3.2.0+incompatible
-	github.com/golang/glog v1.0.0
 	github.com/golang/snappy v0.0.4
 	github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce // indirect
 	github.com/influxdata/influxdb v1.6.0 // indirect
@@ -35,8 +34,7 @@ require (
 	github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec // indirect
 	github.com/spf13/pflag v1.0.1 // indirect
 	github.com/spf13/viper v1.0.2
-	github.com/stretchr/testify v1.6.1
-	github.com/tj/assert v0.0.3
+	github.com/stretchr/testify v1.5.1
 	github.com/vrischmann/go-metrics-influxdb v0.0.0-20160917065939-43af8332c303
 	github.com/yuin/gopher-lua v0.0.0-20180630135845-46796da1b0b4 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
