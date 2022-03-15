@@ -271,6 +271,7 @@ func (e *PutHandler) put(po *putObject, resp *putResponseObject, index int, wg *
 	toCache, err := parsePutObject(*po)
 	if err != nil {
 		resp.err = err
+		return
 	}
 
 	// Only allow setting a provided key if configured (and ensure a key is provided).
