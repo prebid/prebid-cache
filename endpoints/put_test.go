@@ -22,6 +22,8 @@ import (
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/prebid/prebid-cache/utils"
+	"github.com/sirupsen/logrus"
+	testLogrus "github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -88,6 +90,12 @@ func TestPutJsonTests(t *testing.T) {
 		},
 	}
 
+	//   Instantiate log recorder to be able to assert log entries
+	hook := testLogrus.NewGlobal()
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	var fatal bool //?
+	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+
 	for _, group := range testGroups {
 		for _, testFile := range group.tests {
 			// TEST SETUP
@@ -113,6 +121,9 @@ func TestPutJsonTests(t *testing.T) {
 			request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(testInfo.JsonPutRequest)))
 			assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err)
 			rr := httptest.NewRecorder()
+
+			//   Reset the fatal flag to false every test
+			fatal = false
 
 			// RUN TEST
 			router.ServeHTTP(rr, request)
@@ -164,15 +175,34 @@ func TestPutJsonTests(t *testing.T) {
 					assert.Equal(t, testInfo.ExpectedResponse.Responses[index].UUID, actualPutResponse.Responses[index].UUID, "Custom key differs from expected in position %d. Test file: %s", index, testFile)
 				}
 			}
+
+			// Assert logrus expected entries
+			if assert.Equal(t, len(tc.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.expectedLogInfo) = %d len(hook.Entries) = %d", i+1, len(tc.expectedLogInfo), len(hook.Entries)) {
+				for j := 0; j < len(tc.expectedLogInfo); j++ {
+					assert.Equal(t, tc.expectedLogInfo[j].msg, hook.Entries[j].Message, "Test case %d log message differs", i+1)
+					assert.Equal(t, tc.expectedLogInfo[j].lvl, hook.Entries[j].Level, "Test case %d log level differs", i+1)
+				}
+			} else {
+				return
+			}
+
+			// Reset log after every test and assert successful reset
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
 		}
 	}
 }
 
 type testData struct {
-	Cfg              testConfig      `json:"testConfig"`
-	JsonPutRequest   json.RawMessage `json:"mockRequest"`
-	ExpectedResponse PutResponse     `json:"expectedResponse"`
-	ExpectedError    string          `json:"expectedErrorMessage"`
+	Cfg                testConfig      `json:"testConfig"`
+	JsonPutRequest     json.RawMessage `json:"mockRequest"`
+	ExpectedResponse   PutResponse     `json:"expectedResponse"`
+	ExpectedLogEntries []logEntry      `json:"expectedLogEntries"`
+	ExpectedError      string          `json:"expectedErrorMessage"`
+}
+
+type logEntry struct {
+	message, level string
 }
 
 type testConfig struct {
@@ -885,7 +915,7 @@ func TestEmptyPutRequests(t *testing.T) {
 		},
 	}
 
-	for i, test := range testCases {
+	for i, tc := range testCases {
 		// Set up server
 		backend := backends.NewMemoryBackend()
 		m := metricstest.CreateMockMetrics()
@@ -894,23 +924,23 @@ func TestEmptyPutRequests(t *testing.T) {
 		rr := httptest.NewRecorder()
 
 		// Create request everytime
-		request, err := http.NewRequest("POST", "/cache", strings.NewReader(test.reqBody))
+		request, err := http.NewRequest("POST", "/cache", strings.NewReader(tc.reqBody))
 		assert.NoError(t, err, "[%d] Failed to create a POST request: %v", i, err)
 
 		// Run
 		router.ServeHTTP(rr, request)
 		//assert.Equal(t, http.StatusOK, rr.Code, "[%d] ServeHTTP(rr, request) failed = %v \n", i, rr.Result())
-		assert.Equal(t, test.expected.statusCode, rr.Code, "[%d] ServeHTTP(rr, request) failed = %v - %s", i, rr.Result())
+		assert.Equal(t, tc.expected.statusCode, rr.Code, "[%d] ServeHTTP(rr, request) failed = %v - %s", i, rr.Result())
 
 		// Assert expected JSON response
-		if !assert.Regexp(t, regexp.MustCompile(test.expected.jsonResponse), rr.Body.String(), "[%d] Response body differs from expected - %s", i, test.desc) {
+		if !assert.Regexp(t, regexp.MustCompile(tc.expected.jsonResponse), rr.Body.String(), "[%d] Response body differs from expected - %s", i, tc.desc) {
 			return
 		}
 
 		// Assert metrics
-		assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "[%d] Handle function should record every incomming PUT request - %s", i, test.desc)
-		assert.Equal(t, test.expected.metricsBadRequest, metricstest.MockCounters["puts.current_url.request.bad_request"], "[%d] Bad request wasn't recorded - %s", i, test.desc)
-		assert.Equal(t, test.expected.metricsDuration, metricstest.MockHistograms["puts.current_url.duration"], "[%d] Successful PUT request should have recorded duration - %s", i, test.desc)
+		assert.Equal(t, int64(1), metricstest.MockCounters["puts.current_url.request.total"], "[%d] Handle function should record every incomming PUT request - %s", i, tc.desc)
+		assert.Equal(t, tc.expected.metricsBadRequest, metricstest.MockCounters["puts.current_url.request.bad_request"], "[%d] Bad request wasn't recorded - %s", i, tc.desc)
+		assert.Equal(t, tc.expected.metricsDuration, metricstest.MockHistograms["puts.current_url.duration"], "[%d] Successful PUT request should have recorded duration - %s", i, tc.desc)
 	}
 }
 
