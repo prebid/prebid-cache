@@ -192,7 +192,7 @@ func TestAerospikeClientGet(t *testing.T) {
 			desc: "AerospikeBackend.Get() does not throw error",
 			inAerospikeClient: &goodAerospikeClient{
 				records: map[string]*as.Record{
-					"defaultKey": &as.Record{
+					"defaultKey": {
 						Bins: as.BinMap{binValue: "Default value"},
 					},
 				},
@@ -253,7 +253,7 @@ func TestClientPut(t *testing.T) {
 			desc: "AerospikeBackend.Put() does not throw error",
 			inAerospikeClient: &goodAerospikeClient{
 				records: map[string]*as.Record{
-					"defaultKey": &as.Record{
+					"defaultKey": {
 						Bins: as.BinMap{binValue: "Default value"},
 					},
 				},
