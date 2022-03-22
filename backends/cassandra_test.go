@@ -67,7 +67,7 @@ func TestCassandraClientGet(t *testing.T) {
 		cassandraBackend.client = tt.in.cassandraClient
 
 		// Run test
-		actualValue, actualErr := cassandraBackend.Get(context.TODO(), tt.in.key)
+		actualValue, actualErr := cassandraBackend.Get(context.Background(), tt.in.key)
 
 		// Assertions
 		assert.Equal(t, tt.expected.value, actualValue, tt.desc)
@@ -155,14 +155,14 @@ func TestCassandraClientPut(t *testing.T) {
 		cassandraBackend.client = tt.in.cassandraClient
 
 		// Run test
-		actualErr := cassandraBackend.Put(context.TODO(), tt.in.key, tt.in.valueToStore, tt.in.ttl)
+		actualErr := cassandraBackend.Put(context.Background(), tt.in.key, tt.in.valueToStore, tt.in.ttl)
 
 		// Assert Put error
 		assert.Equal(t, tt.expected.err, actualErr, tt.desc)
 
 		// Assert value
 		if tt.expected.err == nil {
-			storedValue, getErr := cassandraBackend.Get(context.TODO(), tt.in.key)
+			storedValue, getErr := cassandraBackend.Get(context.Background(), tt.in.key)
 
 			assert.NoError(t, getErr, tt.desc)
 			assert.Equal(t, tt.expected.value, storedValue, tt.desc)

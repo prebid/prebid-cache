@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/prebid/prebid-cache/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -67,7 +67,7 @@ func TestRedisClientGet(t *testing.T) {
 		redisBackend.client = tt.in.redisClient
 
 		// Run test
-		actualValue, actualErr := redisBackend.Get(context.TODO(), tt.in.key)
+		actualValue, actualErr := redisBackend.Get(context.Background(), tt.in.key)
 
 		// Assertions
 		assert.Equal(t, tt.expected.value, actualValue, tt.desc)
@@ -154,14 +154,14 @@ func TestRedisClientPut(t *testing.T) {
 		redisBackend.client = tt.in.redisClient
 
 		// Run test
-		actualErr := redisBackend.Put(context.TODO(), tt.in.key, tt.in.valueToStore, tt.in.ttl)
+		actualErr := redisBackend.Put(context.Background(), tt.in.key, tt.in.valueToStore, tt.in.ttl)
 
 		// Assert Put error
 		assert.Equal(t, tt.expected.err, actualErr, tt.desc)
 
 		// Assert value
 		if tt.expected.err == nil {
-			storedValue, getErr := redisBackend.Get(context.TODO(), tt.in.key)
+			storedValue, getErr := redisBackend.Get(context.Background(), tt.in.key)
 
 			assert.NoError(t, getErr, tt.desc)
 			assert.Equal(t, tt.expected.value, storedValue, tt.desc)
@@ -169,34 +169,34 @@ func TestRedisClientPut(t *testing.T) {
 	}
 }
 
-// Redis client that always throws an error
+// errorProneRedisClient always throws an error
 type errorProneRedisClient struct {
 	success      bool
 	errorToThrow error
 }
 
-func (ec *errorProneRedisClient) Get(key string) (string, error) {
+func (ec *errorProneRedisClient) Get(ctx context.Context, key string) (string, error) {
 	return "", ec.errorToThrow
 }
 
-func (ec *errorProneRedisClient) Put(key string, value string, ttlSeconds int) (bool, error) {
+func (ec *errorProneRedisClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
 	return ec.success, ec.errorToThrow
 }
 
-// Redis client client that does not throw errors
+// goodRedisClient does not throw errors
 type goodRedisClient struct {
 	key   string
 	value string
 }
 
-func (gc *goodRedisClient) Get(key string) (string, error) {
+func (gc *goodRedisClient) Get(ctx context.Context, key string) (string, error) {
 	if key == gc.key {
 		return gc.value, nil
 	}
 	return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
 }
 
-func (gc *goodRedisClient) Put(key string, value string, ttlSeconds int) (bool, error) {
+func (gc *goodRedisClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
 	if gc.key != key {
 		gc.key = key
 	}
