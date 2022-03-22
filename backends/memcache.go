@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/bradfitz/gomemcache/memcache"
+	"github.com/google/gomemcache/memcache"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/utils"
 	log "github.com/sirupsen/logrus"
