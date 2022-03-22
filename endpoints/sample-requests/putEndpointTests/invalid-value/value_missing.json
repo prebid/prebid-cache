@@ -8,5 +8,19 @@
        }
     ]
   },
+  "expectedLogEntries": [
+      {
+          "message": "POST /cache Error while writing to the back-end: Missing value.",
+          "level": 2
+      },
+      {
+          "message": "POST /cache had an unexpected error:Missing value.",
+          "level": 2
+      }
+  ],
+  "expectedMetrics": {
+	"totalRequests": 1,
+	"badRequests": 1
+  },
   "expectedErrorMessage": "Missing value.\n"
 }

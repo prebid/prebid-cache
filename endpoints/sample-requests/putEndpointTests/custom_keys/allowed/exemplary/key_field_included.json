@@ -13,6 +13,11 @@
      }
    ]
   },
+  "expectedMetrics": {
+	"totalRequests": 1,
+	"keyWasProvided": 1,
+	"requestDur": 1.00
+  },
   "expectedResponse": {
     "responses": [
       {"uuid": "the-custom-thrity-six-character-uuid"}

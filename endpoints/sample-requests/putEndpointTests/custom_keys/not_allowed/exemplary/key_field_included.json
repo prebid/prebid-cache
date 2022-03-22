@@ -10,6 +10,10 @@
       }
     ]
   },
+  "expectedMetrics": {
+	"totalRequests": 1,
+	"requestDur": 1.00
+  },
   "expectedResponse": {
     "responses": [
       {"uuid": "random"}

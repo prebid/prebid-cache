@@ -9,5 +9,9 @@
        {"type":"json","ttlseconds":5,"value":"{\"field\":100}"}
     ]
   },
+  "expectedMetrics": {
+	"totalRequests": 1,
+	"badRequests": 1
+  },
   "expectedErrorMessage": "More keys than allowed: 1\n"
 }

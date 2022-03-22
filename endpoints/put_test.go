@@ -90,11 +90,12 @@ func TestPutJsonTests(t *testing.T) {
 		},
 	}
 
-	//   Instantiate log recorder to be able to assert log entries
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := testLogrus.NewGlobal()
+
+	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
-	var fatal bool //?
-	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
+	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	for _, group := range testGroups {
 		for _, testFile := range group.tests {
@@ -122,9 +123,6 @@ func TestPutJsonTests(t *testing.T) {
 			assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err)
 			rr := httptest.NewRecorder()
 
-			//   Reset the fatal flag to false every test
-			fatal = false
-
 			// RUN TEST
 			router.ServeHTTP(rr, request)
 
@@ -136,59 +134,63 @@ func TestPutJsonTests(t *testing.T) {
 				// the element that could not be stored.
 				assert.NotEqual(t, http.StatusOK, rr.Code, "Test %s failed. Expected error status code.", testFile)
 				assert.Equal(t, testInfo.ExpectedError, rr.Body.String(), "Error message differs from expected. Test file: %s", testFile)
-				continue
-			}
-			// Given that no error is expected, assert a 200 status code was returned
-			if !assert.Equal(t, http.StatusOK, rr.Code, "Test %s failed. StatusCode = %d. Returned error: %s", testFile, rr.Code, rr.Body.String()) {
-				continue
-			}
-
-			// Assert we returned the exact same elements in the 'Responses' array than in the request 'Puts' array
-			actualPutResponse := PutResponse{}
-			err = json.Unmarshal(rr.Body.Bytes(), &actualPutResponse)
-			if !assert.NoError(t, err, "Could not unmarshal %s. Test file: %s. Error:%s\n", rr.Body.String(), testFile, err) {
-				continue
-			}
-			assert.Len(t, actualPutResponse.Responses, len(testInfo.ExpectedResponse.Responses), "Actual response elements differ with expected. Test file: %s", testFile)
-
-			// If custom keys are allowed, assert they are found in the actualPutResponse.Responses array
-			if testInfo.Cfg.AllowSettingKeys {
-				customKeyIndexes := []int{}
-
-				// Unmarshal test request to extract custom keys
-				put := &putRequest{
-					Puts: make([]putObject, 0),
-				}
-				err = json.Unmarshal(testInfo.JsonPutRequest, put)
-				if !assert.NoError(t, err, "Could not put request %s. Test file: %s. Error:%s\n", testInfo.JsonPutRequest, testFile, err) {
+			} else {
+				// Given that no error is expected, assert a 200 status code was returned
+				if !assert.Equal(t, http.StatusOK, rr.Code, "Test %s failed. StatusCode = %d. Returned error: %s", testFile, rr.Code, rr.Body.String()) {
 					continue
 				}
-				for i, testInputElem := range put.Puts {
-					if len(testInputElem.Key) > 0 {
-						customKeyIndexes = append(customKeyIndexes, i)
-					}
-				}
 
-				// Custom keys values must match and their position in the `actualPutResponse.Responses` array must be the exact same as they came in
-				// the incoming request
-				for _, index := range customKeyIndexes {
-					assert.Equal(t, testInfo.ExpectedResponse.Responses[index].UUID, actualPutResponse.Responses[index].UUID, "Custom key differs from expected in position %d. Test file: %s", index, testFile)
+				// Assert we returned the exact same elements in the 'Responses' array than in the request 'Puts' array
+				actualPutResponse := PutResponse{}
+				err = json.Unmarshal(rr.Body.Bytes(), &actualPutResponse)
+				if !assert.NoError(t, err, "Could not unmarshal %s. Test file: %s. Error:%s\n", rr.Body.String(), testFile, err) {
+					continue
+				}
+				assert.Len(t, actualPutResponse.Responses, len(testInfo.ExpectedResponse.Responses), "Actual response elements differ with expected. Test file: %s", testFile)
+
+				// If custom keys are allowed, assert they are found in the actualPutResponse.Responses array
+				if testInfo.Cfg.AllowSettingKeys {
+					customKeyIndexes := []int{}
+
+					// Unmarshal test request to extract custom keys
+					put := &putRequest{
+						Puts: make([]putObject, 0),
+					}
+					err = json.Unmarshal(testInfo.JsonPutRequest, put)
+					if !assert.NoError(t, err, "Could not put request %s. Test file: %s. Error:%s\n", testInfo.JsonPutRequest, testFile, err) {
+						continue
+					}
+					for i, testInputElem := range put.Puts {
+						if len(testInputElem.Key) > 0 {
+							customKeyIndexes = append(customKeyIndexes, i)
+						}
+					}
+
+					// Custom keys values must match and their position in the `actualPutResponse.Responses` array must be the exact same as they came in
+					// the incoming request
+					for _, index := range customKeyIndexes {
+						assert.Equal(t, testInfo.ExpectedResponse.Responses[index].UUID, actualPutResponse.Responses[index].UUID, "Custom key differs from expected in position %d. Test file: %s", index, testFile)
+					}
 				}
 			}
 
 			// Assert logrus expected entries
-			if assert.Equal(t, len(tc.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.expectedLogInfo) = %d len(hook.Entries) = %d", i+1, len(tc.expectedLogInfo), len(hook.Entries)) {
-				for j := 0; j < len(tc.expectedLogInfo); j++ {
-					assert.Equal(t, tc.expectedLogInfo[j].msg, hook.Entries[j].Message, "Test case %d log message differs", i+1)
-					assert.Equal(t, tc.expectedLogInfo[j].lvl, hook.Entries[j].Level, "Test case %d log level differs", i+1)
-				}
-			} else {
-				return
+			assert.Equal(t, len(testInfo.ExpectedLogEntries), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %s: len(testInfo.ExpectedLogEntries) = %d, len(hook.Entries) = %d", testFile, len(testInfo.ExpectedLogEntries), len(hook.Entries))
+			for j := 0; j < len(hook.Entries); j++ {
+				assert.Equal(t, testInfo.ExpectedLogEntries[j].Message, hook.Entries[j].Message, "Test case %s log message differs", testFile)
+				assert.Equal(t, testInfo.ExpectedLogEntries[j].Level, uint32(hook.Entries[j].Level), "Test case %s log level differs", testFile)
 			}
 
 			// Reset log after every test and assert successful reset
 			hook.Reset()
 			assert.Nil(t, hook.LastEntry())
+
+			// assert the put call above logged the expected metrics
+			assert.Equal(t, testInfo.ExpectedMetrics.TotalRequests, metricstest.MockCounters["puts.current_url.request.total"], "%s - incoming PUT request was not accounted for in metrics", testFile)
+			assert.Equal(t, testInfo.ExpectedMetrics.KeyWasProvided, metricstest.MockCounters["puts.current_url.request.custom_key"], "%s - custom key was provided for put request and was not accounted for", testFile)
+			assert.Equal(t, testInfo.ExpectedMetrics.BadRequests, metricstest.MockCounters["puts.current_url.request.bad_request"], "%s - Bad request wasn't recorded", testFile)
+			assert.Equal(t, testInfo.ExpectedMetrics.RequestErrs, metricstest.MockCounters["puts.current_url.request.error"], "%s - WriteGetResponse error should have been recorded", testFile)
+			assert.Equal(t, testInfo.ExpectedMetrics.RequestDur, metricstest.MockHistograms["puts.current_url.duration"], "%s - Successful PUT request should have recorded duration", testFile)
 		}
 	}
 }
@@ -199,10 +201,20 @@ type testData struct {
 	ExpectedResponse   PutResponse     `json:"expectedResponse"`
 	ExpectedLogEntries []logEntry      `json:"expectedLogEntries"`
 	ExpectedError      string          `json:"expectedErrorMessage"`
+	ExpectedMetrics    metricRecords   `json:"expectedMetrics"`
 }
 
 type logEntry struct {
-	message, level string
+	Message string `json:"message"`
+	Level   uint32 `json:"level"`
+}
+
+type metricRecords struct {
+	TotalRequests  int64   `json:"totalRequests"`
+	KeyWasProvided int64   `json:"keyWasProvided"`
+	BadRequests    int64   `json:"badRequests"`
+	RequestErrs    int64   `json:"requestErrs"`
+	RequestDur     float64 `json:"requestDur"`
 }
 
 type testConfig struct {

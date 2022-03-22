@@ -8,5 +8,19 @@
        }
     ]
   },
+  "expectedLogEntries": [
+      {
+          "message": "POST /cache Error while writing to the back-end: Type must be one of [\"json\", \"xml\"]. Found ",
+          "level": 2
+      },
+      {
+          "message": "POST /cache had an unexpected error:Type must be one of [\"json\", \"xml\"]. Found ",
+          "level": 2
+      }
+  ],
+  "expectedMetrics": {
+	"totalRequests": 1,
+	"badRequests": 1
+  },
   "expectedErrorMessage": "Type must be one of [\"json\", \"xml\"]. Found \n"
 }
