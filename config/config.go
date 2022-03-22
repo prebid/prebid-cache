@@ -63,11 +63,13 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("backend.redis.tls.enabled", false)
 	v.SetDefault("backend.redis.tls.insecure_skip_verify", false)
 	v.SetDefault("compression.type", "snappy")
+	v.SetDefault("metrics.influx.enabled", false)
 	v.SetDefault("metrics.influx.host", "")
 	v.SetDefault("metrics.influx.database", "")
+	v.SetDefault("metrics.influx.measurement", "")
 	v.SetDefault("metrics.influx.username", "")
 	v.SetDefault("metrics.influx.password", "")
-	v.SetDefault("metrics.influx.enabled", false)
+	v.SetDefault("metrics.influx.align_timestamps", false)
 	v.SetDefault("metrics.prometheus.port", 0)
 	v.SetDefault("metrics.prometheus.namespace", "")
 	v.SetDefault("metrics.prometheus.subsystem", "")
@@ -253,23 +255,32 @@ const (
 )
 
 type InfluxMetrics struct {
-	Host     string `mapstructure:"host"`
-	Database string `mapstructure:"database"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
-	Enabled  bool   `mapstructure:"enabled"`
+	Enabled         bool   `mapstructure:"enabled"`
+	Host            string `mapstructure:"host"`
+	Database        string `mapstructure:"database"`
+	Measurement     string `mapstructure:"measurement"`
+	Username        string `mapstructure:"username"`
+	Password        string `mapstructure:"password"`
+	AlignTimestamps bool   `mapstructure:"align_timestamps"`
 }
 
 func (influxMetricsConfig *InfluxMetrics) validateAndLog() {
-
+	// validate
 	if influxMetricsConfig.Host == "" {
 		log.Fatalf(`Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`)
 	}
 	if influxMetricsConfig.Database == "" {
 		log.Fatalf(`Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`)
 	}
+	if influxMetricsConfig.Measurement == "" {
+		log.Fatalf(`Despite being enabled, influx metrics came with no measurement info: config.metrics.influx.measurement = "".`)
+	}
+
+	// log
 	log.Infof("config.metrics.influx.host: %s", influxMetricsConfig.Host)
 	log.Infof("config.metrics.influx.database: %s", influxMetricsConfig.Database)
+	log.Infof("config.metrics.influx.measurement: %s", influxMetricsConfig.Measurement)
+	log.Infof("config.metrics.influx.align_timestamps: %v", influxMetricsConfig.AlignTimestamps)
 }
 
 type PrometheusMetrics struct {
@@ -281,7 +292,7 @@ type PrometheusMetrics struct {
 }
 
 func (promMetricsConfig *PrometheusMetrics) validateAndLog() {
-
+	// validate
 	if promMetricsConfig.Port == 0 {
 		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty port number: config.metrics.prometheus.port = 0`)
 	}
@@ -291,6 +302,8 @@ func (promMetricsConfig *PrometheusMetrics) validateAndLog() {
 	if promMetricsConfig.Subsystem == "" {
 		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty subsystem value: config.metrics.prometheus.subsystem = \"\".`)
 	}
+
+	// log
 	log.Infof("config.metrics.prometheus.namespace: %s", promMetricsConfig.Namespace)
 	log.Infof("config.metrics.prometheus.subsystem: %s", promMetricsConfig.Subsystem)
 	log.Infof("config.metrics.prometheus.port: %d", promMetricsConfig.Port)

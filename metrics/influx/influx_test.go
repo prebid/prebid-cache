@@ -12,7 +12,6 @@ import (
 func TestRegisteredInfluxMetrics(t *testing.T) {
 	m := CreateInfluxMetrics()
 
-	// Test cases
 	testCases := []struct {
 		metricName, expectedMetricObject string
 	}{
@@ -22,12 +21,14 @@ func TestRegisteredInfluxMetrics(t *testing.T) {
 		{"puts.current_url.bad_request_count", "Meter"},
 		{"puts.current_url.request_count", "Meter"},
 		{"puts.current_url.updated_key_count", "Meter"},
+
 		// Gets:
 		{"gets.current_url.request_duration", "Timer"},
 		{"gets.current_url.error_count", "Meter"},
 		{"gets.current_url.bad_request_count", "Meter"},
 		{"gets.current_url.request_count", "Meter"},
-		// PutsBackend:
+
+		// Puts Backend:
 		{"puts.backend.request_duration", "Timer"},
 		{"puts.backend.error_count", "Meter"},
 		{"puts.backend.bad_request_count", "Meter"},
@@ -36,21 +37,23 @@ func TestRegisteredInfluxMetrics(t *testing.T) {
 		{"puts.backend.unknown_request_count", "Meter"},
 		{"puts.backend.request_size_bytes", "Histogram"},
 		{"puts.backend.request_ttl_seconds", "Timer"},
-		// GetsBackend:
+
+		// Gets Backend:
 		{"gets.backend.request_duration", "Timer"},
 		{"gets.backend.error_count", "Meter"},
 		{"gets.backend.bad_request_count", "Meter"},
 		{"gets.backend.request_count", "Meter"},
-		// GetsBackErr:
+
+		// Gets Backend Errors:
 		{"gets.backend_error.key_not_found", "Meter"},
 		{"gets.backend_error.missing_key", "Meter"},
+
 		// Connections:
 		{"connections.active_incoming", "Counter"},
 		{"connections.accept_errors", "Meter"},
 		{"connections.close_errors", "Meter"},
 	}
 
-	// Assertions
 	for _, test := range testCases {
 		actualMetricObject := m.Registry.Get(test.metricName)
 		assert.NotNil(t, actualMetricObject, "Metric %s was expected to be registered but it isn't", test.metricName)
