@@ -6,6 +6,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+
+	"github.com/prebid/prebid-cache/utils"
 )
 
 func NewConfig(filename string) Configuration {
@@ -53,7 +55,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("backend.aerospike.default_ttl_seconds", 0)
 	v.SetDefault("backend.cassandra.hosts", "")
 	v.SetDefault("backend.cassandra.keyspace", "")
-	v.SetDefault("backend.cassandra.default_ttl_seconds", 2400)
+	v.SetDefault("backend.cassandra.default_ttl_seconds", utils.CASSANDRA_DEFAULT_TTL_SECONDS)
 	v.SetDefault("backend.memcache.hosts", []string{})
 	v.SetDefault("backend.redis.host", "")
 	v.SetDefault("backend.redis.port", 0)
@@ -76,11 +78,11 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("metrics.prometheus.timeout_ms", 0)
 	v.SetDefault("metrics.prometheus.enabled", false)
 	v.SetDefault("rate_limiter.enabled", true)
-	v.SetDefault("rate_limiter.num_requests", 100)
+	v.SetDefault("rate_limiter.num_requests", utils.RATE_LIMITER_NUM_REQUESTS)
 	v.SetDefault("request_limits.allow_setting_keys", false)
-	v.SetDefault("request_limits.max_size_bytes", 10*1024)
-	v.SetDefault("request_limits.max_num_values", 10)
-	v.SetDefault("request_limits.max_ttl_seconds", 3600)
+	v.SetDefault("request_limits.max_size_bytes", utils.REQUEST_MAX_SIZE_BYTES)
+	v.SetDefault("request_limits.max_num_values", utils.REQUEST_MAX_NUM_VALUES)
+	v.SetDefault("request_limits.max_ttl_seconds", utils.REQUEST_MAX_TTL_SECONDS)
 	v.SetDefault("routes.allow_public_write", true)
 }
 
