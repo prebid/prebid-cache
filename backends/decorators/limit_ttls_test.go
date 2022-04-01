@@ -25,40 +25,40 @@ func TestLimitTTLDecorator(t *testing.T) {
 			maxTTL:    -1,
 			testCases: []testCase{
 				{
-					desc:         "reqTTL < maxTTL",
+					desc:         "reqTTL < maxTTL. Given that both hold negative values, set to REQUEST_MAX_TTL_SECONDS constant",
 					inRequestTTL: -2,
 					expectedTTL:  utils.REQUEST_MAX_TTL_SECONDS,
 				},
 				{
-					desc:         "reqTTL = maxTTL",
+					desc:         "reqTTL = maxTTL. Given that both hold negative values, set to REQUEST_MAX_TTL_SECONDS constant",
 					inRequestTTL: -1,
 					expectedTTL:  utils.REQUEST_MAX_TTL_SECONDS,
 				},
 				{
-					desc:         "maxTTL < reqTTL",
+					desc:         "maxTTL < reqTTL. Go with the non-negative, non-zero request ttl",
 					inRequestTTL: 10,
-					expectedTTL:  utils.REQUEST_MAX_TTL_SECONDS,
+					expectedTTL:  10,
 				},
 			},
 		},
 		{
-			groupDesc: "maxTTL is zero. Set to REQUEST_MAX_TTL_SECONDS constant in every scenario",
+			groupDesc: "maxTTL is zero",
 			maxTTL:    0,
 			testCases: []testCase{
 				{
-					desc:         "reqTTL < maxTTL",
+					desc:         "reqTTL < maxTTL. In the absence of a positive ttl value, set to REQUEST_MAX_TTL_SECONDS constant",
 					inRequestTTL: -1,
 					expectedTTL:  utils.REQUEST_MAX_TTL_SECONDS,
 				},
 				{
-					desc:         "reqTTL = maxTTL",
+					desc:         "reqTTL = maxTTL. In the absence of a positive ttl value, set to REQUEST_MAX_TTL_SECONDS constant",
 					inRequestTTL: 0,
 					expectedTTL:  utils.REQUEST_MAX_TTL_SECONDS,
 				},
 				{
-					desc:         "maxTTL < reqTTL",
+					desc:         "maxTTL < reqTTL. Go with the non-negative, non-zero request ttl",
 					inRequestTTL: 10,
-					expectedTTL:  utils.REQUEST_MAX_TTL_SECONDS,
+					expectedTTL:  10,
 				},
 			},
 		},
@@ -67,27 +67,27 @@ func TestLimitTTLDecorator(t *testing.T) {
 			maxTTL:    10,
 			testCases: []testCase{
 				{
-					desc:         "reqTTL < 0 < maxTTL; set to maxTTL",
+					desc:         "reqTTL < 0 < maxTTL. Given that the request ttl is negative, set to maxTTL",
 					inRequestTTL: -1,
 					expectedTTL:  10,
 				},
 				{
-					desc:         "reqTTL equals zero. Set to non-zero maxTTL",
+					desc:         "reqTTL equals zero. Given that the request ttl equals zero, set to maxTTL",
 					inRequestTTL: 0,
 					expectedTTL:  10,
 				},
 				{
-					desc:         "0 < reqTTL < maxTTL; set to request maxTTL",
+					desc:         "0 < reqTTL < maxTTL. Set to request ttl because its value is between zero and the maxTTL",
 					inRequestTTL: 5,
 					expectedTTL:  5,
 				},
 				{
-					desc:         "reqTTL equals maxTTL; set to request maxTTL",
+					desc:         "reqTTL equals maxTTL; set to request ttl because its value does not surpases maxTTL",
 					inRequestTTL: 10,
 					expectedTTL:  10,
 				},
 				{
-					desc:         "0 < maxTTL < reqTTL; set to request maxTTL",
+					desc:         "0 < maxTTL < reqTTL; set to maxTTL because request ttl goes past maxTTL",
 					inRequestTTL: 50,
 					expectedTTL:  10,
 				},
@@ -106,24 +106,6 @@ func TestLimitTTLDecorator(t *testing.T) {
 			// assertions
 			assert.Equal(t, tc.expectedTTL, delegate.lastTTL, "%s - %s", group.groupDesc, tc.desc)
 		}
-	}
-}
-
-func TestExcessiveTTL(t *testing.T) {
-	delegate := &ttlCapturer{}
-	wrapped := decorators.LimitTTLs(delegate, 100)
-	wrapped.Put(context.Background(), "foo", "bar", 200)
-	if delegate.lastTTL != 100 {
-		t.Errorf("lastTTL should be %d. Got %d", 100, delegate.lastTTL)
-	}
-}
-
-func TestSafeTTL(t *testing.T) {
-	delegate := &ttlCapturer{}
-	wrapped := decorators.LimitTTLs(delegate, 100)
-	wrapped.Put(context.Background(), "foo", "bar", 50)
-	if delegate.lastTTL != 50 {
-		t.Errorf("lastTTL should be %d. Got %d", 50, delegate.lastTTL)
 	}
 }
 
