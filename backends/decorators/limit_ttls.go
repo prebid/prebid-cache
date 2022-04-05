@@ -20,6 +20,8 @@ func LimitTTLs(delegate backends.Backend, maxTTLSeconds int) backends.Backend {
 	}
 }
 
+// ttlLimited implements the backends.Backend interface to serve as a decorator that enforces
+// a time-to-live limit on incoming PUT requests.
 type ttlLimited struct {
 	backends.Backend
 	maxTTLSeconds int

@@ -61,7 +61,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("backend.redis.port", 0)
 	v.SetDefault("backend.redis.password", "")
 	v.SetDefault("backend.redis.db", 0)
-	v.SetDefault("backend.redis.expiration", 0)
+	v.SetDefault("backend.redis.expiration", utils.REDIS_DEFAULT_EXPIRATION_MINUTES)
 	v.SetDefault("backend.redis.tls.enabled", false)
 	v.SetDefault("backend.redis.tls.insecure_skip_verify", false)
 	v.SetDefault("compression.type", "snappy")

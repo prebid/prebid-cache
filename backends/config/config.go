@@ -84,8 +84,8 @@ func getMaxTTLSeconds(cfg config.Configuration) int {
 	case config.BackendRedis:
 		// If both config.request_limits.max_ttl_seconds and backend.redis.expiration
 		// were defined, the smallest value takes preference
-		if cfg.Backend.Redis.Expiration > 0 && maxTTLSeconds > cfg.Backend.Redis.Expiration*60 {
-			maxTTLSeconds = cfg.Backend.Redis.Expiration * 60
+		if cfg.Backend.Redis.ExpirationMinutes > 0 && maxTTLSeconds > cfg.Backend.Redis.ExpirationMinutes*60 {
+			maxTTLSeconds = cfg.Backend.Redis.ExpirationMinutes * 60
 		}
 	}
 	return maxTTLSeconds

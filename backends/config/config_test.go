@@ -120,10 +120,7 @@ func TestNewBaseBackend(t *testing.T) {
 			desc:     "unknown",
 			inConfig: config.Backend{Type: "unknown"},
 			expectedLogEntries: []logEntry{
-				{
-					msg: "Unknown backend type: unknown",
-					lvl: logrus.FatalLevel,
-				},
+				{msg: "Unknown backend type: unknown", lvl: logrus.FatalLevel},
 			},
 		},
 		{
@@ -140,20 +137,14 @@ func TestNewBaseBackend(t *testing.T) {
 			desc:     "Aerospike",
 			inConfig: config.Backend{Type: config.BackendAerospike},
 			expectedLogEntries: []logEntry{
-				{
-					msg: "Failed to connect to host(s): []; error: Connecting to the cluster timed out.",
-					lvl: logrus.FatalLevel,
-				},
+				{msg: "Failed to connect to host(s): []; error: Connecting to the cluster timed out.", lvl: logrus.FatalLevel},
 			},
 		},
 		{
 			desc:     "Redis",
 			inConfig: config.Backend{Type: config.BackendRedis},
 			expectedLogEntries: []logEntry{
-				{
-					msg: "Error creating Redis backend: dial tcp :0: connect: connection refused",
-					lvl: logrus.FatalLevel,
-				},
+				{msg: "Error creating Redis backend: dial tcp :0: connect: can't assign requested address", lvl: logrus.FatalLevel},
 			},
 		},
 	}
@@ -179,6 +170,7 @@ func TestNewBaseBackend(t *testing.T) {
 }
 
 func TestGetMaxTTLSeconds(t *testing.T) {
+	const SIXTY_SECONDS = 60
 	type testCases struct {
 		desc                  string
 		inConfig              config.Configuration
@@ -276,7 +268,7 @@ func TestGetMaxTTLSeconds(t *testing.T) {
 						Backend: config.Backend{
 							Type: config.BackendRedis,
 							Redis: config.Redis{
-								Expiration: 0,
+								ExpirationMinutes: 0,
 							},
 						},
 						RequestLimits: config.RequestLimits{
@@ -291,7 +283,7 @@ func TestGetMaxTTLSeconds(t *testing.T) {
 						Backend: config.Backend{
 							Type: config.BackendRedis,
 							Redis: config.Redis{
-								Expiration: 1,
+								ExpirationMinutes: 1,
 							},
 						},
 						RequestLimits: config.RequestLimits{
@@ -301,19 +293,19 @@ func TestGetMaxTTLSeconds(t *testing.T) {
 					expectedMaxTTLSeconds: 10,
 				},
 				{
-					desc: "cfg.Backend.Aerospike.DefaultTTL > 0 and maxTTLSeconds > cfg.Backend.Aerospike.DefaultTTL ",
+					desc: "cfg.Backend.Redis.Expiration > 0 and maxTTLSeconds > cfg.Backend.Redis.Expiration",
 					inConfig: config.Configuration{
 						Backend: config.Backend{
 							Type: config.BackendRedis,
 							Redis: config.Redis{
-								Expiration: 1,
+								ExpirationMinutes: 1,
 							},
 						},
 						RequestLimits: config.RequestLimits{
 							MaxTTLSeconds: utils.REQUEST_MAX_TTL_SECONDS,
 						},
 					},
-					expectedMaxTTLSeconds: 60,
+					expectedMaxTTLSeconds: SIXTY_SECONDS,
 				},
 			},
 		},

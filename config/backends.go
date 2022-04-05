@@ -110,12 +110,12 @@ func (cfg *Memcache) validateAndLog() error {
 }
 
 type Redis struct {
-	Host       string   `mapstructure:"host"`
-	Port       int      `mapstructure:"port"`
-	Password   string   `mapstructure:"password"`
-	Db         int      `mapstructure:"db"`
-	Expiration int      `mapstructure:"expiration"`
-	TLS        RedisTLS `mapstructure:"tls"`
+	Host              string   `mapstructure:"host"`
+	Port              int      `mapstructure:"port"`
+	Password          string   `mapstructure:"password"`
+	Db                int      `mapstructure:"db"`
+	ExpirationMinutes int      `mapstructure:"expiration"`
+	TLS               RedisTLS `mapstructure:"tls"`
 }
 
 type RedisTLS struct {
@@ -127,8 +127,8 @@ func (cfg *Redis) validateAndLog() error {
 	log.Infof("config.backend.redis.host: %s", cfg.Host)
 	log.Infof("config.backend.redis.port: %d", cfg.Port)
 	log.Infof("config.backend.redis.db: %d", cfg.Db)
-	if cfg.Expiration > 0 {
-		log.Infof("config.backend.redis.expiration: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.Expiration)
+	if cfg.ExpirationMinutes > 0 {
+		log.Infof("config.backend.redis.expiration: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.ExpirationMinutes)
 	}
 	log.Infof("config.backend.redis.tls.enabled: %t", cfg.TLS.Enabled)
 	log.Infof("config.backend.redis.tls.insecure_skip_verify: %t", cfg.TLS.InsecureSkipVerify)
