@@ -76,16 +76,14 @@ func TestPutJsonTests(t *testing.T) {
 			desc:        "Valid when storing under custom keys is allowed, expect 200 responses",
 			expectError: false,
 			tests: []string{
-				"sample-requests/putEndpointTests/custom_keys/allowed/exemplary/key_field_included.json",
-				"sample-requests/putEndpointTests/custom_keys/allowed/exemplary/key_field_missing.json",
+				"sample-requests/putEndpointTests/custom_keys/allowed/key_field_included.json",
 			},
 		},
 		{
 			desc:        "Valid when storing under custom keys is not allowed, expect 200 responses",
 			expectError: false,
 			tests: []string{
-				"sample-requests/putEndpointTests/custom_keys/not_allowed/exemplary/key_field_missing.json",
-				"sample-requests/putEndpointTests/custom_keys/not_allowed/exemplary/key_field_included.json",
+				"sample-requests/putEndpointTests/custom_keys/not_allowed/key_field_included.json",
 			},
 		},
 	}
@@ -118,8 +116,8 @@ func TestPutJsonTests(t *testing.T) {
 			m := metricstest.CreateMockMetrics()
 			backend := backendConfig.NewBackend(cfg, m)
 			router := httprouter.New()
-			router.POST("/cache", NewPutHandler(backend, m, testInfo.Cfg.MaxNumValues, testInfo.Cfg.AllowSettingKeys))
-			request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(testInfo.JsonPutRequest)))
+			router.POST("/cache", NewPutHandler(backend, m, testInfo.ServerConfig.MaxNumValues, testInfo.ServerConfig.AllowSettingKeys))
+			request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(testInfo.PutRequest)))
 			assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err)
 			rr := httptest.NewRecorder()
 
@@ -149,15 +147,15 @@ func TestPutJsonTests(t *testing.T) {
 				assert.Len(t, actualPutResponse.Responses, len(testInfo.ExpectedResponse.Responses), "Actual response elements differ with expected. Test file: %s", testFile)
 
 				// If custom keys are allowed, assert they are found in the actualPutResponse.Responses array
-				if testInfo.Cfg.AllowSettingKeys {
+				if testInfo.ServerConfig.AllowSettingKeys {
 					customKeyIndexes := []int{}
 
 					// Unmarshal test request to extract custom keys
 					put := &putRequest{
 						Puts: make([]putObject, 0),
 					}
-					err = json.Unmarshal(testInfo.JsonPutRequest, put)
-					if !assert.NoError(t, err, "Could not put request %s. Test file: %s. Error:%s\n", testInfo.JsonPutRequest, testFile, err) {
+					err = json.Unmarshal(testInfo.PutRequest, put)
+					if !assert.NoError(t, err, "Could not put request %s. Test file: %s. Error:%s\n", testInfo.PutRequest, testFile, err) {
 						continue
 					}
 					for i, testInputElem := range put.Puts {
@@ -190,14 +188,14 @@ func TestPutJsonTests(t *testing.T) {
 			assert.Equal(t, testInfo.ExpectedMetrics.KeyWasProvided, metricstest.MockCounters["puts.current_url.request.custom_key"], "%s - custom key was provided for put request and was not accounted for", testFile)
 			assert.Equal(t, testInfo.ExpectedMetrics.BadRequests, metricstest.MockCounters["puts.current_url.request.bad_request"], "%s - Bad request wasn't recorded", testFile)
 			assert.Equal(t, testInfo.ExpectedMetrics.RequestErrs, metricstest.MockCounters["puts.current_url.request.error"], "%s - WriteGetResponse error should have been recorded", testFile)
-			assert.Equal(t, testInfo.ExpectedMetrics.RequestDur, metricstest.MockHistograms["puts.current_url.duration"], "%s - Successful PUT request should have recorded duration", testFile)
+			assert.Equal(t, testInfo.ExpectedMetrics.RequestDuration, metricstest.MockHistograms["puts.current_url.duration"], "%s - Successful PUT request should have recorded duration", testFile)
 		}
 	}
 }
 
 type testData struct {
-	Cfg                testConfig      `json:"testConfig"`
-	JsonPutRequest     json.RawMessage `json:"mockRequest"`
+	ServerConfig       testConfig      `json:"serverConfig"`
+	PutRequest         json.RawMessage `json:"putRequest"`
 	ExpectedResponse   PutResponse     `json:"expectedResponse"`
 	ExpectedLogEntries []logEntry      `json:"expectedLogEntries"`
 	ExpectedError      string          `json:"expectedErrorMessage"`
@@ -210,18 +208,18 @@ type logEntry struct {
 }
 
 type metricRecords struct {
-	TotalRequests  int64   `json:"totalRequests"`
-	KeyWasProvided int64   `json:"keyWasProvided"`
-	BadRequests    int64   `json:"badRequests"`
-	RequestErrs    int64   `json:"requestErrs"`
-	RequestDur     float64 `json:"requestDur"`
+	TotalRequests   int64   `json:"totalRequests"`
+	KeyWasProvided  int64   `json:"keyWasProvided"`
+	BadRequests     int64   `json:"badRequests"`
+	RequestErrs     int64   `json:"requestErrs"`
+	RequestDuration float64 `json:"requestDuration"`
 }
 
 type testConfig struct {
-	AllowSettingKeys  bool `json:"custom_keys"`
-	ValueMaxSizeBytes int  `json:"max_size_bytes"`
-	MaxNumValues      int  `json:"max_num_values"`
-	MaxTTLSeconds     int  `json:"max_ttl_seconds"`
+	AllowSettingKeys bool `json:"allow_setting_keys"`
+	MaxSizeBytes     int  `json:"max_size_bytes"`
+	MaxNumValues     int  `json:"max_num_values"`
+	MaxTTLSeconds    int  `json:"max_ttl_seconds"`
 }
 
 func parseTestInfo(testFile string) (*testData, error) {
@@ -242,17 +240,17 @@ func buildViperConfig(testInfo *testData) *viper.Viper {
 	v := viper.New()
 	v.SetDefault("backend.type", "memory")
 	v.SetDefault("compression.type", "none")
-	v.SetDefault("request_limits.allow_setting_keys", testInfo.Cfg.AllowSettingKeys)
-	if testInfo.Cfg.ValueMaxSizeBytes == 0 {
-		testInfo.Cfg.ValueMaxSizeBytes = 50
+	v.SetDefault("request_limits.allow_setting_keys", testInfo.ServerConfig.AllowSettingKeys)
+	if testInfo.ServerConfig.MaxSizeBytes == 0 {
+		testInfo.ServerConfig.MaxSizeBytes = 50
 	}
-	v.SetDefault("request_limits.max_size_bytes", testInfo.Cfg.ValueMaxSizeBytes)
+	v.SetDefault("request_limits.max_size_bytes", testInfo.ServerConfig.MaxSizeBytes)
 
-	if testInfo.Cfg.MaxNumValues == 0 {
-		testInfo.Cfg.MaxNumValues = 1
+	if testInfo.ServerConfig.MaxNumValues == 0 {
+		testInfo.ServerConfig.MaxNumValues = 1
 	}
-	v.SetDefault("request_limits.max_num_values", testInfo.Cfg.MaxNumValues)
-	v.SetDefault("request_limits.max_ttl_seconds", testInfo.Cfg.MaxTTLSeconds)
+	v.SetDefault("request_limits.max_num_values", testInfo.ServerConfig.MaxNumValues)
+	v.SetDefault("request_limits.max_ttl_seconds", testInfo.ServerConfig.MaxTTLSeconds)
 	return v
 }
 

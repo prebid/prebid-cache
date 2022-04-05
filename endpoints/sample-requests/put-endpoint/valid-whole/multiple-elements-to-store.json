@@ -1,25 +1,25 @@
 {
   "description": "Put request wants to store multiple elements but no more than the maximum allowed by the 'max_num_values' config. Store them under a random UUIDs",
-  "testConfig": {
+  "serverConfig": {
     "max_num_values": 2
   },
-  "mockRequest": {
+  "putRequest": {
     "puts": [
-       {
-         "type": "xml",
-         "ttlseconds": 60,
-         "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
-       },
-       {
-         "type": "json",
-         "ttlseconds": 60,
-         "value": "{\"an_int_field\": 1}"
-       }
+      {
+        "type": "xml",
+        "ttlseconds": 60,
+        "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+      },
+      {
+        "type": "json",
+        "ttlseconds": 60,
+        "value": "{\"an_int_field\": 1}"
+      }
     ]
   },
   "expectedMetrics": {
-	"totalRequests": 1,
-	"requestDur": 1.00
+    "totalRequests": 1,
+    "requestDuration": 1.00
   },
   "expectedResponse": {
     "responses": [

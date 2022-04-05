@@ -1,0 +1,26 @@
+{
+  "description": "Prebid Cache only allows to store JSON or XML types and the type field is required. Respond with error",
+  "putRequest": {
+    "puts": [
+      {
+        "ttlseconds": 60,
+        "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+      }
+    ]
+  },
+  "expectedLogEntries": [
+    {
+      "message": "POST /cache Error while writing to the back-end: Type must be one of [\"json\", \"xml\"]. Found ",
+      "level": 2
+    },
+    {
+      "message": "POST /cache had an unexpected error:Type must be one of [\"json\", \"xml\"]. Found ",
+      "level": 2
+    }
+  ],
+  "expectedMetrics": {
+    "totalRequests": 1,
+    "badRequests": 1
+  },
+  "expectedErrorMessage": "Type must be one of [\"json\", \"xml\"]. Found \n"
+}

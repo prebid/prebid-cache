@@ -1,6 +1,6 @@
 {
   "description": "Put request wants to store element under a custom key but custom keys are not allowed in Prebid Cache's config. Store under a random UUID",
-  "mockRequest": {
+  "putRequest": {
     "puts":[
       {
         "type":"xml",
@@ -11,8 +11,8 @@
     ]
   },
   "expectedMetrics": {
-	"totalRequests": 1,
-	"requestDur": 1.00
+    "totalRequests": 1,
+    "requestDuration": 1.00
   },
   "expectedResponse": {
     "responses": [

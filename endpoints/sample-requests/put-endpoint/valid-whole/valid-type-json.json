@@ -1,17 +1,17 @@
 {
   "description": "Store JSON type value, which Prebid Cache allows. Store under a random UUID",
-  "mockRequest": {
+  "putRequest": {
     "puts": [
-       {
-         "type": "json",
-         "ttlseconds": 60,
-         "value": "{\"field\":100}"
-       }
+      {
+        "type": "json",
+        "ttlseconds": 60,
+        "value": "{\"field\":100}"
+      }
     ]
   },
   "expectedMetrics": {
-	"totalRequests": 1,
-	"requestDur": 1.00
+    "totalRequests": 1,
+    "requestDuration": 1.00
   },
   "expectedResponse": {
     "responses": [

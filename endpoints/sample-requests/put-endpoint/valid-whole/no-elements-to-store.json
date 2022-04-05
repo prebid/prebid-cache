@@ -1,11 +1,11 @@
 {
   "description": "Put request with empty 'puts' array does not return an error, we simply respond with an emtpy 'responses' array.",
-  "mockRequest": {
+  "putRequest": {
     "puts": []
   },
   "expectedMetrics": {
-	"totalRequests": 1,
-	"requestDur": 1.00
+    "totalRequests": 1,
+    "requestDuration": 1.00
   },
   "expectedResponse": {
     "responses": [ ]

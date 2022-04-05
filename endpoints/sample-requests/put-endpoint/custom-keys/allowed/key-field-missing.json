@@ -1,20 +1,20 @@
 {
   "description": "Prebid Cache has been configured to allow to store elements under custom keys but element came with empty 'key' field. Store under random UUID",
-  "testConfig": {
-    "custom_keys": true
+  "serverConfig": {
+    "allow_setting_keys": true
   },
-  "mockRequest": {
+  "putRequest": {
     "puts": [
-       {
-         "type": "xml",
-         "ttlseconds": 60,
-         "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
-       }
+      {
+        "type": "xml",
+        "ttlseconds": 60,
+        "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+      }
     ]
   },
   "expectedMetrics": {
-	"totalRequests": 1,
-	"requestDur": 1.00
+    "totalRequests": 1,
+    "requestDuration": 1.00
   },
   "expectedResponse": {
     "responses": [
