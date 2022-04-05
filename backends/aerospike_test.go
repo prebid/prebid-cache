@@ -36,9 +36,8 @@ func TestNewAerospikeBackend(t *testing.T) {
 			},
 			expectPanic: true,
 			expectedLogEntries: []logEntry{
-
 				{
-					msg: "Failed to connect to host(s): [foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
+					msg: "Error creating Aerospike backend: Failed to connect to host(s): [foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
 					lvl: logrus.FatalLevel,
 				},
 			},
@@ -57,7 +56,7 @@ func TestNewAerospikeBackend(t *testing.T) {
 					lvl: logrus.InfoLevel,
 				},
 				{
-					msg: "Failed to connect to host(s): [fakeTestUrl.foo:8888 foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
+					msg: "Error creating Aerospike backend: Failed to connect to host(s): [fakeTestUrl.foo:8888 foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
 					lvl: logrus.FatalLevel,
 				},
 			},
@@ -75,7 +74,7 @@ func TestNewAerospikeBackend(t *testing.T) {
 					lvl: logrus.InfoLevel,
 				},
 				{
-					msg: "Failed to connect to host(s): [fakeTestUrl.foo:8888]; error: Connecting to the cluster timed out.",
+					msg: "Error creating Aerospike backend: Failed to connect to host(s): [fakeTestUrl.foo:8888]; error: Connecting to the cluster timed out.",
 					lvl: logrus.FatalLevel,
 				},
 			},

@@ -128,7 +128,7 @@ func TestNewBaseBackend(t *testing.T) {
 			inConfig: config.Backend{Type: config.BackendCassandra},
 			expectedLogEntries: []logEntry{
 				{
-					msg: "Error creating Cassandra backend: gocql: unable to create session: failed to resolve any of the provided hostnames",
+					msg: "Error creating Cassandra backend: ",
 					lvl: logrus.FatalLevel,
 				},
 			},
@@ -137,14 +137,14 @@ func TestNewBaseBackend(t *testing.T) {
 			desc:     "Aerospike",
 			inConfig: config.Backend{Type: config.BackendAerospike},
 			expectedLogEntries: []logEntry{
-				{msg: "Failed to connect to host(s): []; error: Connecting to the cluster timed out.", lvl: logrus.FatalLevel},
+				{msg: "Error creating Aerospike backend: ", lvl: logrus.FatalLevel},
 			},
 		},
 		{
 			desc:     "Redis",
 			inConfig: config.Backend{Type: config.BackendRedis},
 			expectedLogEntries: []logEntry{
-				{msg: "Error creating Redis backend: dial tcp :0: connect: can't assign requested address", lvl: logrus.FatalLevel},
+				{msg: "Error creating Redis backend: ", lvl: logrus.FatalLevel},
 			},
 		},
 	}
@@ -160,7 +160,7 @@ func TestNewBaseBackend(t *testing.T) {
 		assert.Len(t, hook.Entries, len(tc.expectedLogEntries), tc.desc)
 		if len(tc.expectedLogEntries) > 0 {
 			for i := 0; i < len(tc.expectedLogEntries); i++ {
-				assert.Equal(t, tc.expectedLogEntries[i].msg, hook.Entries[i].Message, tc.desc)
+				assert.Contains(t, hook.Entries[i].Message, tc.expectedLogEntries[i].msg, tc.desc)
 				assert.Equal(t, tc.expectedLogEntries[i].lvl, hook.Entries[i].Level, tc.desc)
 			}
 		}
