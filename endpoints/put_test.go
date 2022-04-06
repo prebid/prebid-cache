@@ -40,50 +40,50 @@ func TestPutJsonTests(t *testing.T) {
 			desc:        "Valid put requests. Expect 200 response",
 			expectError: false,
 			tests: []string{
-				"sample-requests/putEndpointTests/valid-whole/single_element_to_store.json",
-				"sample-requests/putEndpointTests/valid-whole/no_elements_to_store.json",
-				"sample-requests/putEndpointTests/valid-whole/multiple_elements_to_store.json",
-				"sample-requests/putEndpointTests/valid-whole/valid_type_json.json",
-				"sample-requests/putEndpointTests/valid-whole/valid_type_xml.json",
-				"sample-requests/putEndpointTests/valid-whole/ttl_more_than_max.json",
-				"sample-requests/putEndpointTests/valid-whole/ttl_missing.json",
+				"sample-requests/put-endpoint/valid-whole/single-element-to-store.json",
+				"sample-requests/put-endpoint/valid-whole/no-elements-to-store.json",
+				"sample-requests/put-endpoint/valid-whole/multiple-elements-to-store.json",
+				"sample-requests/put-endpoint/valid-whole/valid-type-json.json",
+				"sample-requests/put-endpoint/valid-whole/valid-type-xml.json",
+				"sample-requests/put-endpoint/valid-whole/ttl-more-than-max.json",
+				"sample-requests/put-endpoint/valid-whole/ttl-missing.json",
 			},
 		},
 		{
 			desc:        "Request tries to store more elements than the max allowed. Return error",
 			expectError: true,
 			tests: []string{
-				"sample-requests/putEndpointTests/invalid-number-of-elements/puts_max_num_values.json",
+				"sample-requests/put-endpoint/invalid-number-of-elements/puts-max-num-values.json",
 			},
 		},
 		{
 			desc:        "Invalid 'type' field values, expect error",
 			expectError: true,
 			tests: []string{
-				"sample-requests/putEndpointTests/invalid-types/type_missing.json",
-				"sample-requests/putEndpointTests/invalid-types/type_unknown.json",
+				"sample-requests/put-endpoint/invalid-types/type-missing.json",
+				"sample-requests/put-endpoint/invalid-types/type-unknown.json",
 			},
 		},
 		{
 			desc:        "invalid 'value' field values, expect error",
 			expectError: true,
 			tests: []string{
-				"sample-requests/putEndpointTests/invalid-value/value_missing.json",
-				"sample-requests/putEndpointTests/invalid-value/value_greater_than_max.json",
+				"sample-requests/put-endpoint/invalid-value/value-missing.json",
+				"sample-requests/put-endpoint/invalid-value/value-greater-than-max.json",
 			},
 		},
 		{
 			desc:        "Valid when storing under custom keys is allowed, expect 200 responses",
 			expectError: false,
 			tests: []string{
-				"sample-requests/putEndpointTests/custom_keys/allowed/key_field_included.json",
+				"sample-requests/put-endpoint/custom-keys/allowed/key-field-included.json",
 			},
 		},
 		{
 			desc:        "Valid when storing under custom keys is not allowed, expect 200 responses",
 			expectError: false,
 			tests: []string{
-				"sample-requests/putEndpointTests/custom_keys/not_allowed/key_field_included.json",
+				"sample-requests/put-endpoint/custom-keys/not-allowed/key-field-included.json",
 			},
 		},
 	}
