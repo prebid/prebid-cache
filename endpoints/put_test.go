@@ -173,22 +173,14 @@ func TestPutJsonTests(t *testing.T) {
 			}
 
 			// Assert logrus expected entries
-			assert.Equal(t, len(testInfo.ExpectedLogEntries), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %s: len(testInfo.ExpectedLogEntries) = %d, len(hook.Entries) = %d", testFile, len(testInfo.ExpectedLogEntries), len(hook.Entries))
-			for j := 0; j < len(hook.Entries); j++ {
-				assert.Equal(t, testInfo.ExpectedLogEntries[j].Message, hook.Entries[j].Message, "Test case %s log message differs", testFile)
-				assert.Equal(t, testInfo.ExpectedLogEntries[j].Level, uint32(hook.Entries[j].Level), "Test case %s log level differs", testFile)
-			}
+			assertLogEntries(t, testInfo.ExpectedLogEntries, hook.Entries, testFile)
 
 			// Reset log after every test and assert successful reset
 			hook.Reset()
 			assert.Nil(t, hook.LastEntry())
 
 			// assert the put call above logged the expected metrics
-			assert.Equal(t, testInfo.ExpectedMetrics.TotalRequests, metricstest.MockCounters["puts.current_url.request.total"], "%s - incoming PUT request was not accounted for in metrics", testFile)
-			assert.Equal(t, testInfo.ExpectedMetrics.KeyWasProvided, metricstest.MockCounters["puts.current_url.request.custom_key"], "%s - custom key was provided for put request and was not accounted for", testFile)
-			assert.Equal(t, testInfo.ExpectedMetrics.BadRequests, metricstest.MockCounters["puts.current_url.request.bad_request"], "%s - Bad request wasn't recorded", testFile)
-			assert.Equal(t, testInfo.ExpectedMetrics.RequestErrs, metricstest.MockCounters["puts.current_url.request.error"], "%s - WriteGetResponse error should have been recorded", testFile)
-			assert.Equal(t, testInfo.ExpectedMetrics.RequestDuration, metricstest.MockHistograms["puts.current_url.duration"], "%s - Successful PUT request should have recorded duration", testFile)
+			assertMetrics(t, testInfo.ExpectedMetrics, testFile)
 		}
 	}
 }
@@ -208,11 +200,18 @@ type logEntry struct {
 }
 
 type metricRecords struct {
-	TotalRequests   int64   `json:"totalRequests"`
-	KeyWasProvided  int64   `json:"keyWasProvided"`
-	BadRequests     int64   `json:"badRequests"`
-	RequestErrs     int64   `json:"requestErrs"`
-	RequestDuration float64 `json:"requestDuration"`
+	RecordPutTotal             int64   `json:"putTotal"`
+	RecordPutKeyProvided       int64   `json:"putKeyProvided"`
+	RecordPutBackendXml        int64   `json:"totalXmlRequests"`
+	RecordPutBackendJson       int64   `json:"totalJsonRequests"`
+	RecordPutBadRequest        int64   `json:"putBadRequest"`
+	RecordPutError             int64   `json:"putError"`
+	RecordPutBackendError      int64   `json:"putBackendError"`
+	RecordPutBackendInvalid    int64   `json:"putBackendInvalid"`
+	RecordPutDuration          float64 `json:"putDuration"`
+	RecordPutBackendSize       float64 `json:"putBackendSize"`
+	RecordPutBackendTTLSeconds float64 `json:"putBackendTTLSeconds"`
+	RecordPutBackendDuration   float64 `json:"putBackendDuration"`
 }
 
 type testConfig struct {
@@ -220,6 +219,26 @@ type testConfig struct {
 	MaxSizeBytes     int  `json:"max_size_bytes"`
 	MaxNumValues     int  `json:"max_num_values"`
 	MaxTTLSeconds    int  `json:"max_ttl_seconds"`
+}
+
+// Remove this function in the future and make it part of the mock metrics to self-assert if possible.
+func assertMetrics(t *testing.T, expectedMetrics metricRecords, testFile string) {
+	t.Helper()
+
+	// assert the put call above logged the expected metrics
+	assert.Equal(t, expectedMetrics.RecordPutTotal, metricstest.MockCounters["puts.current_url.request.total"], "%s - incoming PUT request was not accounted for in metrics", testFile)
+	assert.Equal(t, expectedMetrics.RecordPutKeyProvided, metricstest.MockCounters["puts.current_url.request.custom_key"], "%s - custom key was provided for put request and was not accounted for", testFile)
+	assert.Equal(t, expectedMetrics.RecordPutBadRequest, metricstest.MockCounters["puts.current_url.request.bad_request"], "%s - Bad request wasn't recorded", testFile)
+	assert.Equal(t, expectedMetrics.RecordPutError, metricstest.MockCounters["puts.current_url.request.error"], "%s - WriteGetResponse error should have been recorded", testFile)
+	assert.Equal(t, expectedMetrics.RecordPutDuration, metricstest.MockHistograms["puts.current_url.duration"], "%s - Successful PUT request should have recorded duration", testFile)
+
+	assert.Equal(t, expectedMetrics.RecordPutBackendXml, metricstest.MockCounters["puts.backends.xml"], "%s - incoming PUT request with XML value was not accounted for in metrics", testFile)
+	assert.Equal(t, expectedMetrics.RecordPutBackendJson, metricstest.MockCounters["puts.backends.json"], "%s - incoming PUT request with JSON value was not accounted for in metrics", testFile)
+	assert.Equal(t, expectedMetrics.RecordPutBackendError, metricstest.MockCounters["puts.backends.request.error"], "%s - backend error not accounted for in metrics decorator", testFile)
+	assert.Equal(t, expectedMetrics.RecordPutBackendInvalid, metricstest.MockCounters["puts.backends.invalid_format"], "%s - backend error due to invalid format not accounted for in metrics decorator", testFile)
+	assert.Equal(t, expectedMetrics.RecordPutBackendSize, metricstest.MockHistograms["puts.backends.request_size_bytes"], "%s - value size not accounted for in metrics decorator", testFile)
+	assert.Equal(t, expectedMetrics.RecordPutBackendTTLSeconds, metricstest.MockHistograms["puts.backends.request_ttl_seconds"], "%s - PUT request TTL seconds not accounted for in metrics", testFile)
+	assert.Equal(t, expectedMetrics.RecordPutBackendDuration, metricstest.MockHistograms["puts.backends.request_duration"], "%s - metrics decorator duration not accounted for in metrics", testFile)
 }
 
 func parseTestInfo(testFile string) (*testData, error) {
@@ -252,6 +271,18 @@ func buildViperConfig(testInfo *testData) *viper.Viper {
 	v.SetDefault("request_limits.max_num_values", testInfo.ServerConfig.MaxNumValues)
 	v.SetDefault("request_limits.max_ttl_seconds", testInfo.ServerConfig.MaxTTLSeconds)
 	return v
+}
+
+// assertLogEntries asserts logrus entries with expectedLogEntries. It is a test helper function that will make a unit test fail if
+// expected values are not found
+func assertLogEntries(t *testing.T, expectedLogEntries []logEntry, actualLogEntries []logrus.Entry, testFile string) {
+	t.Helper()
+
+	assert.Equal(t, len(expectedLogEntries), len(actualLogEntries), "Incorrect number of entries were logged to logrus in test %s: len(expectedLogEntries) = %d, len(actualLogEntries) = %d", testFile, len(expectedLogEntries), len(actualLogEntries))
+	for i := 0; i < len(actualLogEntries); i++ {
+		assert.Equal(t, expectedLogEntries[i].Message, actualLogEntries[i].Message, "Test case %s log message differs", testFile)
+		assert.Equal(t, expectedLogEntries[i].Level, uint32(actualLogEntries[i].Level), "Test case %s log level differs", testFile)
+	}
 }
 
 // TestStatusEndpointReadiness asserts the http://<prebid-cache-host>/status endpoint

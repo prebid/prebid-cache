@@ -2,6 +2,7 @@ package decorators
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -47,7 +48,8 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 	} else {
 		b.metrics.RecordPutBackendInvalid()
 	}
-	b.metrics.RecordPutBackendTTLSeconds(time.Duration(ttlSeconds) * time.Second)
+	ttl, _ := time.ParseDuration(fmt.Sprintf("%ds", ttlSeconds))
+	b.metrics.RecordPutBackendTTLSeconds(ttl)
 
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)

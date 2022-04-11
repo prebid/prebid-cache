@@ -13,7 +13,7 @@ var MockHistograms map[string]float64
 var MockCounters map[string]int64
 
 func CreateMockMetrics() *metrics.Metrics {
-	MockHistograms = make(map[string]float64, 6)
+	MockHistograms = make(map[string]float64, 7)
 	MockHistograms["puts.current_url.duration"] = 0.00
 	MockHistograms["gets.current_url.duration"] = 0.00
 	MockHistograms["puts.backends.request_duration"] = 0.00
@@ -22,7 +22,7 @@ func CreateMockMetrics() *metrics.Metrics {
 	MockHistograms["gets.backends.duration"] = 0.00
 	MockHistograms["connections.connections_opened"] = 0.00
 
-	MockCounters = make(map[string]int64, 16)
+	MockCounters = make(map[string]int64, 18)
 	MockCounters["puts.current_url.request.total"] = 0
 	MockCounters["puts.current_url.request.error"] = 0
 	MockCounters["puts.current_url.request.bad_request"] = 0
@@ -30,12 +30,10 @@ func CreateMockMetrics() *metrics.Metrics {
 	MockCounters["gets.current_url.request.total"] = 0
 	MockCounters["gets.current_url.request.error"] = 0
 	MockCounters["gets.current_url.request.bad_request"] = 0
-	MockCounters["puts.backends.add"] = 0
 	MockCounters["puts.backends.json"] = 0
 	MockCounters["puts.backends.xml"] = 0
 	MockCounters["puts.backends.invalid_format"] = 0
 	MockCounters["puts.backends.request.error"] = 0
-	MockCounters["puts.backends.request.bad_request"] = 0
 	MockCounters["gets.backends.request.total"] = 0
 	MockCounters["gets.backends.request.error"] = 0
 	MockCounters["gets.backends.request.bad_request"] = 0
@@ -57,8 +55,7 @@ type MockMetrics struct {
 	MetricsName string
 }
 
-func (m *MockMetrics) Export(cfg config.Metrics) {
-}
+func (m *MockMetrics) Export(cfg config.Metrics) {}
 func (m *MockMetrics) GetEngineRegistry() interface{} {
 	return nil
 }
@@ -76,7 +73,7 @@ func (m *MockMetrics) RecordPutTotal() {
 	MockCounters["puts.current_url.request.total"] = MockCounters["puts.current_url.request.total"] + 1
 }
 func (m *MockMetrics) RecordPutDuration(duration time.Duration) {
-	MockHistograms["puts.current_url.duration"] = mockDuration.Seconds()
+	MockHistograms["puts.current_url.duration"] = float64(mockDuration.Seconds())
 }
 func (m *MockMetrics) RecordPutKeyProvided() {
 	MockCounters["puts.current_url.request.custom_key"] = MockCounters["puts.current_url.request.custom_key"] + 1

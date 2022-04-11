@@ -9,8 +9,10 @@
     ]
   },
   "expectedMetrics": {
-    "totalRequests": 1,
-    "requestDuration": 1.00
+    "putTotal": 1,
+    "totalXmlRequests":1,
+    "putBackendSize":5.00,
+    "putDuration": 1.00
   },
   "expectedResponse": {
     "responses": [

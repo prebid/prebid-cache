@@ -98,11 +98,11 @@ func TestPutSuccessMetrics(t *testing.T) {
 
 	m := metricstest.CreateMockMetrics()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
-	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
+	backend.Put(context.Background(), "foo", "xml<vast></vast>", 60)
 
 	assert.Greater(t, metricstest.MockHistograms["puts.backends.request_duration"], 0.00, "Successful put request duration should be greater than zero")
 	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.xml"], "An xml request should have been logged.")
-	assert.Equal(t, int64(0), metricstest.MockCounters["puts.backends.defines_ttl"], "An event for TTL defined shouldn't be logged if the TTL was 0")
+	assert.Equal(t, 1.00, metricstest.MockHistograms["puts.backends.request_ttl_seconds"], "An event for TTL defined shouldn't be logged if the TTL was 0")
 }
 
 func TestPutErrorMetrics(t *testing.T) {

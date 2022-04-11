@@ -19,8 +19,10 @@
     }
   ],
   "expectedMetrics": {
-    "totalRequests": 1,
-    "badRequests": 1
+    "putTotal": 1,
+    "totalXmlRequests":1,
+    "putBackendTTLSeconds":60.00,
+    "putBadRequest": 1
   },
   "expectedErrorMessage": "Missing value.\n"
 }
