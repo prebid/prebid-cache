@@ -15,9 +15,9 @@ import (
 func TestGetInvalidUUIDs(t *testing.T) {
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	mockmetrics := metricstest.CreateMockMetrics()
+	m := metricstest.CreateMockMetrics(metricstest.MockMetrics{})
 
-	router.GET("/cache", NewGetHandler(backend, mockmetrics, false))
+	router.GET("/cache", NewGetHandler(backend, m, false))
 
 	getResults := doMockGet(t, router, "fdd9405b-ef2b-46da-a55a-2f526d338e16")
 	if getResults.Code != http.StatusNotFound {
@@ -185,8 +185,9 @@ func TestGetHandler(t *testing.T) {
 		// Set up test object
 		backend := newMockBackend()
 		router := httprouter.New()
-		mockmetrics := metricstest.CreateMockMetrics()
-		router.GET("/cache", NewGetHandler(backend, mockmetrics, test.in.allowKeys))
+		mockmetrics := metricstest.MockMetrics{}
+		m := metricstest.CreateMockMetrics(mockmetrics)
+		router.GET("/cache", NewGetHandler(backend, m, test.in.allowKeys))
 
 		// Run test
 		getResults := doMockGet(t, router, test.in.uuid)
@@ -206,10 +207,13 @@ func TestGetHandler(t *testing.T) {
 		}
 
 		// Assert recorded metrics
-		assert.Equal(t, test.out.metricsRecorded.totalRequests, metricstest.MockCounters["gets.current_url.request.total"], "%s - handle function should record every incomming GET request", test.desc)
-		assert.Equal(t, test.out.metricsRecorded.badRequests, metricstest.MockCounters["gets.current_url.request.bad_request"], "%s - Bad request wasn't recorded", test.desc)
-		assert.Equal(t, test.out.metricsRecorded.requestErrs, metricstest.MockCounters["gets.current_url.request.error"], "%s - WriteGetResponse error should have been recorded", test.desc)
-		assert.Equal(t, test.out.metricsRecorded.requestDur, metricstest.MockHistograms["gets.current_url.duration"], "%s - Successful GET request should have recorded duration", test.desc)
+		expectedMetrics := metricsRecorded{
+			RecordGetTotal:      test.out.metricsRecorded.totalRequests,
+			RecordGetBadRequest: test.out.metricsRecorded.badRequests,
+			RecordGetError:      test.out.metricsRecorded.requestErrs,
+			RecordGetDuration:   test.out.metricsRecorded.requestDur,
+		}
+		assertMetrics(t, expectedMetrics, mockmetrics)
 
 		// Reset log
 		hook.Reset()

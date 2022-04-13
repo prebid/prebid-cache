@@ -21,7 +21,6 @@
   ],
   "expectedMetrics": {
     "putTotal": 1,
-    "putBackendTTLSeconds":60.00,
     "putBadRequest": 1
   },
   "expectedErrorMessage": "Type must be one of [\"json\", \"xml\"]. Found unknown\n"

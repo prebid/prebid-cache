@@ -27,6 +27,7 @@
     "totalXmlRequests":1,
     "putBackendSize":5.00,
     "putBackendTTLSeconds":5.00,
+    "putBackendError":1,
     "putBadRequest": 1
   },
   "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 73 exceeded max 5\n"

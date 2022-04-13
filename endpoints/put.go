@@ -121,6 +121,11 @@ func parsePutObject(p putObject) (string, error) {
 		return "", utils.NewPBCError(utils.NEGATIVE_TTL, fmt.Sprintf("ttlseconds must not be negative %d.", p.TTLSeconds))
 	}
 
+	// Make sure data type is specified
+	//if len(p.Type) == 0 {
+	//	return "", utils.NewPBCError(utils.MISSING_TYPE)
+	//}
+
 	// Limit the type of data to XML or JSON
 	if p.Type == backends.XML_PREFIX {
 		if p.Value[0] != byte('"') || p.Value[len(p.Value)-1] != byte('"') {

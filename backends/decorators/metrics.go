@@ -46,7 +46,7 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 	} else if strings.HasPrefix(value, backends.JSON_PREFIX) {
 		b.metrics.RecordPutBackendJson()
 	} else {
-		b.metrics.RecordPutBackendInvalid()
+		b.metrics.RecordPutBackendInvalid() // Never gets called here. Unreachable
 	}
 	ttl, _ := time.ParseDuration(fmt.Sprintf("%ds", ttlSeconds))
 	b.metrics.RecordPutBackendTTLSeconds(ttl)

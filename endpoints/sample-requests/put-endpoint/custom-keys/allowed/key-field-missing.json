@@ -17,6 +17,7 @@
     "totalXmlRequests":1,
     "putBackendSize":1.00,
     "putBackendTTLSeconds":60.00,
+    "putBackendDuration":1.00,
     "putDuration": 1.00
   },
   "expectedResponse": {

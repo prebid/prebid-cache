@@ -20,8 +20,10 @@
   "expectedMetrics": {
     "putTotal": 1,
     "totalXmlRequests":1,
+    "totalJsonRequests":1,
     "putBackendSize":5.00,
     "putBackendTTLSeconds":60.00,
+    "putBackendDuration": 1.00,
     "putDuration": 1.00
   },
   "expectedResponse": {
