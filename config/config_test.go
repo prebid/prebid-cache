@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prebid/prebid-cache/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
@@ -99,6 +100,14 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		},
 		{
 			msg: "config.metrics.influx.database: database-value",
+			lvl: logrus.InfoLevel,
+		},
+		{
+			msg: "config.metrics.influx.measurement: measurement-value",
+			lvl: logrus.InfoLevel,
+		},
+		{
+			msg: "config.metrics.influx.align_timestamps: false",
 			lvl: logrus.InfoLevel,
 		},
 	}
@@ -284,8 +293,9 @@ func TestCheckMetricsEnabled(t *testing.T) {
 	//Standard elements of the config.Metrics object are set so test cases only modify what's relevant to them
 	cfg := &Metrics{
 		Influx: InfluxMetrics{
-			Host:     "http://fakeurl.com",
-			Database: "database-value",
+			Host:        "http://fakeurl.com",
+			Database:    "database-value",
+			Measurement: "measurement-value",
 		},
 		Prometheus: PrometheusMetrics{
 			Port:      8080,
@@ -489,95 +499,101 @@ func TestInfluxValidateAndLog(t *testing.T) {
 	}
 	testCases := []aTest{
 		{
-			description: "[0] both InfluxDB host and database blank, expect error",
+			description: "All Required Fields Missing",
 			influxConfig: &InfluxMetrics{
-				Host:     "",
-				Database: "",
+				Host:        "",
+				Database:    "",
+				Measurement: "",
 			},
-			//out
 			expectError: true,
 			expectedLogInfo: []logComponents{
-				{
-					msg: `Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`,
-					lvl: logrus.FatalLevel,
-				},
-				{
-					msg: `Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`,
-					lvl: logrus.FatalLevel,
-				},
-				{
-					msg: "config.metrics.influx.host: ",
-					lvl: logrus.InfoLevel,
-				},
-				{
-					msg: "config.metrics.influx.database: ",
-					lvl: logrus.InfoLevel,
-				},
+				{lvl: logrus.FatalLevel, msg: `Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`},
+				{lvl: logrus.FatalLevel, msg: `Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`},
+				{lvl: logrus.FatalLevel, msg: `Despite being enabled, influx metrics came with no measurement info: config.metrics.influx.measurement = "".`},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.host: "},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.database: "},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.measurement: "},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.align_timestamps: false"},
 			},
 		},
 		{
-			description: "[1] InfluxDB host blank, expect error",
+			description: "Host Missing",
 			influxConfig: &InfluxMetrics{
-				Host:     "",
-				Database: "database-value",
+				Host:        "",
+				Database:    "database-value",
+				Measurement: "measurement-value",
 			},
-			//out
 			expectError: true,
 			expectedLogInfo: []logComponents{
-				{
-					msg: `Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`,
-					lvl: logrus.FatalLevel,
-				},
-				{
-					msg: "config.metrics.influx.host: ",
-					lvl: logrus.InfoLevel,
-				},
-				{
-					msg: "config.metrics.influx.database: database-value",
-					lvl: logrus.InfoLevel,
-				},
+				{lvl: logrus.FatalLevel, msg: `Despite being enabled, influx metrics came with no host info: config.metrics.influx.host = "".`},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.host: "},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.database: database-value"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.measurement: measurement-value"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.align_timestamps: false"},
 			},
 		},
 		{
-			description: "[2] InfluxDB database blank, expect error",
+			description: "Database Missing",
 			influxConfig: &InfluxMetrics{
-				Host:     "http://fakeurl.com",
-				Database: "",
+				Host:        "http://fakeurl.com",
+				Database:    "",
+				Measurement: "measurement-value",
 			},
-			//out
 			expectError: true,
 			expectedLogInfo: []logComponents{
-				{
-					msg: `Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`,
-					lvl: logrus.FatalLevel,
-				},
-				{
-					msg: "config.metrics.influx.host: http://fakeurl.com",
-					lvl: logrus.InfoLevel,
-				},
-				{
-					msg: "config.metrics.influx.database: ",
-					lvl: logrus.InfoLevel,
-				},
+				{lvl: logrus.FatalLevel, msg: `Despite being enabled, influx metrics came with no database info: config.metrics.influx.database = "".`},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.host: http://fakeurl.com"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.database: "},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.measurement: measurement-value"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.align_timestamps: false"},
 			},
 		},
 		{
-			description: "[3] Valid InfluxDB host and database, expect log.Info",
+			description: "Measurement Missing",
 			influxConfig: &InfluxMetrics{
-				Host:     "http://fakeurl.com",
-				Database: "database-value",
+				Host:        "http://fakeurl.com",
+				Database:    "database-value",
+				Measurement: "",
 			},
-			//out
+			expectError: true,
+			expectedLogInfo: []logComponents{
+				{lvl: logrus.FatalLevel, msg: `Despite being enabled, influx metrics came with no measurement info: config.metrics.influx.measurement = "".`},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.host: http://fakeurl.com"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.database: database-value"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.measurement: "},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.align_timestamps: false"},
+			},
+		},
+		{
+			description: "All Required Fields Provided",
+			influxConfig: &InfluxMetrics{
+				Host:            "http://fakeurl.com",
+				Database:        "database-value",
+				Measurement:     "measurement-value",
+				AlignTimestamps: true,
+			},
 			expectError: false,
 			expectedLogInfo: []logComponents{
-				{
-					msg: "config.metrics.influx.host: http://fakeurl.com",
-					lvl: logrus.InfoLevel,
-				},
-				{
-					msg: "config.metrics.influx.database: database-value",
-					lvl: logrus.InfoLevel,
-				},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.host: http://fakeurl.com"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.database: database-value"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.measurement: measurement-value"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.align_timestamps: true"},
+			},
+		},
+		{
+			description: "Align Timestamps",
+			influxConfig: &InfluxMetrics{
+				Host:            "http://fakeurl.com",
+				Database:        "database-value",
+				Measurement:     "measurement-value",
+				AlignTimestamps: true,
+			},
+			expectError: false,
+			expectedLogInfo: []logComponents{
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.host: http://fakeurl.com"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.database: database-value"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.measurement: measurement-value"},
+				{lvl: logrus.InfoLevel, msg: "config.metrics.influx.align_timestamps: true"},
 			},
 		},
 	}
@@ -1171,7 +1187,10 @@ func getExpectedDefaultConfig() Configuration {
 				Hosts: []string{},
 			},
 			Cassandra: Cassandra{
-				DefaultTTL: 2400,
+				DefaultTTL: utils.CASSANDRA_DEFAULT_TTL_SECONDS,
+			},
+			Redis: Redis{
+				ExpirationMinutes: utils.REDIS_DEFAULT_EXPIRATION_MINUTES,
 			},
 		},
 		Compression: Compression{
@@ -1231,11 +1250,11 @@ func getExpectedFullConfigForTestFile() Configuration {
 				Hosts: []string{"10.0.0.1:11211", "127.0.0.1"},
 			},
 			Redis: Redis{
-				Host:       "127.0.0.1",
-				Port:       6379,
-				Password:   "redis-password",
-				Db:         1,
-				Expiration: 1,
+				Host:              "127.0.0.1",
+				Port:              6379,
+				Password:          "redis-password",
+				Db:                1,
+				ExpirationMinutes: 1,
 				TLS: RedisTLS{
 					Enabled:            false,
 					InsecureSkipVerify: false,

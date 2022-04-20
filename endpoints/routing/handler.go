@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/didip/tollbooth"
-	"github.com/didip/tollbooth/limiter"
+	"github.com/didip/tollbooth/v6"
+	"github.com/didip/tollbooth/v6/limiter"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	"github.com/prebid/prebid-cache/config"
@@ -58,7 +58,7 @@ func handleRateLimiting(next http.Handler, cfg config.RateLimiting) http.Handler
 		return next
 	}
 
-	limit := tollbooth.NewLimiter(cfg.MaxRequestsPerSecond, time.Second, &limiter.ExpirableOptions{
+	limit := tollbooth.NewLimiter(float64(cfg.MaxRequestsPerSecond), &limiter.ExpirableOptions{
 		DefaultExpirationTTL: 1 * time.Hour,
 	})
 	limit.SetIPLookups([]string{"X-Forwarded-For", "X-Real-IP"})
