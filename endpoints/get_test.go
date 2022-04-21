@@ -6,7 +6,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
-	"github.com/prebid/prebid-cache/metrics/metricstest"
+	"github.com/prebid/prebid-cache/metrics"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +15,13 @@ import (
 func TestGetInvalidUUIDs(t *testing.T) {
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
-	m := metricstest.CreateMockMetrics(metricstest.MockMetrics{})
+
+	mockMetrics := createMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 
 	router.GET("/cache", NewGetHandler(backend, m, false))
 
@@ -185,8 +191,12 @@ func TestGetHandler(t *testing.T) {
 		// Set up test object
 		backend := newMockBackend()
 		router := httprouter.New()
-		mockmetrics := metricstest.MockMetrics{}
-		m := metricstest.CreateMockMetrics(mockmetrics)
+		mockMetrics := createMockMetrics()
+		m := &metrics.Metrics{
+			MetricEngines: []metrics.CacheMetrics{
+				&mockMetrics,
+			},
+		}
 		router.GET("/cache", NewGetHandler(backend, m, test.in.allowKeys))
 
 		// Run test
@@ -213,7 +223,7 @@ func TestGetHandler(t *testing.T) {
 			RecordGetError:      test.out.metricsRecorded.requestErrs,
 			RecordGetDuration:   test.out.metricsRecorded.requestDur,
 		}
-		assertMetrics(t, expectedMetrics, mockmetrics)
+		assertMetrics(t, expectedMetrics, mockMetrics)
 
 		// Reset log
 		hook.Reset()

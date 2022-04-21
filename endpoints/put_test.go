@@ -18,6 +18,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendConfig "github.com/prebid/prebid-cache/backends/config"
+	"github.com/prebid/prebid-cache/backends/decorators"
 	backendDecorators "github.com/prebid/prebid-cache/backends/decorators"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
@@ -30,6 +31,36 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+func createMockMetrics() metricstest.MockMetrics {
+	mockMetrics := metricstest.MockMetrics{}
+	mockMetrics.On("RecordAcceptConnectionErrors")
+	mockMetrics.On("RecordCloseConnectionErrors")
+	mockMetrics.On("RecordConnectionClosed")
+	mockMetrics.On("RecordConnectionOpen")
+	mockMetrics.On("RecordGetBackendDuration", mock.Anything)
+	mockMetrics.On("RecordGetBackendError")
+	mockMetrics.On("RecordGetBackendTotal")
+	mockMetrics.On("RecordGetBadRequest")
+	mockMetrics.On("RecordGetDuration", mock.Anything)
+	mockMetrics.On("RecordGetError")
+	mockMetrics.On("RecordGetTotal")
+	mockMetrics.On("RecordKeyNotFoundError")
+	mockMetrics.On("RecordMissingKeyError")
+	mockMetrics.On("RecordPutBackendDuration", mock.Anything)
+	mockMetrics.On("RecordPutBackendError")
+	mockMetrics.On("RecordPutBackendInvalid")
+	mockMetrics.On("RecordPutBackendJson")
+	mockMetrics.On("RecordPutBackendSize", mock.Anything)
+	mockMetrics.On("RecordPutBackendTTLSeconds", mock.Anything)
+	mockMetrics.On("RecordPutBackendXml")
+	mockMetrics.On("RecordPutBadRequest")
+	mockMetrics.On("RecordPutDuration", mock.Anything)
+	mockMetrics.On("RecordPutError")
+	mockMetrics.On("RecordPutKeyProvided")
+	mockMetrics.On("RecordPutTotal")
+	return mockMetrics
+}
 
 func TestPutJsonTests(t *testing.T) {
 	testGroups := []struct {
@@ -115,20 +146,7 @@ func TestPutJsonTests(t *testing.T) {
 			}
 
 			//   Instantiate memory backend, request, router, recorder
-			mockMetrics := metricstest.MockMetrics{}
-			mockMetrics.On("RecordPutTotal")
-			mockMetrics.On("RecordPutKeyProvided")
-			mockMetrics.On("RecordPutBadRequest")
-			mockMetrics.On("RecordPutError")
-			mockMetrics.On("RecordPutDuration", mock.Anything)
-			mockMetrics.On("RecordPutBackendXml")
-			mockMetrics.On("RecordPutBackendJson")
-			mockMetrics.On("RecordPutBackendError")
-			mockMetrics.On("RecordPutBackendInvalid")
-			mockMetrics.On("RecordPutBackendSize", mock.Anything)
-			mockMetrics.On("RecordPutBackendTTLSeconds", mock.Anything)
-			mockMetrics.On("RecordPutBackendDuration", mock.Anything)
-			//m := metricstest.CreateMockMetrics(mockMetrics)
+			mockMetrics := createMockMetrics()
 			m := &metrics.Metrics{
 				MetricEngines: []metrics.CacheMetrics{
 					&mockMetrics,
@@ -502,8 +520,12 @@ func TestSuccessfulPut(t *testing.T) {
 			// set test
 			router := httprouter.New()
 			backend := backends.NewMemoryBackend()
-			mockmetrics := metricstest.MockMetrics{}
-			m := metricstest.CreateMockMetrics(mockmetrics)
+			mockMetrics := createMockMetrics()
+			m := &metrics.Metrics{
+				MetricEngines: []metrics.CacheMetrics{
+					&mockMetrics,
+				},
+			}
 
 			router.POST("/cache", NewPutHandler(backend, m, 10, true))
 			router.GET("/cache", NewGetHandler(backend, m, true))
@@ -541,7 +563,7 @@ func TestSuccessfulPut(t *testing.T) {
 					RecordPutError:       tc.expectedMetrics.requestErrs,
 					RecordPutDuration:    tc.expectedMetrics.requestDur,
 				}
-				assertMetrics(t, expectedMetrics, mockmetrics)
+				assertMetrics(t, expectedMetrics, mockMetrics)
 			}
 
 		}
@@ -595,8 +617,12 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 		backend := &mockBackend{}
 		backend.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-		mockmetrics := metricstest.MockMetrics{}
-		m := metricstest.CreateMockMetrics(mockmetrics)
+		mockMetrics := createMockMetrics()
+		m := &metrics.Metrics{
+			MetricEngines: []metrics.CacheMetrics{
+				&mockMetrics,
+			},
+		}
 
 		router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
@@ -614,7 +640,7 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 			RecordPutTotal:      1,
 			RecordPutBadRequest: 1,
 		}
-		assertMetrics(t, expectedMetrics, mockmetrics)
+		assertMetrics(t, expectedMetrics, mockMetrics)
 	}
 }
 
@@ -628,8 +654,12 @@ func TestNonSupportedType(t *testing.T) {
 	backend.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	router := httprouter.New()
-	mockmetrics := metricstest.MockMetrics{}
-	m := metricstest.CreateMockMetrics(mockmetrics)
+	mockMetrics := createMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
 	putResponse := doPut(t, router, requestBody)
@@ -643,7 +673,7 @@ func TestNonSupportedType(t *testing.T) {
 		RecordPutTotal:      1,
 		RecordPutBadRequest: 1,
 	}
-	assertMetrics(t, expectedMetrics, mockmetrics)
+	assertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestPutNegativeTTL(t *testing.T) {
@@ -659,8 +689,12 @@ func TestPutNegativeTTL(t *testing.T) {
 	// Set up server to run our test
 	testRouter := httprouter.New()
 	testBackend := backends.NewMemoryBackend()
-	mockmetrics := metricstest.MockMetrics{}
-	m := metricstest.CreateMockMetrics(mockmetrics)
+	mockMetrics := createMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 
 	testRouter.POST("/cache", NewPutHandler(testBackend, m, 10, true))
 
@@ -677,7 +711,7 @@ func TestPutNegativeTTL(t *testing.T) {
 		RecordPutTotal:      1,
 		RecordPutBadRequest: 1,
 	}
-	assertMetrics(t, expectedMetrics, mockmetrics)
+	assertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 // TestCustomKey will assert the correct behavior when we try to store values that come with their own custom keys both
@@ -757,8 +791,12 @@ func TestCustomKey(t *testing.T) {
 			// Instantiate prebid cache prod server with mock metrics and a mock metrics that
 			// already contains some values
 			mockBackendWithValues := newMockBackend()
-			mockmetrics := metricstest.MockMetrics{}
-			m := metricstest.CreateMockMetrics(mockmetrics)
+			mockMetrics := createMockMetrics()
+			m := &metrics.Metrics{
+				MetricEngines: []metrics.CacheMetrics{
+					&mockMetrics,
+				},
+			}
 
 			router := httprouter.New()
 			putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, tgroup.allowSettingKeys)
@@ -784,7 +822,7 @@ func TestCustomKey(t *testing.T) {
 				RecordPutError:       tc.expectedMetrics.requestErrs,
 				RecordPutDuration:    tc.expectedMetrics.requestDur,
 			}
-			assertMetrics(t, expectedMetrics, mockmetrics)
+			assertMetrics(t, expectedMetrics, mockMetrics)
 
 			// Assert response UUID
 			if tc.expectedUUID == "" {
@@ -799,8 +837,12 @@ func TestCustomKey(t *testing.T) {
 func TestRequestReadError(t *testing.T) {
 	// Setup server and mock body request reader
 	mockBackendWithValues := newMockBackend()
-	mockmetrics := metricstest.MockMetrics{}
-	m := metricstest.CreateMockMetrics(mockmetrics)
+	mockMetrics := createMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 	putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, false)
 
 	router := httprouter.New()
@@ -826,7 +868,7 @@ func TestRequestReadError(t *testing.T) {
 		RecordPutTotal:      1,
 		RecordPutBadRequest: 1,
 	}
-	assertMetrics(t, expectedMetrics, mockmetrics)
+	assertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestTooManyPutElements(t *testing.T) {
@@ -843,8 +885,12 @@ func TestTooManyPutElements(t *testing.T) {
 	backend.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	router := httprouter.New()
-	mockmetrics := metricstest.MockMetrics{}
-	m := metricstest.CreateMockMetrics(mockmetrics)
+	mockMetrics := createMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 	router.POST("/cache", NewPutHandler(backend, m, len(putElements)-1, true))
 
 	putResponse := doPut(t, router, reqBody)
@@ -859,7 +905,7 @@ func TestTooManyPutElements(t *testing.T) {
 		RecordPutTotal:      1,
 		RecordPutBadRequest: 1,
 	}
-	assertMetrics(t, expectedMetrics, mockmetrics)
+	assertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 // TestMultiPutRequest asserts results for requests with more than one element in the "puts" array
@@ -896,8 +942,12 @@ func TestMultiPutRequest(t *testing.T) {
 	// Set up server and run
 	router := httprouter.New()
 	backend := backends.NewMemoryBackend()
-	mockmetrics := metricstest.MockMetrics{}
-	m := metricstest.CreateMockMetrics(mockmetrics)
+	mockMetrics := createMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 
 	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 	router.GET("/cache", NewGetHandler(backend, m, true))
@@ -913,7 +963,7 @@ func TestMultiPutRequest(t *testing.T) {
 		RecordPutTotal:    1,
 		RecordPutDuration: 1.00,
 	}
-	assertMetrics(t, expectedMetrics, mockmetrics)
+	assertMetrics(t, expectedMetrics, mockMetrics)
 
 	//   Assert put request
 	var parsed PutResponse
@@ -931,11 +981,9 @@ func TestMultiPutRequest(t *testing.T) {
 	}
 
 	//   Assert get metrics
-	expectedMetrics = metricsRecorded{
-		RecordGetTotal:    3,
-		RecordGetDuration: 1.00,
-	}
-	assertMetrics(t, expectedMetrics, mockmetrics)
+	expectedMetrics.RecordGetTotal = 3
+	expectedMetrics.RecordGetDuration = 1.00
+	assertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestBadPayloadSizePutError(t *testing.T) {
@@ -950,8 +998,12 @@ func TestBadPayloadSizePutError(t *testing.T) {
 
 	// Run client
 	router := httprouter.New()
-	mockmetrics := metricstest.MockMetrics{}
-	m := metricstest.CreateMockMetrics(mockmetrics)
+	mockMetrics := createMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 
 	putResponse := doPut(t, router, reqBody)
@@ -962,37 +1014,45 @@ func TestBadPayloadSizePutError(t *testing.T) {
 
 	//   metrics
 	expectedMetrics := metricsRecorded{
-		RecordPutTotal:    1,
-		RecordPutDuration: 1.00,
+		RecordPutTotal:      1,
+		RecordPutBadRequest: 1,
 	}
-	assertMetrics(t, expectedMetrics, mockmetrics)
+	assertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestInternalPutClientError(t *testing.T) {
-	// Valid request
+	// Input
 	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"some data\"}]}"
+	// Expected metrics
+	expectedMetrics := metricsRecorded{
+		RecordPutTotal:             1,
+		RecordPutError:             1,
+		RecordPutBackendXml:        1,
+		RecordPutBackendError:      1,
+		RecordPutBackendSize:       1.00,
+		RecordPutBackendTTLSeconds: 1.00,
+	}
 
-	// Use mock client that will return an error
-	backend := newErrorReturningBackend()
-
-	// Run client
+	// Init test objects:
 	router := httprouter.New()
-	mockmetrics := metricstest.MockMetrics{}
-	m := metricstest.CreateMockMetrics(mockmetrics)
-	router.POST("/cache", NewPutHandler(backend, m, 10, true))
+	mockMetrics := createMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
+	// Use mock client that will return an error
+	backendWithMetrics := decorators.LogMetrics(newErrorReturningBackend(), m)
 
+	router.POST("/cache", NewPutHandler(backendWithMetrics, m, 10, true))
+
+	// Run test
 	putResponse := doPut(t, router, reqBody)
 
 	// Assert expected response
 	assert.Equal(t, http.StatusInternalServerError, putResponse.Code, "Put should have failed because we are using an MockReturnErrorBackend")
 	assert.Equal(t, "This is a mock backend that returns this error on Put() operation\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
-
-	//   metrics
-	expectedMetrics := metricsRecorded{
-		RecordPutTotal:        1,
-		RecordPutBackendError: 1.00,
-	}
-	assertMetrics(t, expectedMetrics, mockmetrics)
+	assertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestEmptyPutRequests(t *testing.T) {
@@ -1055,8 +1115,12 @@ func TestEmptyPutRequests(t *testing.T) {
 	for i, tc := range testCases {
 		// Set up server
 		backend := backends.NewMemoryBackend()
-		mockmetrics := metricstest.MockMetrics{}
-		m := metricstest.CreateMockMetrics(mockmetrics)
+		mockMetrics := createMockMetrics()
+		m := &metrics.Metrics{
+			MetricEngines: []metrics.CacheMetrics{
+				&mockMetrics,
+			},
+		}
 		router := httprouter.New()
 		router.POST("/cache", NewPutHandler(backend, m, 10, true))
 		rr := httptest.NewRecorder()
@@ -1081,36 +1145,40 @@ func TestEmptyPutRequests(t *testing.T) {
 			RecordPutBadRequest: tc.expected.metricsBadRequest,
 			RecordPutDuration:   tc.expected.metricsDuration,
 		}
-		assertMetrics(t, expectedMetrics, mockmetrics)
+		assertMetrics(t, expectedMetrics, mockMetrics)
 	}
 }
 
-//func TestPutClientDeadlineExceeded(t *testing.T) {
-//	// Valid request
-//	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"some data\"}]}"
-//
-//	// Use mock client that will return an error
-//	backend := newDeadlineExceededBackend()
-//
-//	// Run client
-//	router := httprouter.New()
-//	mockmetrics := metricstest.MockMetrics{}
-//	m := metricstest.CreateMockMetrics(mockmetrics)
-//	router.POST("/cache", NewPutHandler(backend, m, 10, true))
-//
-//	putResponse := doPut(t, router, reqBody)
-//
-//	// Assert expected response
-//	assert.Equal(t, utils.HTTPDependencyTimeout, putResponse.Code, "Put should have failed because we are using a MockDeadlineExceededBackend")
-//	assert.Equal(t, "timeout writing value to the backend.\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
-//
-//	// Assert this request is accounted under the "puts.current_url.request.error" metrics
-//	expectedMetrics := metricsRecorded{
-//		RecordPutTotal:        1,
-//		RecordPutBackendError: 1,
-//	}
-//	assertMetrics(t, expectedMetrics, mockmetrics)
-//}
+func TestPutClientDeadlineExceeded(t *testing.T) {
+	// Valid request
+	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"some data\"}]}"
+
+	// Use mock client that will return an error
+	backend := newDeadlineExceededBackend()
+
+	// Run client
+	router := httprouter.New()
+	mockMetrics := createMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
+	router.POST("/cache", NewPutHandler(backend, m, 10, true))
+
+	putResponse := doPut(t, router, reqBody)
+
+	// Assert expected response
+	assert.Equal(t, utils.HTTPDependencyTimeout, putResponse.Code, "Put should have failed because we are using a MockDeadlineExceededBackend")
+	assert.Equal(t, "timeout writing value to the backend.\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
+
+	// Assert this request is accounted under the "puts.current_url.request.error" metrics
+	expectedMetrics := metricsRecorded{
+		RecordPutTotal: 1,
+		RecordPutError: 1,
+	}
+	assertMetrics(t, expectedMetrics, mockMetrics)
+}
 
 // TestParseRequest asserts *PutHandler's parseRequest(r *http.Request) method
 func TestParseRequest(t *testing.T) {
@@ -1385,7 +1453,12 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 	//Set up server ready to run
 	router := httprouter.New()
 	backend := backends.NewMemoryBackend()
-	m := metricstest.CreateMockMetrics(metricstest.MockMetrics{})
+	mockMetrics := createMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 
 	router.POST("/cache", NewPutHandler(backend, m, 10, true))
 	router.GET("/cache", NewGetHandler(backend, m, true))
