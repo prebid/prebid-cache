@@ -71,7 +71,7 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 
 	client, err := as.NewClientWithPolicyAndHost(clientPolicy, hosts...)
 	if err != nil {
-		log.Fatalf("%v", classifyAerospikeError(err).Error())
+		log.Fatalf("Error creating Aerospike backend: %s", classifyAerospikeError(err).Error())
 		panic("AerospikeBackend failure. This shouldn't happen.")
 	}
 	log.Infof("Connected to Aerospike host(s) %v on port %d", append(cfg.Hosts, cfg.Host), cfg.Port)

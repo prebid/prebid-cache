@@ -72,6 +72,7 @@ func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
 
 	if err != nil {
 		log.Fatalf("Error creating Redis backend: %v", err)
+		panic("RedisBackend failure. This shouldn't happen.")
 	}
 
 	log.Infof("Connected to Redis at %s:%d", cfg.Host, cfg.Port)

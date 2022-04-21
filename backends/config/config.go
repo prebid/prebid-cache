@@ -11,6 +11,7 @@ import (
 	"github.com/prebid/prebid-cache/compression"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/utils"
 )
 
 func NewBackend(cfg config.Configuration, appMetrics *metrics.Metrics) backends.Backend {
@@ -77,8 +78,8 @@ func getMaxTTLSeconds(cfg config.Configuration) int {
 	case config.BackendCassandra:
 		// If config.request_limits.max_ttl_seconds was defined to be less than 2400 seconds, go
 		// with 2400 as it has been the TTL limit hardcoded in the Cassandra backend so far.
-		if maxTTLSeconds > 2400 {
-			maxTTLSeconds = 2400
+		if maxTTLSeconds > utils.CASSANDRA_DEFAULT_TTL_SECONDS {
+			maxTTLSeconds = utils.CASSANDRA_DEFAULT_TTL_SECONDS
 		}
 	case config.BackendAerospike:
 		// If both config.request_limits.max_ttl_seconds and config.backend.aerospike.default_ttl_seconds
@@ -89,8 +90,8 @@ func getMaxTTLSeconds(cfg config.Configuration) int {
 	case config.BackendRedis:
 		// If both config.request_limits.max_ttl_seconds and backend.redis.expiration
 		// were defined, the smallest value takes preference
-		if cfg.Backend.Redis.Expiration > 0 && maxTTLSeconds > cfg.Backend.Redis.Expiration*60 {
-			maxTTLSeconds = cfg.Backend.Redis.Expiration * 60
+		if cfg.Backend.Redis.ExpirationMinutes > 0 && maxTTLSeconds > cfg.Backend.Redis.ExpirationMinutes*60 {
+			maxTTLSeconds = cfg.Backend.Redis.ExpirationMinutes * 60
 		}
 	}
 	return maxTTLSeconds

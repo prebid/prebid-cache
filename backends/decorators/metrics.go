@@ -40,9 +40,9 @@ func (b *backendWithMetrics) Get(ctx context.Context, key string) (string, error
 
 func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 
-	if strings.HasPrefix(value, backends.XML_PREFIX) {
+	if strings.HasPrefix(value, utils.XML_PREFIX) {
 		b.metrics.RecordPutBackendXml()
-	} else if strings.HasPrefix(value, backends.JSON_PREFIX) {
+	} else if strings.HasPrefix(value, utils.JSON_PREFIX) {
 		b.metrics.RecordPutBackendJson()
 	} else {
 		b.metrics.RecordPutBackendInvalid()
