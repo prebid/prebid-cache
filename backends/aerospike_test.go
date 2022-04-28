@@ -15,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestNewAerospikeBackend(t *testing.T) {
@@ -150,7 +149,7 @@ func TestClassifyAerospikeError(t *testing.T) {
 }
 
 func TestAerospikeClientGet(t *testing.T) {
-	mockMetrics := createMockMetrics()
+	mockMetrics := metricstest.CreateMockMetrics()
 	m := &metrics.Metrics{
 		MetricEngines: []metrics.CacheMetrics{
 			&mockMetrics,
@@ -229,7 +228,7 @@ func TestAerospikeClientGet(t *testing.T) {
 }
 
 func TestClientPut(t *testing.T) {
-	mockMetrics := createMockMetrics()
+	mockMetrics := metricstest.CreateMockMetrics()
 	m := &metrics.Metrics{
 		MetricEngines: []metrics.CacheMetrics{
 			&mockMetrics,
@@ -360,34 +359,4 @@ func (c *goodAerospikeClient) Put(policy *as.WritePolicy, aeKey *as.Key, binMap 
 
 func (c *goodAerospikeClient) NewUUIDKey(namespace string, key string) (*as.Key, error) {
 	return as.NewKey(namespace, setName, key)
-}
-
-func createMockMetrics() metricstest.MockMetrics {
-	mockMetrics := metricstest.MockMetrics{}
-	mockMetrics.On("RecordAcceptConnectionErrors")
-	mockMetrics.On("RecordCloseConnectionErrors")
-	mockMetrics.On("RecordConnectionClosed")
-	mockMetrics.On("RecordConnectionOpen")
-	mockMetrics.On("RecordGetBackendDuration", mock.Anything)
-	mockMetrics.On("RecordGetBackendError")
-	mockMetrics.On("RecordGetBackendTotal")
-	mockMetrics.On("RecordGetBadRequest")
-	mockMetrics.On("RecordGetDuration", mock.Anything)
-	mockMetrics.On("RecordGetError")
-	mockMetrics.On("RecordGetTotal")
-	mockMetrics.On("RecordKeyNotFoundError")
-	mockMetrics.On("RecordMissingKeyError")
-	mockMetrics.On("RecordPutBackendDuration", mock.Anything)
-	mockMetrics.On("RecordPutBackendError")
-	mockMetrics.On("RecordPutBackendInvalid")
-	mockMetrics.On("RecordPutBackendJson")
-	mockMetrics.On("RecordPutBackendSize", mock.Anything)
-	mockMetrics.On("RecordPutBackendTTLSeconds", mock.Anything)
-	mockMetrics.On("RecordPutBackendXml")
-	mockMetrics.On("RecordPutBadRequest")
-	mockMetrics.On("RecordPutDuration", mock.Anything)
-	mockMetrics.On("RecordPutError")
-	mockMetrics.On("RecordPutKeyProvided")
-	mockMetrics.On("RecordPutTotal")
-	return mockMetrics
 }

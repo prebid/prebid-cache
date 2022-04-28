@@ -7,6 +7,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	"github.com/prebid/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ func TestGetInvalidUUIDs(t *testing.T) {
 	backend := backends.NewMemoryBackend()
 	router := httprouter.New()
 
-	mockMetrics := createMockMetrics()
+	mockMetrics := metricstest.CreateMockMetrics()
 	m := &metrics.Metrics{
 		MetricEngines: []metrics.CacheMetrics{
 			&mockMetrics,
@@ -47,17 +48,11 @@ func TestGetHandler(t *testing.T) {
 		uuid      string
 		allowKeys bool
 	}
-	type metricsRecords struct {
-		totalRequests int64
-		badRequests   int64
-		requestErrs   int64
-		requestDur    float64
-	}
 	type testOutput struct {
 		responseCode    int
 		responseBody    string
 		logEntries      []logEntry
-		metricsRecorded metricsRecords
+		expectedMetrics metricstest.MetricsRecorded
 	}
 
 	testCases := []struct {
@@ -80,9 +75,9 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.ErrorLevel,
 					},
 				},
-				metricsRecorded: metricsRecords{
-					totalRequests: int64(1),
-					badRequests:   int64(1),
+				expectedMetrics: metricstest.MetricsRecorded{
+					RecordGetTotal:      1,
+					RecordGetBadRequest: 1,
 				},
 			},
 		},
@@ -101,9 +96,9 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.ErrorLevel,
 					},
 				},
-				metricsRecorded: metricsRecords{
-					totalRequests: int64(1),
-					badRequests:   int64(1),
+				expectedMetrics: metricstest.MetricsRecorded{
+					RecordGetTotal:      1,
+					RecordGetBadRequest: 1,
 				},
 			},
 		},
@@ -117,9 +112,9 @@ func TestGetHandler(t *testing.T) {
 				responseCode: http.StatusOK,
 				responseBody: `{"field":"value"}`,
 				logEntries:   []logEntry{},
-				metricsRecorded: metricsRecords{
-					totalRequests: int64(1),
-					requestDur:    1.00,
+				expectedMetrics: metricstest.MetricsRecorded{
+					RecordGetTotal:    1,
+					RecordGetDuration: 1.00,
 				},
 			},
 		},
@@ -135,9 +130,9 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.DebugLevel,
 					},
 				},
-				metricsRecorded: metricsRecords{
-					totalRequests: int64(1),
-					badRequests:   int64(1),
+				expectedMetrics: metricstest.MetricsRecorded{
+					RecordGetTotal:      1,
+					RecordGetBadRequest: 1,
 				},
 			},
 		},
@@ -153,9 +148,9 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.ErrorLevel,
 					},
 				},
-				metricsRecorded: metricsRecords{
-					totalRequests: int64(1),
-					requestErrs:   int64(1),
+				expectedMetrics: metricstest.MetricsRecorded{
+					RecordGetTotal: 1,
+					RecordGetError: 1,
 				},
 			},
 		},
@@ -166,9 +161,9 @@ func TestGetHandler(t *testing.T) {
 				responseCode: http.StatusOK,
 				responseBody: "<tag>xml data here</tag>",
 				logEntries:   []logEntry{},
-				metricsRecorded: metricsRecords{
-					totalRequests: int64(1),
-					requestDur:    1.00,
+				expectedMetrics: metricstest.MetricsRecorded{
+					RecordGetTotal:    1,
+					RecordGetDuration: 1.00,
 				},
 			},
 		},
@@ -191,7 +186,7 @@ func TestGetHandler(t *testing.T) {
 		// Set up test object
 		backend := newMockBackend()
 		router := httprouter.New()
-		mockMetrics := createMockMetrics()
+		mockMetrics := metricstest.CreateMockMetrics()
 		m := &metrics.Metrics{
 			MetricEngines: []metrics.CacheMetrics{
 				&mockMetrics,
@@ -217,13 +212,7 @@ func TestGetHandler(t *testing.T) {
 		}
 
 		// Assert recorded metrics
-		expectedMetrics := metricsRecorded{
-			RecordGetTotal:      test.out.metricsRecorded.totalRequests,
-			RecordGetBadRequest: test.out.metricsRecorded.badRequests,
-			RecordGetError:      test.out.metricsRecorded.requestErrs,
-			RecordGetDuration:   test.out.metricsRecorded.requestDur,
-		}
-		assertMetrics(t, expectedMetrics, mockMetrics)
+		metricstest.AssertMetrics(t, test.out.expectedMetrics, mockMetrics)
 
 		// Reset log
 		hook.Reset()
