@@ -127,7 +127,7 @@ func parsePutObject(p putObject) (string, error) {
 	//}
 
 	// Limit the type of data to XML or JSON
-	if p.Type == backends.XML_PREFIX {
+	if p.Type == utils.XML_PREFIX {
 		if p.Value[0] != byte('"') || p.Value[len(p.Value)-1] != byte('"') {
 			return "", utils.NewPBCError(utils.MALFORMED_XML, fmt.Sprintf("XML messages must have a String value. Found %v", p.Value))
 		}
@@ -140,7 +140,7 @@ func parsePutObject(p putObject) (string, error) {
 		}
 
 		toCache = p.Type + interpreted
-	} else if p.Type == backends.JSON_PREFIX {
+	} else if p.Type == utils.JSON_PREFIX {
 		toCache = p.Type + string(p.Value)
 	} else {
 		return "", utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type))

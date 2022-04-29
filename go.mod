@@ -14,7 +14,6 @@ require (
 	github.com/golang/snappy v0.0.4
 	github.com/google/gomemcache v0.0.0-20210709172713-c1c93e4523ee
 	github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce // indirect
-	github.com/influxdata/influxdb v1.6.0 // indirect
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/magiconair/properties v1.8.0 // indirect
 	github.com/mitchellh/mapstructure v0.0.0-20180715050151-f15292f7a699 // indirect
@@ -23,7 +22,7 @@ require (
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/prometheus/client_golang v1.5.1
 	github.com/prometheus/client_model v0.2.0
-	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
+	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/rs/cors v1.8.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/afero v1.1.1 // indirect
@@ -31,7 +30,7 @@ require (
 	github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec // indirect
 	github.com/spf13/pflag v1.0.1 // indirect
 	github.com/spf13/viper v1.0.2
-	github.com/stretchr/testify v1.7.0
-	github.com/vrischmann/go-metrics-influxdb v0.0.0-20160917065939-43af8332c303
+	github.com/stretchr/testify v1.7.1
+	github.com/vrischmann/go-metrics-influxdb v0.1.1
 	github.com/yuin/gopher-lua v0.0.0-20180630135845-46796da1b0b4 // indirect
 )
