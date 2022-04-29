@@ -195,12 +195,12 @@ func TestPutJsonTests(t *testing.T) {
 }
 
 type testData struct {
-	ServerConfig       testConfig                  `json:"serverConfig"`
-	PutRequest         json.RawMessage             `json:"putRequest"`
-	ExpectedResponse   PutResponse                 `json:"expectedResponse"`
-	ExpectedLogEntries []logEntry                  `json:"expectedLogEntries"`
-	ExpectedError      string                      `json:"expectedErrorMessage"`
-	ExpectedMetrics    metricstest.MetricsRecorded `json:"expectedMetrics"`
+	ServerConfig       testConfig      `json:"serverConfig"`
+	PutRequest         json.RawMessage `json:"putRequest"`
+	ExpectedResponse   PutResponse     `json:"expectedResponse"`
+	ExpectedLogEntries []logEntry      `json:"expectedLogEntries"`
+	ExpectedError      string          `json:"expectedErrorMessage"`
+	ExpectedMetrics    []string        `json:"expectedMetrics"`
 }
 
 type logEntry struct {
@@ -284,7 +284,7 @@ func TestSuccessfulPut(t *testing.T) {
 		desc                string
 		inPutBody           string
 		expectedStoredValue string
-		expectedMetrics     metricstest.MetricsRecorded
+		expectedMetrics     []string
 	}
 
 	testGroups := []struct {
@@ -300,77 +300,77 @@ func TestSuccessfulPut(t *testing.T) {
 					desc:                "TestJSONString",
 					inPutBody:           "{\"puts\":[{\"type\":\"json\",\"value\":\"plain text\"}]}",
 					expectedStoredValue: "\"plain text\"",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordGetTotal:    1,
-						RecordGetDuration: 1.00,
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordGetTotal",
+						"RecordGetDuration",
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 				{
 					desc:                "TestEscapedString",
 					inPutBody:           "{\"puts\":[{\"type\":\"json\",\"value\":\"esca\\\"ped\"}]}",
 					expectedStoredValue: "\"esca\\\"ped\"",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordGetTotal:    1,
-						RecordGetDuration: 1.00,
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordGetTotal",
+						"RecordGetDuration",
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 				{
 					desc:                "TestNumber",
 					inPutBody:           "{\"puts\":[{\"type\":\"json\",\"value\":5}]}",
 					expectedStoredValue: "5",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordGetTotal:    1,
-						RecordGetDuration: 1.00,
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordGetTotal",
+						"RecordGetDuration",
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 				{
 					desc:                "TestObject",
 					inPutBody:           "{\"puts\":[{\"type\":\"json\",\"value\":{\"custom_key\":\"foo\"}}]}",
 					expectedStoredValue: "{\"custom_key\":\"foo\"}",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordGetTotal:    1,
-						RecordGetDuration: 1.00,
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordGetTotal",
+						"RecordGetDuration",
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 				{
 					desc:                "TestNull",
 					inPutBody:           "{\"puts\":[{\"type\":\"json\",\"value\":null}]}",
 					expectedStoredValue: "null",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordGetTotal:    1,
-						RecordGetDuration: 1.00,
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordGetTotal",
+						"RecordGetDuration",
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 				{
 					desc:                "TestBoolean",
 					inPutBody:           "{\"puts\":[{\"type\":\"json\",\"value\":true}]}",
 					expectedStoredValue: "true",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordGetTotal:    1,
-						RecordGetDuration: 1.00,
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordGetTotal",
+						"RecordGetDuration",
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 				{
 					desc:                "TestExtraProperty",
 					inPutBody:           "{\"puts\":[{\"type\":\"json\",\"value\":null,\"irrelevant\":\"foo\"}]}",
 					expectedStoredValue: "null",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordGetTotal:    1,
-						RecordGetDuration: 1.00,
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordGetTotal",
+						"RecordGetDuration",
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 			},
@@ -383,22 +383,22 @@ func TestSuccessfulPut(t *testing.T) {
 					desc:                "Regular ",
 					inPutBody:           "{\"puts\":[{\"type\":\"xml\",\"value\":\"<tag></tag>\"}]}",
 					expectedStoredValue: "<tag></tag>",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordGetTotal:    1,
-						RecordGetDuration: 1.00,
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordGetTotal",
+						"RecordGetDuration",
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 				{
 					desc:                "TestCrossScriptEscaping",
 					inPutBody:           "{\"puts\":[{\"type\":\"xml\",\"value\":\"<tag>esc\\\"aped</tag>\"}]}",
 					expectedStoredValue: "<tag>esc\"aped</tag>",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordGetTotal:    1,
-						RecordGetDuration: 1.00,
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordGetTotal",
+						"RecordGetDuration",
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 			},
@@ -519,9 +519,9 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 		backend.AssertNumberOfCalls(t, "Put", tc.expectedPutCalls)
 
 		// assert the put call above logged expected metrics
-		expectedMetrics := metricstest.MetricsRecorded{
-			RecordPutTotal:      1,
-			RecordPutBadRequest: 1,
+		expectedMetrics := []string{
+			"RecordPutTotal",
+			"RecordPutBadRequest",
 		}
 		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 	}
@@ -552,9 +552,9 @@ func TestNonSupportedType(t *testing.T) {
 
 	backend.AssertNotCalled(t, "Put")
 
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutTotal:      1,
-		RecordPutBadRequest: 1,
+	expectedMetrics := []string{
+		"RecordPutTotal",
+		"RecordPutBadRequest",
 	}
 	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
@@ -590,9 +590,9 @@ func TestPutNegativeTTL(t *testing.T) {
 	assert.Equal(t, expectedErrorMsg, recorder.Body.String(), "Put should have failed because we passed a negative ttlseconds value.\n")
 	assert.Equalf(t, expectedStatusCode, recorder.Code, "Expected 400 response. Got: %d", recorder.Code)
 
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutTotal:      1,
-		RecordPutBadRequest: 1,
+	expectedMetrics := []string{
+		"RecordPutTotal",
+		"RecordPutBadRequest",
 	}
 	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
@@ -605,7 +605,7 @@ func TestCustomKey(t *testing.T) {
 		desc            string
 		inCustomKey     string
 		expectedUUID    string
-		expectedMetrics metricstest.MetricsRecorded
+		expectedMetrics []string
 	}
 	testGroups := []struct {
 		allowSettingKeys bool
@@ -618,18 +618,18 @@ func TestCustomKey(t *testing.T) {
 					desc:         "Custom key exists in cache but, because allowKeys is set to false we store the value using a random UUID and respond 200",
 					inCustomKey:  "36-char-key-maps-to-actual-xml-value",
 					expectedUUID: `[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}`,
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 				{
 					desc:         "Custom key doesn't exist in cache but we can't store data under it because allowKeys is set to false. Store value with random UUID and respond 200",
 					inCustomKey:  "cust-key-maps-to-no-value-in-backend",
 					expectedUUID: `[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}`,
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordPutTotal:    1,
-						RecordPutDuration: 1.00,
+					expectedMetrics: []string{
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 			},
@@ -641,20 +641,20 @@ func TestCustomKey(t *testing.T) {
 					desc:         "Setting keys allowed but key already maps to an element in cache, don't overwrite the value in the data storage and simply respond with blank UUID and a 200 code",
 					inCustomKey:  "36-char-key-maps-to-actual-xml-value",
 					expectedUUID: "",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordPutTotal:       1,
-						RecordPutDuration:    1.00,
-						RecordPutKeyProvided: 1,
+					expectedMetrics: []string{
+						"RecordPutTotal",
+						"RecordPutDuration",
+						"RecordPutKeyProvided",
 					},
 				},
 				{
 					desc:         "Custom key maps to no element in cache, store value using custom key and respond with a 200 code and the custom UUID",
 					inCustomKey:  "cust-key-maps-to-no-value-in-backend",
 					expectedUUID: "cust-key-maps-to-no-value-in-backend",
-					expectedMetrics: metricstest.MetricsRecorded{
-						RecordPutKeyProvided: 1,
-						RecordPutTotal:       1,
-						RecordPutDuration:    1.00,
+					expectedMetrics: []string{
+						"RecordPutKeyProvided",
+						"RecordPutTotal",
+						"RecordPutDuration",
 					},
 				},
 			},
@@ -732,10 +732,7 @@ func TestRequestReadError(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, recorder.Code, "Expected a bad request status code from a malformed request")
 
 	// assert the put call above logged expected metrics
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutTotal:      1,
-		RecordPutBadRequest: 1,
-	}
+	expectedMetrics := []string{"RecordPutTotal", "RecordPutBadRequest"}
 	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
@@ -769,10 +766,7 @@ func TestTooManyPutElements(t *testing.T) {
 	backend.AssertNotCalled(t, "Put")
 
 	// assert the put call above logged expected metrics
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutTotal:      1,
-		RecordPutBadRequest: 1,
-	}
+	expectedMetrics := []string{"RecordPutTotal", "RecordPutBadRequest"}
 	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
@@ -827,10 +821,7 @@ func TestMultiPutRequest(t *testing.T) {
 	// Validate results
 	//   Assert put metrics
 	// assert the put call above logged expected metrics
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutTotal:    1,
-		RecordPutDuration: 1.00,
-	}
+	expectedMetrics := []string{"RecordPutTotal", "RecordPutDuration"}
 	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 
 	//   Assert put request
@@ -849,8 +840,7 @@ func TestMultiPutRequest(t *testing.T) {
 	}
 
 	//   Assert get metrics
-	expectedMetrics.RecordGetTotal = 3
-	expectedMetrics.RecordGetDuration = 1.00
+	expectedMetrics = append(expectedMetrics, "RecordGetTotal", "RecordGetDuration")
 	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
@@ -881,10 +871,7 @@ func TestBadPayloadSizePutError(t *testing.T) {
 	assert.Equal(t, "POST /cache element 0 exceeded max size: Payload size 30 exceeded max 3\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
 
 	//   metrics
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutTotal:      1,
-		RecordPutBadRequest: 1,
-	}
+	expectedMetrics := []string{"RecordPutTotal", "RecordPutBadRequest"}
 	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
@@ -892,13 +879,13 @@ func TestInternalPutClientError(t *testing.T) {
 	// Input
 	reqBody := "{\"puts\":[{\"type\":\"xml\",\"value\":\"some data\"}]}"
 	// Expected metrics
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutTotal:             1,
-		RecordPutError:             1,
-		RecordPutBackendXml:        1,
-		RecordPutBackendError:      1,
-		RecordPutBackendSize:       1.00,
-		RecordPutBackendTTLSeconds: 1.00,
+	expectedMetrics := []string{
+		"RecordPutTotal",
+		"RecordPutError",
+		"RecordPutBackendXml",
+		"RecordPutBackendError",
+		"RecordPutBackendSize",
+		"RecordPutBackendTTLSeconds",
 	}
 
 	// Init test objects:
@@ -925,10 +912,10 @@ func TestInternalPutClientError(t *testing.T) {
 
 func TestEmptyPutRequests(t *testing.T) {
 	type testOutput struct {
-		jsonResponse      string
-		statusCode        int
-		metricsBadRequest int64
-		metricsDuration   float64
+		jsonResponse            string
+		statusCode              int
+		badRequestMetricsLogged bool
+		durationMetricsLogged   bool
 	}
 	type aTest struct {
 		desc     string
@@ -940,20 +927,18 @@ func TestEmptyPutRequests(t *testing.T) {
 			desc:    "No value in put element",
 			reqBody: `{"puts":[{"type":"xml"}]}`,
 			expected: testOutput{
-				jsonResponse:      `Missing value`,
-				statusCode:        http.StatusBadRequest,
-				metricsBadRequest: 1,
-				metricsDuration:   0.00,
+				jsonResponse:            `Missing value`,
+				statusCode:              http.StatusBadRequest,
+				badRequestMetricsLogged: true,
 			},
 		},
 		{
 			desc:    "Blank value in put element",
 			reqBody: `{"puts":[{"type":"xml","value":""}]}`,
 			expected: testOutput{
-				jsonResponse:      `{"responses":\[\{"uuid":"[a-z0-9-]+"\}\]}`,
-				statusCode:        http.StatusOK,
-				metricsBadRequest: 0,
-				metricsDuration:   1.00,
+				jsonResponse:          `{"responses":\[\{"uuid":"[a-z0-9-]+"\}\]}`,
+				statusCode:            http.StatusOK,
+				durationMetricsLogged: true,
 			},
 		},
 		// This test is meant to come right after the "Blank value in put element" test in order to assert the correction
@@ -962,20 +947,18 @@ func TestEmptyPutRequests(t *testing.T) {
 			desc:    "All empty body. ",
 			reqBody: "{}",
 			expected: testOutput{
-				jsonResponse:      `{"responses":\[\]}`,
-				statusCode:        http.StatusOK,
-				metricsBadRequest: 0,
-				metricsDuration:   1.00,
+				jsonResponse:          `{"responses":\[\]}`,
+				statusCode:            http.StatusOK,
+				durationMetricsLogged: true,
 			},
 		},
 		{
 			desc:    "Empty puts arrray",
 			reqBody: "{\"puts\":[]}",
 			expected: testOutput{
-				jsonResponse:      `{"responses":\[\]}`,
-				statusCode:        http.StatusOK,
-				metricsBadRequest: 0,
-				metricsDuration:   1.00,
+				jsonResponse:          `{"responses":\[\]}`,
+				statusCode:            http.StatusOK,
+				durationMetricsLogged: true,
 			},
 		},
 	}
@@ -1008,10 +991,12 @@ func TestEmptyPutRequests(t *testing.T) {
 		}
 
 		// Assert metrics
-		expectedMetrics := metricstest.MetricsRecorded{
-			RecordPutTotal:      1,
-			RecordPutBadRequest: tc.expected.metricsBadRequest,
-			RecordPutDuration:   tc.expected.metricsDuration,
+		expectedMetrics := []string{"RecordPutTotal"}
+		if tc.expected.badRequestMetricsLogged {
+			expectedMetrics = append(expectedMetrics, "RecordPutBadRequest")
+		}
+		if tc.expected.durationMetricsLogged {
+			expectedMetrics = append(expectedMetrics, "RecordPutDuration")
 		}
 		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 	}
@@ -1041,9 +1026,9 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 	assert.Equal(t, "timeout writing value to the backend.\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
 
 	// Assert this request is accounted under the "puts.current_url.request.error" metrics
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutTotal: 1,
-		RecordPutError: 1,
+	expectedMetrics := []string{
+		"RecordPutTotal",
+		"RecordPutError",
 	}
 	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }

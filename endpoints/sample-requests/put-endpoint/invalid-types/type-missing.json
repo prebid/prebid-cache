@@ -18,9 +18,9 @@
       "level": 2
     }
   ],
-  "expectedMetrics": {
-    "putTotal": 1,
-    "putBadRequest": 1
-  },
+  "expectedMetrics": [
+    "RecordPutTotal",
+    "RecordPutBadRequest"
+  ],
   "expectedErrorMessage": "Type must be one of [\"json\", \"xml\"]. Found \n"
 }

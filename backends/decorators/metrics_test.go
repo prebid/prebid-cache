@@ -26,9 +26,9 @@ func (b *failedBackend) Put(ctx context.Context, key string, value string, ttlSe
 
 func TestGetBackendMetrics(t *testing.T) {
 	// Expected values
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordGetBackendTotal:    1,
-		RecordGetBackendDuration: 1.00,
+	expectedMetrics := []string{
+		"RecordGetBackendTotal",
+		"RecordGetBackendDuration",
 	}
 
 	// Test setup
@@ -54,7 +54,7 @@ func TestGetBackendErrorMetrics(t *testing.T) {
 
 	type testCase struct {
 		desc            string
-		expectedMetrics metricstest.MetricsRecorded
+		expectedMetrics []string
 		expectedError   error
 	}
 	testGroups := []struct {
@@ -66,19 +66,19 @@ func TestGetBackendErrorMetrics(t *testing.T) {
 			[]testCase{
 				{
 					"Failed get backend request should be accounted as a key not found error",
-					metricstest.MetricsRecorded{
-						RecordGetBackendError:  1,
-						RecordKeyNotFoundError: 1,
-						RecordGetBackendTotal:  1,
+					[]string{
+						"RecordGetBackendError",
+						"RecordKeyNotFoundError",
+						"RecordGetBackendTotal",
 					},
 					utils.NewPBCError(utils.KEY_NOT_FOUND),
 				},
 				{
 					"Failed get backend request should be accounted as a missing key (uuid) error",
-					metricstest.MetricsRecorded{
-						RecordGetBackendError: 1,
-						RecordMissingKeyError: 1,
-						RecordGetBackendTotal: 1,
+					[]string{
+						"RecordGetBackendError",
+						"RecordMissingKeyError",
+						"RecordGetBackendTotal",
 					},
 					utils.NewPBCError(utils.MISSING_KEY),
 				},
@@ -89,9 +89,9 @@ func TestGetBackendErrorMetrics(t *testing.T) {
 			[]testCase{
 				{
 					"Failed get backend request should be accounted under the error label",
-					metricstest.MetricsRecorded{
-						RecordGetBackendError: 1,
-						RecordGetBackendTotal: 1,
+					[]string{
+						"RecordGetBackendError",
+						"RecordGetBackendTotal",
 					},
 					errors.New("some backend storage service error"),
 				},
@@ -124,11 +124,11 @@ func TestGetBackendErrorMetrics(t *testing.T) {
 
 func TestPutSuccessMetrics(t *testing.T) {
 	// Expected values
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutBackendDuration:   1.00,
-		RecordPutBackendXml:        1,
-		RecordPutBackendTTLSeconds: 1.00,
-		RecordPutBackendSize:       1,
+	expectedMetrics := []string{
+		"RecordPutBackendDuration",
+		"RecordPutBackendXml",
+		"RecordPutBackendTTLSeconds",
+		"RecordPutBackendSize",
 	}
 
 	// Test setup
@@ -149,11 +149,11 @@ func TestPutSuccessMetrics(t *testing.T) {
 
 func TestPutErrorMetrics(t *testing.T) {
 	// Expected values
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutBackendError:      1,
-		RecordPutBackendXml:        1,
-		RecordPutBackendSize:       1.00,
-		RecordPutBackendTTLSeconds: 1.00,
+	expectedMetrics := []string{
+		"RecordPutBackendError",
+		"RecordPutBackendXml",
+		"RecordPutBackendSize",
+		"RecordPutBackendTTLSeconds",
 	}
 
 	// Test setup
@@ -174,11 +174,11 @@ func TestPutErrorMetrics(t *testing.T) {
 
 func TestJsonPayloadMetrics(t *testing.T) {
 	// Expected values
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutBackendJson:       1,
-		RecordPutBackendSize:       1.00,
-		RecordPutBackendTTLSeconds: 1.00,
-		RecordPutBackendDuration:   1.00,
+	expectedMetrics := []string{
+		"RecordPutBackendJson",
+		"RecordPutBackendSize",
+		"RecordPutBackendTTLSeconds",
+		"RecordPutBackendDuration",
 	}
 
 	// Test setup
@@ -199,11 +199,11 @@ func TestJsonPayloadMetrics(t *testing.T) {
 
 func TestInvalidPayloadMetrics(t *testing.T) {
 	// Expected values
-	expectedMetrics := metricstest.MetricsRecorded{
-		RecordPutBackendInvalid:    1,
-		RecordPutBackendSize:       1.00,
-		RecordPutBackendTTLSeconds: 1.00,
-		RecordPutBackendDuration:   1.00,
+	expectedMetrics := []string{
+		"RecordPutBackendInvalid",
+		"RecordPutBackendSize",
+		"RecordPutBackendTTLSeconds",
+		"RecordPutBackendDuration",
 	}
 
 	// Test setup

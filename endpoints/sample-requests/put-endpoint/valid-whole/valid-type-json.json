@@ -9,14 +9,14 @@
       }
     ]
   },
-  "expectedMetrics": {
-    "putTotal": 1,
-    "totalJsonRequests":1,
-    "putBackendSize":5.00,
-    "putBackendTTLSeconds":60.00,
-    "putBackendDuration": 1.00,
-    "putDuration": 1.00
-  },
+  "expectedMetrics": [
+    "RecordPutTotal",
+    "RecordPutBackendJson",
+    "RecordPutBackendSize",
+    "RecordPutBackendTTLSeconds",
+    "RecordPutBackendDuration",
+    "RecordPutDuration"
+  ],
   "expectedResponse": {
     "responses": [
       {"uuid": "random"}

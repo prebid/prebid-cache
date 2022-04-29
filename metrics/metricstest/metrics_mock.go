@@ -8,167 +8,87 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func AssertMetrics(t *testing.T, expectedMetrics MetricsRecorded, actualMetrics MockMetrics) {
+func AssertMetrics(t *testing.T, expectedMetrics []string, actualMetrics MockMetrics) {
 	t.Helper()
-	if expectedMetrics.RecordAcceptConnectionErrors > 0 {
-		actualMetrics.AssertCalled(t, "RecordAcceptConnectionErrors")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordAcceptConnectionErrors")
+
+	// All the names of our metric interface methods
+	allMetrics := map[string]struct{}{
+		"RecordAcceptConnectionErrors": {},
+		"RecordCloseConnectionErrors":  {},
+		"RecordConnectionClosed":       {},
+		"RecordConnectionOpen":         {},
+		"RecordGetBackendDuration":     {},
+		"RecordGetBackendError":        {},
+		"RecordGetBackendTotal":        {},
+		"RecordGetBadRequest":          {},
+		"RecordGetDuration":            {},
+		"RecordGetError":               {},
+		"RecordGetTotal":               {},
+		"RecordKeyNotFoundError":       {},
+		"RecordMissingKeyError":        {},
+		"RecordPutBackendDuration":     {},
+		"RecordPutBackendError":        {},
+		"RecordPutBackendInvalid":      {},
+		"RecordPutBackendJson":         {},
+		"RecordPutBackendSize":         {},
+		"RecordPutBackendTTLSeconds":   {},
+		"RecordPutBackendXml":          {},
+		"RecordPutBadRequest":          {},
+		"RecordPutDuration":            {},
+		"RecordPutError":               {},
+		"RecordPutKeyProvided":         {},
+		"RecordPutTotal":               {},
 	}
-	if expectedMetrics.RecordCloseConnectionErrors > 0 {
-		actualMetrics.AssertCalled(t, "RecordCloseConnectionErrors")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordCloseConnectionErrors")
+
+	// Assert the metrics found in the expectedMetrics array where called. If a given element is not a known metric, throw error.
+	for _, metricName := range expectedMetrics {
+		_, exists := allMetrics[metricName]
+		if exists {
+			actualMetrics.AssertCalled(t, metricName)
+			delete(allMetrics, metricName)
+		} else {
+			t.Errorf("Cannot assert unrecognized metric '%s' was called", metricName)
+		}
 	}
-	if expectedMetrics.RecordConnectionClosed > 0 {
-		actualMetrics.AssertCalled(t, "RecordConnectionClosed")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordConnectionClosed")
-	}
-	if expectedMetrics.RecordConnectionOpen > 0 {
-		actualMetrics.AssertCalled(t, "RecordConnectionOpen")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordConnectionOpen")
-	}
-	if expectedMetrics.RecordGetBackendDuration > 0.00 {
-		actualMetrics.AssertCalled(t, "RecordGetBackendDuration")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordGetBackendDuration")
-	}
-	if expectedMetrics.RecordGetBackendError > 0 {
-		actualMetrics.AssertCalled(t, "RecordGetBackendError")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordGetBackendError")
-	}
-	if expectedMetrics.RecordGetBackendTotal > 0 {
-		actualMetrics.AssertCalled(t, "RecordGetBackendTotal")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordGetBackendTotal")
-	}
-	if expectedMetrics.RecordGetBadRequest > 0 {
-		actualMetrics.AssertCalled(t, "RecordGetBadRequest")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordGetBadRequest")
-	}
-	if expectedMetrics.RecordGetDuration > 0.00 {
-		actualMetrics.AssertCalled(t, "RecordGetDuration")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordGetDuration")
-	}
-	if expectedMetrics.RecordGetError > 0 {
-		actualMetrics.AssertCalled(t, "RecordGetError")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordGetError")
-	}
-	if expectedMetrics.RecordGetTotal > 0 {
-		actualMetrics.AssertCalled(t, "RecordGetTotal")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordGetTotal")
-	}
-	if expectedMetrics.RecordKeyNotFoundError > 0 {
-		actualMetrics.AssertCalled(t, "RecordKeyNotFoundError")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordKeyNotFoundError")
-	}
-	if expectedMetrics.RecordMissingKeyError > 0 {
-		actualMetrics.AssertCalled(t, "RecordMissingKeyError")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordMissingKeyError")
-	}
-	if expectedMetrics.RecordPutBackendDuration > 0.00 {
-		actualMetrics.AssertCalled(t, "RecordPutBackendDuration")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutBackendDuration")
-	}
-	if expectedMetrics.RecordPutBackendError > 0 {
-		actualMetrics.AssertCalled(t, "RecordPutBackendError")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutBackendError")
-	}
-	if expectedMetrics.RecordPutBackendInvalid > 0 {
-		actualMetrics.AssertCalled(t, "RecordPutBackendInvalid")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutBackendInvalid")
-	}
-	if expectedMetrics.RecordPutBackendJson > 0 {
-		actualMetrics.AssertCalled(t, "RecordPutBackendJson")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutBackendJson")
-	}
-	if expectedMetrics.RecordPutBackendSize > 0.00 {
-		actualMetrics.AssertCalled(t, "RecordPutBackendSize")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutBackendSize")
-	}
-	if expectedMetrics.RecordPutBackendTTLSeconds > 0.00 {
-		actualMetrics.AssertCalled(t, "RecordPutBackendTTLSeconds")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutBackendTTLSeconds")
-	}
-	if expectedMetrics.RecordPutBackendXml > 0 {
-		actualMetrics.AssertCalled(t, "RecordPutBackendXml")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutBackendXml")
-	}
-	if expectedMetrics.RecordPutBadRequest > 0 {
-		actualMetrics.AssertCalled(t, "RecordPutBadRequest")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutBadRequest")
-	}
-	if expectedMetrics.RecordPutDuration > 0.00 {
-		actualMetrics.AssertCalled(t, "RecordPutDuration")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutDuration")
-	}
-	if expectedMetrics.RecordPutError > 0 {
-		actualMetrics.AssertCalled(t, "RecordPutError")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutError")
-	}
-	if expectedMetrics.RecordPutKeyProvided > 0 {
-		actualMetrics.AssertCalled(t, "RecordPutKeyProvided")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutKeyProvided")
-	}
-	if expectedMetrics.RecordPutTotal > 0 {
-		actualMetrics.AssertCalled(t, "RecordPutTotal")
-	} else {
-		actualMetrics.AssertNotCalled(t, "RecordPutTotal")
+
+	// Assert the metrics not found in the expectedMetrics array where not called
+	for metricName := range allMetrics {
+		actualMetrics.AssertNotCalled(t, metricName)
 	}
 }
 
 // MetricsRecorded is a structure used to document the exepected metrics to be recorded when running unit tests
 type MetricsRecorded struct {
 	// Connection metrics
-	RecordAcceptConnectionErrors int64 `json:"acceptConnectionErrors"`
-	RecordCloseConnectionErrors  int64 `json:"closeConnectionErrors"`
-	RecordConnectionClosed       int64 `json:"connectionClosed"`
-	RecordConnectionOpen         int64 `json:"connectionOpen"`
+	RecordAcceptConnectionErrors int64 `json:"RecordAcceptConnectionErrors"`
+	RecordCloseConnectionErrors  int64 `json:"RecordCloseConnectionErrors"`
+	RecordConnectionClosed       int64 `json:"RecordConnectionClosed"`
+	RecordConnectionOpen         int64 `json:"RecordConnectionOpen"`
 
 	// Get metrics
-	RecordGetBackendDuration float64 `json:"recordGetBackendDuration"`
-	RecordGetBackendError    int64   `json:"recordGetBackendError"`
-	RecordGetBackendTotal    int64   `json:"recordGetBackendTotal"`
-	RecordGetBadRequest      int64   `json:"recordGetBadrequest"`
-	RecordGetDuration        float64 `json:"recordGetDuration"`
-	RecordGetError           int64   `json:"recordGetError"`
-	RecordGetTotal           int64   `json:"recordGetTotal"`
+	RecordGetBackendDuration float64 `json:"RecordGetBackendDuration"`
+	RecordGetBackendError    int64   `json:"RecordGetBackendError"`
+	RecordGetBackendTotal    int64   `json:"RecordGetBackendTotal"`
+	RecordGetBadRequest      int64   `json:"RecordGetBadRequest"`
+	RecordGetDuration        float64 `json:"RecordGetDuration"`
+	RecordGetError           int64   `json:"RecordGetError"`
+	RecordGetTotal           int64   `json:"RecordGetTotal"`
 
 	// Put metrics
-	RecordKeyNotFoundError     int64   `json:"keyNotFoundError"`
-	RecordMissingKeyError      int64   `json:"missingKeyError"`
-	RecordPutBackendDuration   float64 `json:"putBackendDuration"`
-	RecordPutBackendError      int64   `json:"putBackendError"`
-	RecordPutBackendInvalid    int64   `json:"putBackendInvalid"`
-	RecordPutBackendJson       int64   `json:"totalJsonRequests"`
-	RecordPutBackendSize       float64 `json:"putBackendSize"`
-	RecordPutBackendTTLSeconds float64 `json:"putBackendTTLSeconds"`
-	RecordPutBackendXml        int64   `json:"totalXmlRequests"`
-	RecordPutBadRequest        int64   `json:"putBadRequest"`
-	RecordPutDuration          float64 `json:"putDuration"`
-	RecordPutError             int64   `json:"putError"`
-	RecordPutKeyProvided       int64   `json:"putKeyProvided"`
-	RecordPutTotal             int64   `json:"putTotal"`
+	RecordKeyNotFoundError     int64   `json:"RecordKeyNotFoundError"`
+	RecordMissingKeyError      int64   `json:"RecordMissingKeyError"`
+	RecordPutBackendDuration   float64 `json:"RecordPutBackendDuration"`
+	RecordPutBackendError      int64   `json:"RecordPutBackendError"`
+	RecordPutBackendInvalid    int64   `json:"RecordPutBackendInvalid"`
+	RecordPutBackendJson       int64   `json:"RecordPutBackendJson"`
+	RecordPutBackendSize       float64 `json:"RecordPutBackendSize"`
+	RecordPutBackendTTLSeconds float64 `json:"RecordPutBackendTTLSeconds"`
+	RecordPutBackendXml        int64   `json:"RecordPutBackendXml"`
+	RecordPutBadRequest        int64   `json:"RecordPutBadRequest"`
+	RecordPutDuration          float64 `json:"RecordPutDuration"`
+	RecordPutError             int64   `json:"RecordPutError"`
+	RecordPutKeyProvided       int64   `json:"RecordPutKeyProvided"`
+	RecordPutTotal             int64   `json:"RecordPutTotal"`
 }
 
 func CreateMockMetrics() MockMetrics {

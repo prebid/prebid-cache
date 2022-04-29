@@ -13,15 +13,15 @@
       }
     ]
   },
-  "expectedMetrics": {
-    "putTotal": 1,
-    "putKeyProvided": 1,
-    "totalXmlRequests":1,
-    "putBackendSize":1.00,
-    "putBackendTTLSeconds":60.00,
-    "putBackendDuration":1.00,
-    "putDuration": 1.00
-  },
+  "expectedMetrics": [
+    "RecordPutTotal",
+    "RecordPutKeyProvided",
+    "RecordPutBackendXml",
+    "RecordPutBackendSize",
+    "RecordPutBackendTTLSeconds",
+    "RecordPutBackendDuration",
+    "RecordPutDuration"
+  ],
   "expectedResponse": {
     "responses": [
       {"uuid": "the-custom-thrity-six-character-uuid"}

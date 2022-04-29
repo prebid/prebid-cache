@@ -22,13 +22,13 @@
       "level": 2
     }
   ],
-  "expectedMetrics": {
-    "putTotal": 1,
-    "totalXmlRequests":1,
-    "putBackendSize":5.00,
-    "putBackendTTLSeconds":5.00,
-    "putBackendError":1,
-    "putBadRequest": 1
-  },
+  "expectedMetrics": [
+    "RecordPutTotal",
+    "RecordPutBackendXml",
+    "RecordPutBackendSize",
+    "RecordPutBackendTTLSeconds",
+    "RecordPutBackendError",
+    "RecordPutBadRequest"
+  ],
   "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 73 exceeded max 5\n"
 }

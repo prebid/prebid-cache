@@ -52,7 +52,7 @@ func TestGetHandler(t *testing.T) {
 		responseCode    int
 		responseBody    string
 		logEntries      []logEntry
-		expectedMetrics metricstest.MetricsRecorded
+		expectedMetrics []string
 	}
 
 	testCases := []struct {
@@ -75,9 +75,9 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.ErrorLevel,
 					},
 				},
-				expectedMetrics: metricstest.MetricsRecorded{
-					RecordGetTotal:      1,
-					RecordGetBadRequest: 1,
+				expectedMetrics: []string{
+					"RecordGetTotal",
+					"RecordGetBadRequest",
 				},
 			},
 		},
@@ -96,9 +96,9 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.ErrorLevel,
 					},
 				},
-				expectedMetrics: metricstest.MetricsRecorded{
-					RecordGetTotal:      1,
-					RecordGetBadRequest: 1,
+				expectedMetrics: []string{
+					"RecordGetTotal",
+					"RecordGetBadRequest",
 				},
 			},
 		},
@@ -112,9 +112,9 @@ func TestGetHandler(t *testing.T) {
 				responseCode: http.StatusOK,
 				responseBody: `{"field":"value"}`,
 				logEntries:   []logEntry{},
-				expectedMetrics: metricstest.MetricsRecorded{
-					RecordGetTotal:    1,
-					RecordGetDuration: 1.00,
+				expectedMetrics: []string{
+					"RecordGetTotal",
+					"RecordGetDuration",
 				},
 			},
 		},
@@ -130,9 +130,9 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.DebugLevel,
 					},
 				},
-				expectedMetrics: metricstest.MetricsRecorded{
-					RecordGetTotal:      1,
-					RecordGetBadRequest: 1,
+				expectedMetrics: []string{
+					"RecordGetTotal",
+					"RecordGetBadRequest",
 				},
 			},
 		},
@@ -148,9 +148,9 @@ func TestGetHandler(t *testing.T) {
 						lvl: logrus.ErrorLevel,
 					},
 				},
-				expectedMetrics: metricstest.MetricsRecorded{
-					RecordGetTotal: 1,
-					RecordGetError: 1,
+				expectedMetrics: []string{
+					"RecordGetTotal",
+					"RecordGetError",
 				},
 			},
 		},
@@ -161,9 +161,9 @@ func TestGetHandler(t *testing.T) {
 				responseCode: http.StatusOK,
 				responseBody: "<tag>xml data here</tag>",
 				logEntries:   []logEntry{},
-				expectedMetrics: metricstest.MetricsRecorded{
-					RecordGetTotal:    1,
-					RecordGetDuration: 1.00,
+				expectedMetrics: []string{
+					"RecordGetTotal",
+					"RecordGetDuration",
 				},
 			},
 		},

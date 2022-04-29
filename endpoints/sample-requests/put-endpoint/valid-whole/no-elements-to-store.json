@@ -3,10 +3,10 @@
   "putRequest": {
     "puts": []
   },
-  "expectedMetrics": {
-    "putTotal": 1,
-    "putDuration": 1.00
-  },
+  "expectedMetrics": [
+    "RecordPutTotal",
+    "RecordPutDuration"
+  ],
   "expectedResponse": {
     "responses": [ ]
   }
