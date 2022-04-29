@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/julienschmidt/httprouter"
 	log "github.com/sirupsen/logrus"
 )
 
 const versionEndpointValueNotSet = "not-set"
 
 // NewVersionEndpoint returns the latest git tag as the version and commit hash as the revision from which the binary was built
-func NewVersionEndpoint(version, revision string) http.HandlerFunc {
+func NewVersionEndpoint(version, revision string) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	if version == "" {
 		version = versionEndpointValueNotSet
 	}
@@ -19,17 +20,17 @@ func NewVersionEndpoint(version, revision string) http.HandlerFunc {
 	}
 
 	response, err := json.Marshal(struct {
-		Version  string `json:"version"`
 		Revision string `json:"revision"`
+		Version  string `json:"version"`
 	}{
-		Version:  version,
 		Revision: revision,
+		Version:  version,
 	})
 	if err != nil {
-		log.Fatalf("error creating /version endpoint response: %v", err)
+		log.Errorf("error creating /version endpoint response: %v", err)
 	}
 
-	return func(w http.ResponseWriter, _ *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 		w.Write(response)
 	}
 }

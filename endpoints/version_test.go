@@ -1,6 +1,8 @@
 package endpoints
 
 import (
+	"io/ioutil"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,6 +41,15 @@ func TestVersionEndpoint(t *testing.T) {
 
 	for _, test := range testCases {
 		handler := NewVersionEndpoint(test.version, test.revision)
-		assert.HTTPBodyContains(t, handler, "GET", "/version", nil, test.expected, "Error on version endpoint response. Test: %s", test.description)
+		recorder := httptest.NewRecorder()
+
+		// Run
+		handler(recorder, nil, nil)
+
+		// Assert
+		response, err := ioutil.ReadAll(recorder.Result().Body)
+		if assert.NoError(t, err, test.description) {
+			assert.JSONEq(t, test.expected, string(response), test.description)
+		}
 	}
 }
