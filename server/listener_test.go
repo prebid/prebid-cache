@@ -16,15 +16,15 @@ func TestConnections(t *testing.T) {
 		desc                    string
 		allowAccept, allowClose bool
 		expectedConnectionError error
-		expectedMetrics         metricstest.MetricsRecorded
+		expectedMetrics         []string
 	}{
 		{
 			desc:                    "net.Listener will fail when attempting to open a connection. Expect error and RecordAcceptConnectionErrors to be called",
 			allowAccept:             false,
 			allowClose:              false,
 			expectedConnectionError: errors.New("Failed to open connection"),
-			expectedMetrics: metricstest.MetricsRecorded{
-				RecordAcceptConnectionErrors: 1,
+			expectedMetrics: []string{
+				"RecordAcceptConnectionErrors",
 			},
 		},
 		{
@@ -32,8 +32,8 @@ func TestConnections(t *testing.T) {
 			allowAccept:             false,
 			allowClose:              true,
 			expectedConnectionError: errors.New("Failed to open connection"),
-			expectedMetrics: metricstest.MetricsRecorded{
-				RecordAcceptConnectionErrors: 1,
+			expectedMetrics: []string{
+				"RecordAcceptConnectionErrors",
 			},
 		},
 		{
@@ -41,9 +41,9 @@ func TestConnections(t *testing.T) {
 			allowAccept:             true,
 			allowClose:              true,
 			expectedConnectionError: nil,
-			expectedMetrics: metricstest.MetricsRecorded{
-				RecordConnectionOpen:   1,
-				RecordConnectionClosed: 1,
+			expectedMetrics: []string{
+				"RecordConnectionOpen",
+				"RecordConnectionClosed",
 			},
 		},
 		{
@@ -51,9 +51,9 @@ func TestConnections(t *testing.T) {
 			allowAccept:             true,
 			allowClose:              false,
 			expectedConnectionError: errors.New("Failed to close connection."),
-			expectedMetrics: metricstest.MetricsRecorded{
-				RecordCloseConnectionErrors: 1,
-				RecordConnectionOpen:        1,
+			expectedMetrics: []string{
+				"RecordCloseConnectionErrors",
+				"RecordConnectionOpen",
 			},
 		},
 	}
