@@ -1041,9 +1041,9 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 func newMockBackend() *backends.MemoryBackend {
 	backend := backends.NewMemoryBackend()
 
-	backend.Put(context.TODO(), "non-36-char-key-maps-to-json", `json{"field":"value"}`, 0)
-	backend.Put(context.TODO(), "36-char-key-maps-to-non-xml-nor-json", `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`, 0)
-	backend.Put(context.TODO(), "36-char-key-maps-to-actual-xml-value", "xml<tag>xml data here</tag>", 0)
+	backend.Put(context.Background(), "non-36-char-key-maps-to-json", `json{"field":"value"}`, 0)
+	backend.Put(context.Background(), "36-char-key-maps-to-non-xml-nor-json", `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`, 0)
+	backend.Put(context.Background(), "36-char-key-maps-to-actual-xml-value", "xml<tag>xml data here</tag>", 0)
 
 	return backend
 }

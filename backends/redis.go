@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/utils"
 	log "github.com/sirupsen/logrus"
@@ -16,8 +16,8 @@ import (
 // Redis database. Its implementation is intended to use the "github.com/go-redis/redis"
 // client
 type RedisDB interface {
-	Get(key string) (string, error)
-	Put(key string, value string, ttlSeconds int) (bool, error)
+	Get(ctx context.Context, key string) (string, error)
+	Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error)
 }
 
 // RedisDBClient is a wrapper for the Redis client that implements
@@ -27,15 +27,15 @@ type RedisDBClient struct {
 }
 
 // Get returns the value associated with the provided `key` parameter
-func (db RedisDBClient) Get(key string) (string, error) {
-	return db.client.Get(key).Result()
+func (db RedisDBClient) Get(ctx context.Context, key string) (string, error) {
+	return db.client.Get(ctx, key).Result()
 }
 
 // Put will set 'key' to hold string 'value' if 'key' does not exist in the redis storage.
 // When key already holds a value, no operation is performed. That's the reason this adapter
 // uses the 'github.com/go-redis/redis's library SetNX. SetNX is short for "SET if Not eXists".
-func (db RedisDBClient) Put(key string, value string, ttlSeconds int) (bool, error) {
-	return db.client.SetNX(key, value, time.Duration(ttlSeconds)*time.Second).Result()
+func (db RedisDBClient) Put(ctx context.Context, key, value string, ttlSeconds int) (bool, error) {
+	return db.client.SetNX(ctx, key, value, time.Duration(ttlSeconds)*time.Second).Result()
 }
 
 // RedisBackend when initialized will instantiate and configure the Redis client. It implements
@@ -46,7 +46,7 @@ type RedisBackend struct {
 }
 
 // NewRedisBackend initializes the redis client and pings to make sure connection was successful
-func NewRedisBackend(cfg config.Redis) *RedisBackend {
+func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
 	constr := cfg.Host + ":" + strconv.Itoa(cfg.Port)
 
 	options := &redis.Options{
@@ -68,7 +68,7 @@ func NewRedisBackend(cfg config.Redis) *RedisBackend {
 
 	redisClient := RedisDBClient{client: redis.NewClient(options)}
 
-	_, err := redisClient.client.Ping().Result()
+	_, err := redisClient.client.Ping(ctx).Result()
 
 	if err != nil {
 		log.Fatalf("Error creating Redis backend: %v", err)
@@ -87,7 +87,7 @@ func NewRedisBackend(cfg config.Redis) *RedisBackend {
 // parameter and interprets its response. A `Nil` error reply of the Redis client means
 // the `key` does not exist.
 func (b *RedisBackend) Get(ctx context.Context, key string) (string, error) {
-	res, err := b.client.Get(key)
+	res, err := b.client.Get(ctx, key)
 
 	if err == redis.Nil {
 		err = utils.NewPBCError(utils.KEY_NOT_FOUND)
@@ -101,7 +101,7 @@ func (b *RedisBackend) Get(ctx context.Context, key string) (string, error) {
 // not being written because the `key` already holds a value, and a RecordExistsError is returned
 func (b *RedisBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 
-	success, err := b.client.Put(key, value, ttlSeconds)
+	success, err := b.client.Put(ctx, key, value, ttlSeconds)
 	if !success {
 		return utils.NewPBCError(utils.RECORD_EXISTS)
 	}

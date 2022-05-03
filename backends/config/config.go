@@ -1,6 +1,9 @@
 package config
 
 import (
+	"context"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/prebid/prebid-cache/backends"
@@ -39,6 +42,9 @@ func applyCompression(cfg config.Compression, backend backends.Backend) backends
 }
 
 func newBaseBackend(cfg config.Backend, appMetrics *metrics.Metrics) backends.Backend {
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
 	switch cfg.Type {
 	case config.BackendCassandra:
 		return backends.NewCassandraBackend(cfg.Cassandra)
@@ -49,7 +55,7 @@ func newBaseBackend(cfg config.Backend, appMetrics *metrics.Metrics) backends.Ba
 	case config.BackendAerospike:
 		return backends.NewAerospikeBackend(cfg.Aerospike, appMetrics)
 	case config.BackendRedis:
-		return backends.NewRedisBackend(cfg.Redis)
+		return backends.NewRedisBackend(cfg.Redis, ctx)
 	default:
 		log.Fatalf("Unknown backend type: %s", cfg.Type)
 	}

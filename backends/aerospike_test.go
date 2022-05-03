@@ -206,7 +206,7 @@ func TestAerospikeClientGet(t *testing.T) {
 		aerospikeBackend.client = tt.inAerospikeClient
 
 		// Run test
-		actualValue, actualErr := aerospikeBackend.Get(context.TODO(), "defaultKey")
+		actualValue, actualErr := aerospikeBackend.Get(context.Background(), "defaultKey")
 
 		// Assertions
 		assert.Equal(t, tt.expectedValue, actualValue, tt.desc)
@@ -269,7 +269,7 @@ func TestClientPut(t *testing.T) {
 		aerospikeBackend.client = tt.inAerospikeClient
 
 		// Run test
-		actualErr := aerospikeBackend.Put(context.TODO(), tt.inKey, tt.inValueToStore, 0)
+		actualErr := aerospikeBackend.Put(context.Background(), tt.inKey, tt.inValueToStore, 0)
 
 		// Assert Put error
 		if tt.expectedErrorMsg != "" {
@@ -278,7 +278,7 @@ func TestClientPut(t *testing.T) {
 			assert.Nil(t, actualErr, tt.desc)
 
 			// Assert Put() sucessfully logged "not default value" under "testKey":
-			storedValue, getErr := aerospikeBackend.Get(context.TODO(), tt.inKey)
+			storedValue, getErr := aerospikeBackend.Get(context.Background(), tt.inKey)
 
 			assert.Nil(t, getErr, tt.desc)
 			assert.Equal(t, tt.inValueToStore, storedValue, tt.desc)
