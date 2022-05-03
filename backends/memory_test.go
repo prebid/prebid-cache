@@ -34,7 +34,7 @@ func TestMemoryBackend(t *testing.T) {
 					backend: NewMemoryBackend(),
 					setup:   func(b *MemoryBackend) {},
 					run: func(b *MemoryBackend) (string, error) {
-						err := b.Put(context.TODO(), "someKey", "someValye", 0)
+						err := b.Put(context.Background(), "someKey", "someValye", 0)
 						return "", err
 					},
 					expected: testExpectedValues{err: nil},
@@ -43,10 +43,10 @@ func TestMemoryBackend(t *testing.T) {
 					desc:    "Put returns a RecordExistsError",
 					backend: NewMemoryBackend(),
 					setup: func(b *MemoryBackend) {
-						b.Put(context.TODO(), "someKey", "someValue", 0)
+						b.Put(context.Background(), "someKey", "someValue", 0)
 					},
 					run: func(b *MemoryBackend) (string, error) {
-						err := b.Put(context.TODO(), "someKey", "someValye", 0)
+						err := b.Put(context.Background(), "someKey", "someValye", 0)
 						return "", err
 					},
 					expected: testExpectedValues{"", utils.NewPBCError(utils.RECORD_EXISTS)},
@@ -60,10 +60,10 @@ func TestMemoryBackend(t *testing.T) {
 					desc:    "succesful get",
 					backend: NewMemoryBackend(),
 					setup: func(b *MemoryBackend) {
-						b.Put(context.TODO(), "someKey", "someValue", 0)
+						b.Put(context.Background(), "someKey", "someValue", 0)
 					},
 					run: func(b *MemoryBackend) (string, error) {
-						return b.Get(context.TODO(), "someKey")
+						return b.Get(context.Background(), "someKey")
 					},
 					expected: testExpectedValues{"someValue", nil},
 				},
@@ -71,10 +71,10 @@ func TestMemoryBackend(t *testing.T) {
 					desc:    "Get returns a Key not found error",
 					backend: NewMemoryBackend(),
 					setup: func(b *MemoryBackend) {
-						b.Put(context.TODO(), "someKey", "someValue", 0)
+						b.Put(context.Background(), "someKey", "someValue", 0)
 					},
 					run: func(b *MemoryBackend) (string, error) {
-						return b.Get(context.TODO(), "anotherKey")
+						return b.Get(context.Background(), "anotherKey")
 					},
 					expected: testExpectedValues{"", utils.NewPBCError(utils.KEY_NOT_FOUND)},
 				},

@@ -70,7 +70,7 @@ func TestMemcacheGet(t *testing.T) {
 		mcBackend.memcache = tt.in.memcacheClient
 
 		// Run test
-		actualValue, actualErr := mcBackend.Get(context.TODO(), tt.in.key)
+		actualValue, actualErr := mcBackend.Get(context.Background(), tt.in.key)
 
 		// Assertions
 		assert.Equal(t, tt.expected.value, actualValue, tt.desc)
@@ -143,14 +143,14 @@ func TestMemcachePut(t *testing.T) {
 		mcBackend.memcache = tt.in.memcacheClient
 
 		// Run test
-		actualErr := mcBackend.Put(context.TODO(), tt.in.key, tt.in.valueToStore, tt.in.ttl)
+		actualErr := mcBackend.Put(context.Background(), tt.in.key, tt.in.valueToStore, tt.in.ttl)
 
 		// Assert Put error
 		assert.Equal(t, tt.expected.err, actualErr, tt.desc)
 
 		// Assert value
 		if tt.expected.err == nil {
-			storedValue, getErr := mcBackend.Get(context.TODO(), tt.in.key)
+			storedValue, getErr := mcBackend.Get(context.Background(), tt.in.key)
 
 			assert.NoError(t, getErr, tt.desc)
 			assert.Equal(t, tt.expected.value, storedValue, tt.desc)
