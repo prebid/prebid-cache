@@ -121,11 +121,6 @@ func parsePutObject(p putObject) (string, error) {
 		return "", utils.NewPBCError(utils.NEGATIVE_TTL, fmt.Sprintf("ttlseconds must not be negative %d.", p.TTLSeconds))
 	}
 
-	// Make sure data type is specified
-	//if len(p.Type) == 0 {
-	//	return "", utils.NewPBCError(utils.MISSING_TYPE)
-	//}
-
 	// Limit the type of data to XML or JSON
 	if p.Type == utils.XML_PREFIX {
 		if p.Value[0] != byte('"') || p.Value[len(p.Value)-1] != byte('"') {
@@ -143,7 +138,7 @@ func parsePutObject(p putObject) (string, error) {
 	} else if p.Type == utils.JSON_PREFIX {
 		toCache = p.Type + string(p.Value)
 	} else {
-		return "", utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type))
+		return "", utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found '%s'", p.Type))
 	}
 
 	return toCache, nil

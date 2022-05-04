@@ -10,11 +10,11 @@
   },
   "expectedLogEntries": [
     {
-      "message": "POST /cache Error while writing to the back-end: Type must be one of [\"json\", \"xml\"]. Found ",
+      "message": "POST /cache Error while writing to the back-end: Type must be one of [\"json\", \"xml\"]. Found ''",
       "level": 2
     },
     {
-      "message": "POST /cache had an unexpected error:Type must be one of [\"json\", \"xml\"]. Found ",
+      "message": "POST /cache had an unexpected error:Type must be one of [\"json\", \"xml\"]. Found ''",
       "level": 2
     }
   ],
@@ -22,5 +22,5 @@
     "RecordPutTotal",
     "RecordPutBadRequest"
   ],
-  "expectedErrorMessage": "Type must be one of [\"json\", \"xml\"]. Found \n"
+  "expectedErrorMessage": "Type must be one of [\"json\", \"xml\"]. Found ''\n"
 }

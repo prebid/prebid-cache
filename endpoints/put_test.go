@@ -548,7 +548,7 @@ func TestNonSupportedType(t *testing.T) {
 	putResponse := doPut(t, router, requestBody)
 
 	require.Equal(t, http.StatusBadRequest, putResponse.Code, "Expected 400 response. Got: %d, Msg: %v", putResponse.Code, putResponse.Body.String())
-	require.Equal(t, "Type must be one of [\"json\", \"xml\"]. Found yaml\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
+	require.Equal(t, "Type must be one of [\"json\", \"xml\"]. Found 'yaml'\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
 
 	backend.AssertNotCalled(t, "Put")
 
@@ -982,7 +982,6 @@ func TestEmptyPutRequests(t *testing.T) {
 
 		// Run
 		router.ServeHTTP(rr, request)
-		//assert.Equal(t, http.StatusOK, rr.Code, "[%d] ServeHTTP(rr, request) failed = %v \n", i, rr.Result())
 		assert.Equal(t, tc.expected.statusCode, rr.Code, "[%d] ServeHTTP(rr, request) failed = %v - %s", i, rr.Result())
 
 		// Assert expected JSON response
@@ -1140,7 +1139,7 @@ func TestParsePutObject(t *testing.T) {
 			},
 			testOut{
 				value: "",
-				err:   utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, "Type must be one of [\"json\", \"xml\"]. Found unknown"),
+				err:   utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, "Type must be one of [\"json\", \"xml\"]. Found 'unknown'"),
 			},
 		},
 		{
