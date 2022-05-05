@@ -11,31 +11,29 @@ import (
 func TestVersionEndpoint(t *testing.T) {
 	var testCases = []struct {
 		description string
-		version     string
 		revision    string
+		version     string
 		expected    string
 	}{
 		{
 			description: "Empty",
-			version:     "",
-			expected:    `{"version":"not-set","revision":"not-set"}`,
+			expected:    `{"revision":"not-set","version":"not-set"}`,
+		},
+		{
+			description: "Revision Only",
+			revision:    "sha",
+			expected:    `{"revision":"sha","version":"not-set"}`,
 		},
 		{
 			description: "Version Only",
 			version:     "1.2.3",
-			expected:    `{"version":"1.2.3","revision":"not-set"}`,
-		},
-		{
-			description: "Revision Only",
-			version:     "",
-			revision:    "sha",
-			expected:    `{"version":"not-set","revision":"sha"}`,
+			expected:    `{"revision":"not-set","version":"1.2.3"}`,
 		},
 		{
 			description: "Fully Populated",
-			version:     "1.2.3",
 			revision:    "sha",
-			expected:    `{"version":"1.2.3","revision":"sha"}`,
+			version:     "1.2.3",
+			expected:    `{"revision":"sha","version":"1.2.3"}`,
 		},
 	}
 
