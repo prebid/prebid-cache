@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/prebid/prebid-cache/utils"
 	"github.com/stretchr/testify/assert"
@@ -23,124 +24,200 @@ func (b *failedBackend) Put(ctx context.Context, key string, value string, ttlSe
 	return b.returnError
 }
 
-func TestGetSuccessMetrics(t *testing.T) {
+func TestGetBackendMetrics(t *testing.T) {
+	// Expected values
+	expectedMetrics := []string{
+		"RecordGetBackendTotal",
+		"RecordGetBackendDuration",
+	}
 
-	m := metricstest.CreateMockMetrics()
+	// Test setup
+	mockMetrics := metricstest.CreateMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
+
 	rawBackend := backends.NewMemoryBackend()
 	rawBackend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
-	backend := LogMetrics(rawBackend, m)
-	backend.Get(context.Background(), "foo")
+	backendWithMetrics := LogMetrics(rawBackend, m)
 
-	assert.Equalf(t, int64(1), metricstest.MockCounters["gets.backends.request.total"], "Successful backend request been accounted for in the total get backend request count")
-	assert.Greater(t, metricstest.MockHistograms["gets.backends.duration"], 0.00, "Successful put request duration should be greater than zero")
+	// Run test
+	backendWithMetrics.Get(context.Background(), "foo")
+
+	// Assert
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
-func TestGetErrorMetrics(t *testing.T) {
+func TestGetBackendErrorMetrics(t *testing.T) {
 
 	type testCase struct {
-		desc         string
-		inMetricName string
-		outError     error
+		desc            string
+		expectedMetrics []string
+		expectedError   error
 	}
 	testGroups := []struct {
-		groupName string
-		tests     []testCase
+		name  string
+		tests []testCase
 	}{
 		{
-			"Any other error",
-			[]testCase{
-				{
-					"Failed get backend request should be accounted under the error label",
-					"gets.backends.request.error",
-					errors.New("other backend error"),
-				},
-			},
-		},
-		{
-			"Special errors",
+			"Special backend storage GET errors",
 			[]testCase{
 				{
 					"Failed get backend request should be accounted as a key not found error",
-					"gets.backend_error.key_not_found",
+					[]string{
+						"RecordGetBackendError",
+						"RecordKeyNotFoundError",
+						"RecordGetBackendTotal",
+					},
 					utils.NewPBCError(utils.KEY_NOT_FOUND),
 				},
 				{
 					"Failed get backend request should be accounted as a missing key (uuid) error",
-					"gets.backend_error.missing_key",
+					[]string{
+						"RecordGetBackendError",
+						"RecordMissingKeyError",
+						"RecordGetBackendTotal",
+					},
 					utils.NewPBCError(utils.MISSING_KEY),
+				},
+			},
+		},
+		{
+			"Other backend error",
+			[]testCase{
+				{
+					"Failed get backend request should be accounted under the error label",
+					[]string{
+						"RecordGetBackendError",
+						"RecordGetBackendTotal",
+					},
+					errors.New("some backend storage service error"),
 				},
 			},
 		},
 	}
 
-	// Create metrics
-	m := metricstest.CreateMockMetrics()
-
-	errsTotal := 0
 	for _, group := range testGroups {
 		for _, test := range group.tests {
-			// Create backend with a mock storage that will fail and assign metrics
-			backend := LogMetrics(&failedBackend{test.outError}, m)
+			// Fresh mock metrics
+			mockMetrics := metricstest.CreateMockMetrics()
+			m := &metrics.Metrics{
+				MetricEngines: []metrics.CacheMetrics{
+					&mockMetrics,
+				},
+			}
+			// Create backend with a mock storage that will fail and record metrics
+			backend := LogMetrics(&failedBackend{test.expectedError}, m)
 
 			// Run test
-			backend.Get(context.Background(), "foo")
-			errsTotal++
+			retrievedValue, err := backend.Get(context.Background(), "foo")
 
-			// Assert
-			assert.Equal(t, int64(1), metricstest.MockCounters[test.inMetricName], test.desc)
-			assert.Equal(t, int64(errsTotal), metricstest.MockCounters["gets.backends.request.error"], test.desc)
-			assert.Equal(t, int64(errsTotal), metricstest.MockCounters["gets.backends.request.total"], test.desc)
+			// Assertions
+			assert.Empty(t, retrievedValue, "%s - %s", group.name, test.desc)
+			assert.Equal(t, test.expectedError, err, "%s - %s", group.name, test.desc)
+			metricstest.AssertMetrics(t, test.expectedMetrics, mockMetrics)
 		}
 	}
 }
 
 func TestPutSuccessMetrics(t *testing.T) {
+	// Expected values
+	expectedMetrics := []string{
+		"RecordPutBackendDuration",
+		"RecordPutBackendXml",
+		"RecordPutBackendTTLSeconds",
+		"RecordPutBackendSize",
+	}
 
-	m := metricstest.CreateMockMetrics()
+	// Test setup
+	mockMetrics := metricstest.CreateMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
-	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
 
-	assert.Greater(t, metricstest.MockHistograms["puts.backends.request_duration"], 0.00, "Successful put request duration should be greater than zero")
-	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.xml"], "An xml request should have been logged.")
-	assert.Equal(t, int64(0), metricstest.MockCounters["puts.backends.defines_ttl"], "An event for TTL defined shouldn't be logged if the TTL was 0")
+	// Run test
+	backend.Put(context.Background(), "foo", "xml<vast></vast>", 60)
+
+	// Assert
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestPutErrorMetrics(t *testing.T) {
+	// Expected values
+	expectedMetrics := []string{
+		"RecordPutBackendError",
+		"RecordPutBackendXml",
+		"RecordPutBackendSize",
+		"RecordPutBackendTTLSeconds",
+	}
 
-	m := metricstest.CreateMockMetrics()
+	// Test setup
+	mockMetrics := metricstest.CreateMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 	backend := LogMetrics(&failedBackend{errors.New("Failure")}, m)
+
+	// Run test
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
 
-	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.xml"], "An xml request should have been logged.")
-	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.request.error"], "Failed get backend request should have been accounted under the error label")
+	// Assert
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestJsonPayloadMetrics(t *testing.T) {
+	// Expected values
+	expectedMetrics := []string{
+		"RecordPutBackendJson",
+		"RecordPutBackendSize",
+		"RecordPutBackendTTLSeconds",
+		"RecordPutBackendDuration",
+	}
 
-	m := metricstest.CreateMockMetrics()
+	// Test setup
+	mockMetrics := metricstest.CreateMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
+
+	// Run test
 	backend.Put(context.Background(), "foo", "json{\"key\":\"value\"", 0)
-	backend.Get(context.Background(), "foo")
 
-	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.json"], "A json request should have been logged.")
-}
-
-func TestPutSizeSampling(t *testing.T) {
-
-	m := metricstest.CreateMockMetrics()
-	payload := `json{"key":"value"}`
-	backend := LogMetrics(backends.NewMemoryBackend(), m)
-	backend.Put(context.Background(), "foo", payload, 0)
-
-	assert.Greater(t, metricstest.MockHistograms["puts.backends.request_size_bytes"], 0.00, "Successful put request size should be greater than zero")
+	// Assert
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestInvalidPayloadMetrics(t *testing.T) {
+	// Expected values
+	expectedMetrics := []string{
+		"RecordPutBackendInvalid",
+		"RecordPutBackendSize",
+		"RecordPutBackendTTLSeconds",
+		"RecordPutBackendDuration",
+	}
 
-	m := metricstest.CreateMockMetrics()
+	// Test setup
+	mockMetrics := metricstest.CreateMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
-	backend.Put(context.Background(), "foo", "bar", 0)
-	backend.Get(context.Background(), "foo")
 
-	assert.Equal(t, int64(1), metricstest.MockCounters["puts.backends.invalid_format"], "A Put request of invalid format should have been logged.")
+	// Run test
+	backend.Put(context.Background(), "foo", "bar", 0)
+
+	// Assert
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }

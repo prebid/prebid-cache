@@ -6,56 +6,78 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNormalConnectionMetrics(t *testing.T) {
-	doTest(t, true, true)
-}
-
-func TestAcceptErrorMetrics(t *testing.T) {
-	doTest(t, false, false)
-}
-
-func TestCloseErrorMetrics(t *testing.T) {
-	doTest(t, true, false)
-}
-
-func doTest(t *testing.T, allowAccept bool, allowClose bool) {
-	m := metricstest.CreateMockMetrics()
-
-	var listener net.Listener = &mockListener{
-		listenSuccess: allowAccept,
-		closeSuccess:  allowClose,
+func TestConnections(t *testing.T) {
+	testCases := []struct {
+		desc                    string
+		allowAccept, allowClose bool
+		expectedConnectionError error
+		expectedMetrics         []string
+	}{
+		{
+			desc:                    "net.Listener will fail when attempting to open a connection. Expect error and RecordAcceptConnectionErrors to be called",
+			allowAccept:             false,
+			allowClose:              false,
+			expectedConnectionError: errors.New("Failed to open connection"),
+			expectedMetrics: []string{
+				"RecordAcceptConnectionErrors",
+			},
+		},
+		{
+			desc:                    "net.Listener will fail when attempting to open a connection. Expect error and RecordAcceptConnectionErrors to be called",
+			allowAccept:             false,
+			allowClose:              true,
+			expectedConnectionError: errors.New("Failed to open connection"),
+			expectedMetrics: []string{
+				"RecordAcceptConnectionErrors",
+			},
+		},
+		{
+			desc:                    "net.Listener will open and close connections successfully. Expect ConnectionOpen and ConnectionClosed metrics to be logged",
+			allowAccept:             true,
+			allowClose:              true,
+			expectedConnectionError: nil,
+			expectedMetrics: []string{
+				"RecordConnectionOpen",
+				"RecordConnectionClosed",
+			},
+		},
+		{
+			desc:                    "net.Listener will open a connection but will fail when trying to close it. Expect ConnectionOpen and a CloseConnectionErrors to be accounted for in the metrics",
+			allowAccept:             true,
+			allowClose:              false,
+			expectedConnectionError: errors.New("Failed to close connection."),
+			expectedMetrics: []string{
+				"RecordCloseConnectionErrors",
+				"RecordConnectionOpen",
+			},
+		},
 	}
 
-	listener = &monitorableListener{listener, m}
-	conn, err := listener.Accept()
-	if !allowAccept {
-		if err == nil {
-			t.Error("The listener.Accept() error should propagate from the underlying listener.")
+	for _, tc := range testCases {
+		mockMetrics := metricstest.CreateMockMetrics()
+		m := &metrics.Metrics{
+			MetricEngines: []metrics.CacheMetrics{
+				&mockMetrics,
+			},
 		}
-		assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 0.00, "Should not log any connections")
-		assert.Equal(t, int64(1), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
-		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
-		return
-	}
-	assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
-	assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 1.00, "Should not log any connections")
 
-	err = conn.Close()
-	if allowClose {
-		assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 0.00, "Should not log any connections")
-		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
-		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
-	} else {
-		if err == nil {
-			t.Error("The connection.Close() error should propagate from the underlying listener.")
+		var listener net.Listener = &mockListener{
+			listenSuccess: tc.allowAccept,
+			closeSuccess:  tc.allowClose,
 		}
-		assert.Equal(t, metricstest.MockHistograms["connections.connections_opened"], 1.00, "Should not log any connections")
-		assert.Equal(t, int64(0), metricstest.MockCounters["connections.connection_error.accept"], "Metrics engine should not log an accept connection error")
-		assert.Equal(t, int64(1), metricstest.MockCounters["connections.connection_error.close"], "Metrics engine should have logged a close connection error")
+
+		listener = &monitorableListener{listener, m}
+		conn, err := listener.Accept()
+		if tc.allowAccept {
+			err = conn.Close()
+		}
+		assert.Equal(t, tc.expectedConnectionError, err, tc.desc)
+		metricstest.AssertMetrics(t, tc.expectedMetrics, mockMetrics)
 	}
 }
 

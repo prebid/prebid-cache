@@ -1,143 +1,236 @@
 package metricstest
 
 import (
+	"testing"
 	"time"
 
 	"github.com/prebid/prebid-cache/config"
-	"github.com/prebid/prebid-cache/metrics"
+	"github.com/stretchr/testify/mock"
 )
 
-const mockDuration time.Duration = time.Second
+func AssertMetrics(t *testing.T, expectedMetrics []string, actualMetrics MockMetrics) {
+	t.Helper()
 
-var MockHistograms map[string]float64
-var MockCounters map[string]int64
+	// All the names of our metric interface methods
+	allMetrics := map[string]struct{}{
+		"RecordAcceptConnectionErrors": {},
+		"RecordCloseConnectionErrors":  {},
+		"RecordConnectionClosed":       {},
+		"RecordConnectionOpen":         {},
+		"RecordGetBackendDuration":     {},
+		"RecordGetBackendError":        {},
+		"RecordGetBackendTotal":        {},
+		"RecordGetBadRequest":          {},
+		"RecordGetDuration":            {},
+		"RecordGetError":               {},
+		"RecordGetTotal":               {},
+		"RecordKeyNotFoundError":       {},
+		"RecordMissingKeyError":        {},
+		"RecordPutBackendDuration":     {},
+		"RecordPutBackendError":        {},
+		"RecordPutBackendInvalid":      {},
+		"RecordPutBackendJson":         {},
+		"RecordPutBackendSize":         {},
+		"RecordPutBackendTTLSeconds":   {},
+		"RecordPutBackendXml":          {},
+		"RecordPutBadRequest":          {},
+		"RecordPutDuration":            {},
+		"RecordPutError":               {},
+		"RecordPutKeyProvided":         {},
+		"RecordPutTotal":               {},
+	}
 
-func CreateMockMetrics() *metrics.Metrics {
-	MockHistograms = make(map[string]float64, 6)
-	MockHistograms["puts.current_url.duration"] = 0.00
-	MockHistograms["gets.current_url.duration"] = 0.00
-	MockHistograms["puts.backends.request_duration"] = 0.00
-	MockHistograms["puts.backends.request_size_bytes"] = 0.00
-	MockHistograms["puts.backends.request_ttl_seconds"] = 0.00
-	MockHistograms["gets.backends.duration"] = 0.00
-	MockHistograms["connections.connections_opened"] = 0.00
+	// Assert the metrics found in the expectedMetrics array where called. If a given element is not a known metric, throw error.
+	for _, metricName := range expectedMetrics {
+		_, exists := allMetrics[metricName]
+		if exists {
+			actualMetrics.AssertCalled(t, metricName)
+			delete(allMetrics, metricName)
+		} else {
+			t.Errorf("Cannot assert unrecognized metric '%s' was called", metricName)
+		}
+	}
 
-	MockCounters = make(map[string]int64, 16)
-	MockCounters["puts.current_url.request.total"] = 0
-	MockCounters["puts.current_url.request.error"] = 0
-	MockCounters["puts.current_url.request.bad_request"] = 0
-	MockCounters["puts.current_url.request.custom_key"] = 0
-	MockCounters["gets.current_url.request.total"] = 0
-	MockCounters["gets.current_url.request.error"] = 0
-	MockCounters["gets.current_url.request.bad_request"] = 0
-	MockCounters["puts.backends.add"] = 0
-	MockCounters["puts.backends.json"] = 0
-	MockCounters["puts.backends.xml"] = 0
-	MockCounters["puts.backends.invalid_format"] = 0
-	MockCounters["puts.backends.request.error"] = 0
-	MockCounters["puts.backends.request.bad_request"] = 0
-	MockCounters["gets.backends.request.total"] = 0
-	MockCounters["gets.backends.request.error"] = 0
-	MockCounters["gets.backends.request.bad_request"] = 0
-	MockCounters["gets.backend_error.key_not_found"] = 0
-	MockCounters["gets.backend_error.missing_key"] = 0
-	MockCounters["connections.connection_error.accept"] = 0
-	MockCounters["connections.connection_error.close"] = 0
-
-	return &metrics.Metrics{
-		MetricEngines: []metrics.CacheMetrics{
-			&MockMetrics{
-				MetricsName: "Mockmetrics",
-			},
-		},
+	// Assert the metrics not found in the expectedMetrics array where not called
+	for metricName := range allMetrics {
+		actualMetrics.AssertNotCalled(t, metricName)
 	}
 }
 
-type MockMetrics struct {
-	MetricsName string
+// MetricsRecorded is a structure used to document the exepected metrics to be recorded when running unit tests
+type MetricsRecorded struct {
+	// Connection metrics
+	RecordAcceptConnectionErrors int64 `json:"RecordAcceptConnectionErrors"`
+	RecordCloseConnectionErrors  int64 `json:"RecordCloseConnectionErrors"`
+	RecordConnectionClosed       int64 `json:"RecordConnectionClosed"`
+	RecordConnectionOpen         int64 `json:"RecordConnectionOpen"`
+
+	// Get metrics
+	RecordGetBackendDuration float64 `json:"RecordGetBackendDuration"`
+	RecordGetBackendError    int64   `json:"RecordGetBackendError"`
+	RecordGetBackendTotal    int64   `json:"RecordGetBackendTotal"`
+	RecordGetBadRequest      int64   `json:"RecordGetBadRequest"`
+	RecordGetDuration        float64 `json:"RecordGetDuration"`
+	RecordGetError           int64   `json:"RecordGetError"`
+	RecordGetTotal           int64   `json:"RecordGetTotal"`
+
+	// Put metrics
+	RecordKeyNotFoundError     int64   `json:"RecordKeyNotFoundError"`
+	RecordMissingKeyError      int64   `json:"RecordMissingKeyError"`
+	RecordPutBackendDuration   float64 `json:"RecordPutBackendDuration"`
+	RecordPutBackendError      int64   `json:"RecordPutBackendError"`
+	RecordPutBackendInvalid    int64   `json:"RecordPutBackendInvalid"`
+	RecordPutBackendJson       int64   `json:"RecordPutBackendJson"`
+	RecordPutBackendSize       float64 `json:"RecordPutBackendSize"`
+	RecordPutBackendTTLSeconds float64 `json:"RecordPutBackendTTLSeconds"`
+	RecordPutBackendXml        int64   `json:"RecordPutBackendXml"`
+	RecordPutBadRequest        int64   `json:"RecordPutBadRequest"`
+	RecordPutDuration          float64 `json:"RecordPutDuration"`
+	RecordPutError             int64   `json:"RecordPutError"`
+	RecordPutKeyProvided       int64   `json:"RecordPutKeyProvided"`
+	RecordPutTotal             int64   `json:"RecordPutTotal"`
 }
 
-func (m *MockMetrics) Export(cfg config.Metrics) {
+func CreateMockMetrics() MockMetrics {
+	mockMetrics := MockMetrics{}
+
+	mockMetrics.On("RecordAcceptConnectionErrors")
+	mockMetrics.On("RecordCloseConnectionErrors")
+	mockMetrics.On("RecordConnectionClosed")
+	mockMetrics.On("RecordConnectionOpen")
+	mockMetrics.On("RecordGetBackendDuration", mock.Anything)
+	mockMetrics.On("RecordGetBackendError")
+	mockMetrics.On("RecordGetBackendTotal")
+	mockMetrics.On("RecordGetBadRequest")
+	mockMetrics.On("RecordGetDuration", mock.Anything)
+	mockMetrics.On("RecordGetError")
+	mockMetrics.On("RecordGetTotal")
+	mockMetrics.On("RecordKeyNotFoundError")
+	mockMetrics.On("RecordMissingKeyError")
+	mockMetrics.On("RecordPutBackendDuration", mock.Anything)
+	mockMetrics.On("RecordPutBackendError")
+	mockMetrics.On("RecordPutBackendInvalid")
+	mockMetrics.On("RecordPutBackendJson")
+	mockMetrics.On("RecordPutBackendSize", mock.Anything)
+	mockMetrics.On("RecordPutBackendTTLSeconds", mock.Anything)
+	mockMetrics.On("RecordPutBackendXml")
+	mockMetrics.On("RecordPutBadRequest")
+	mockMetrics.On("RecordPutDuration", mock.Anything)
+	mockMetrics.On("RecordPutError")
+	mockMetrics.On("RecordPutKeyProvided")
+	mockMetrics.On("RecordPutTotal")
+
+	return mockMetrics
 }
+
+type MockMetrics struct {
+	mock.Mock
+}
+
+func (m *MockMetrics) Export(cfg config.Metrics) {}
 func (m *MockMetrics) GetEngineRegistry() interface{} {
 	return nil
 }
 func (m *MockMetrics) GetMetricsEngineName() string {
 	return ""
 }
-
 func (m *MockMetrics) RecordPutError() {
-	MockCounters["puts.current_url.request.error"] = MockCounters["puts.current_url.request.error"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutBadRequest() {
-	MockCounters["puts.current_url.request.bad_request"] = MockCounters["puts.current_url.request.bad_request"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutTotal() {
-	MockCounters["puts.current_url.request.total"] = MockCounters["puts.current_url.request.total"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutDuration(duration time.Duration) {
-	MockHistograms["puts.current_url.duration"] = mockDuration.Seconds()
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutKeyProvided() {
-	MockCounters["puts.current_url.request.custom_key"] = MockCounters["puts.current_url.request.custom_key"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordGetError() {
-	MockCounters["gets.current_url.request.error"] = MockCounters["gets.current_url.request.error"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordGetBadRequest() {
-	MockCounters["gets.current_url.request.bad_request"] = MockCounters["gets.current_url.request.bad_request"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordGetTotal() {
-	MockCounters["gets.current_url.request.total"] = MockCounters["gets.current_url.request.total"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordGetDuration(duration time.Duration) {
-	MockHistograms["gets.current_url.duration"] = mockDuration.Seconds()
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutBackendXml() {
-	MockCounters["puts.backends.xml"] = MockCounters["puts.backends.xml"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutBackendJson() {
-	MockCounters["puts.backends.json"] = MockCounters["puts.backends.json"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutBackendInvalid() {
-	MockCounters["puts.backends.invalid_format"] = MockCounters["puts.backends.invalid_format"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutBackendDuration(duration time.Duration) {
-	MockHistograms["puts.backends.request_duration"] = mockDuration.Seconds()
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutBackendError() {
-	MockCounters["puts.backends.request.error"] = MockCounters["puts.backends.request.error"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutBackendSize(sizeInBytes float64) {
-	MockHistograms["puts.backends.request_size_bytes"] = sizeInBytes
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordPutBackendTTLSeconds(duration time.Duration) {
-	MockHistograms["puts.backends.request_ttl_seconds"] = mockDuration.Seconds()
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordGetBackendDuration(duration time.Duration) {
-	MockHistograms["gets.backends.duration"] = mockDuration.Seconds()
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordGetBackendTotal() {
-	MockCounters["gets.backends.request.total"] = MockCounters["gets.backends.request.total"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordGetBackendError() {
-	MockCounters["gets.backends.request.error"] = MockCounters["gets.backends.request.error"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordKeyNotFoundError() {
-	MockCounters["gets.backend_error.key_not_found"] = MockCounters["gets.backend_error.key_not_found"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordMissingKeyError() {
-	MockCounters["gets.backend_error.missing_key"] = MockCounters["gets.backend_error.missing_key"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordConnectionOpen() {
-	MockHistograms["connections.connections_opened"] = MockHistograms["connections.connections_opened"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordConnectionClosed() {
-	MockHistograms["connections.connections_opened"] = MockHistograms["connections.connections_opened"] - 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordCloseConnectionErrors() {
-	MockCounters["connections.connection_error.close"] = MockCounters["connections.connection_error.close"] + 1
+	m.Called()
+	return
 }
 func (m *MockMetrics) RecordAcceptConnectionErrors() {
-	MockCounters["connections.connection_error.accept"] = MockCounters["connections.connection_error.accept"] + 1
+	m.Called()
+	return
 }

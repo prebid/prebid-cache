@@ -138,7 +138,7 @@ func parsePutObject(p putObject) (string, error) {
 	} else if p.Type == utils.JSON_PREFIX {
 		toCache = p.Type + string(p.Value)
 	} else {
-		return "", utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found %v", p.Type))
+		return "", utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found '%s'", p.Type))
 	}
 
 	return toCache, nil

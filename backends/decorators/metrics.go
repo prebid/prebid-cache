@@ -2,6 +2,7 @@ package decorators
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -45,9 +46,10 @@ func (b *backendWithMetrics) Put(ctx context.Context, key string, value string, 
 	} else if strings.HasPrefix(value, utils.JSON_PREFIX) {
 		b.metrics.RecordPutBackendJson()
 	} else {
-		b.metrics.RecordPutBackendInvalid()
+		b.metrics.RecordPutBackendInvalid() // Never gets called here. Unreachable
 	}
-	b.metrics.RecordPutBackendTTLSeconds(time.Duration(ttlSeconds) * time.Second)
+	ttl, _ := time.ParseDuration(fmt.Sprintf("%ds", ttlSeconds))
+	b.metrics.RecordPutBackendTTLSeconds(ttl)
 
 	start := time.Now()
 	err := b.delegate.Put(ctx, key, value, ttlSeconds)

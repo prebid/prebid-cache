@@ -7,6 +7,7 @@ import (
 	"github.com/prebid/prebid-cache/backends"
 	"github.com/prebid/prebid-cache/compression"
 	"github.com/prebid/prebid-cache/config"
+	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/prebid/prebid-cache/utils"
 
@@ -90,8 +91,15 @@ func TestNewMemoryOrMemcacheBackend(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		mockMetrics := metricstest.CreateMockMetrics()
+		m := &metrics.Metrics{
+			MetricEngines: []metrics.CacheMetrics{
+				&mockMetrics,
+			},
+		}
+
 		// run
-		actualBackend := newBaseBackend(tc.inConfig, metricstest.CreateMockMetrics())
+		actualBackend := newBaseBackend(tc.inConfig, m)
 
 		// assertions
 		assert.IsType(t, tc.expectedBackend, actualBackend, tc.desc)
@@ -150,9 +158,16 @@ func TestNewBaseBackend(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		mockMetrics := metricstest.CreateMockMetrics()
+		m := &metrics.Metrics{
+			MetricEngines: []metrics.CacheMetrics{
+				&mockMetrics,
+			},
+		}
+
 		// run and assert it panics
 		panicTestFunction := func() {
-			newBaseBackend(tc.inConfig, metricstest.CreateMockMetrics())
+			newBaseBackend(tc.inConfig, m)
 		}
 		assert.Panics(t, panicTestFunction, "%s backend initialized in this test should error and panic.", tc.desc)
 

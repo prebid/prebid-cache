@@ -8,6 +8,7 @@ import (
 	as "github.com/aerospike/aerospike-client-go"
 	as_types "github.com/aerospike/aerospike-client-go/types"
 	"github.com/prebid/prebid-cache/config"
+	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/prebid/prebid-cache/utils"
 	"github.com/sirupsen/logrus"
@@ -147,8 +148,14 @@ func TestClassifyAerospikeError(t *testing.T) {
 }
 
 func TestAerospikeClientGet(t *testing.T) {
+	mockMetrics := metricstest.CreateMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 	aerospikeBackend := &AerospikeBackend{
-		metrics: metricstest.CreateMockMetrics(),
+		metrics: m,
 	}
 
 	testCases := []struct {
@@ -220,8 +227,14 @@ func TestAerospikeClientGet(t *testing.T) {
 }
 
 func TestClientPut(t *testing.T) {
+	mockMetrics := metricstest.CreateMockMetrics()
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			&mockMetrics,
+		},
+	}
 	aerospikeBackend := &AerospikeBackend{
-		metrics: metricstest.CreateMockMetrics(),
+		metrics: m,
 	}
 
 	testCases := []struct {

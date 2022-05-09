@@ -10,7 +10,7 @@ import (
 
 	"github.com/prebid/prebid-cache/utils"
 	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
+	testLogrus "github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -42,7 +42,7 @@ func TestEnvConfig(t *testing.T) {
 func TestLogValidateAndLog(t *testing.T) {
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
+	hook := testLogrus.NewGlobal()
 
 	// Define object to run `validateAndLog()` on
 	configLogObject := Log{
@@ -305,37 +305,37 @@ func TestCheckMetricsEnabled(t *testing.T) {
 	}
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
+	hook := testLogrus.NewGlobal()
 
 	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
 
-	for i, test := range testCases {
+	for i, tc := range testCases {
 		// Reset the fatal flag to false every test
 		fatal = false
 
 		// Set test flags in metrics object
-		cfg.Type = test.metricType
-		cfg.Influx.Enabled = test.influxEnabled
-		cfg.Prometheus.Enabled = test.prometheusEnabled
+		cfg.Type = tc.metricType
+		cfg.Influx.Enabled = tc.influxEnabled
+		cfg.Prometheus.Enabled = tc.prometheusEnabled
 
 		//run test
 		cfg.validateAndLog()
 
 		// Assert logrus expected entries
-		if assert.Equal(t, len(test.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(test.expectedLogInfo) = %d len(hook.Entries) = %d", i+1, len(test.expectedLogInfo), len(hook.Entries)) {
-			for j := 0; j < len(test.expectedLogInfo); j++ {
-				assert.Equal(t, test.expectedLogInfo[j].msg, hook.Entries[j].Message, "Test case %d log message differs", i+1)
-				assert.Equal(t, test.expectedLogInfo[j].lvl, hook.Entries[j].Level, "Test case %d log level differs", i+1)
+		if assert.Equal(t, len(tc.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.expectedLogInfo) = %d len(hook.Entries) = %d", i+1, len(tc.expectedLogInfo), len(hook.Entries)) {
+			for j := 0; j < len(tc.expectedLogInfo); j++ {
+				assert.Equal(t, tc.expectedLogInfo[j].msg, hook.Entries[j].Message, "Test case %d log message differs", i+1)
+				assert.Equal(t, tc.expectedLogInfo[j].lvl, hook.Entries[j].Level, "Test case %d log level differs", i+1)
 			}
 		} else {
 			return
 		}
 
 		// Assert log.Fatalf() was called or not
-		assert.Equal(t, test.expectedError, fatal, "Test case %d failed.", i+1)
+		assert.Equal(t, tc.expectedError, fatal, "Test case %d failed.", i+1)
 
 		//Reset log after every test and assert successful reset
 		hook.Reset()
@@ -445,26 +445,26 @@ func TestEnabledFlagGetsModified(t *testing.T) {
 	}
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
+	hook := testLogrus.NewGlobal()
 
 	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
-	for i, test := range testCases {
+	for i, tc := range testCases {
 		// Reset Metrics object
 		metricsCfg := Metrics{
-			Type: test.in.metricType,
+			Type: tc.in.metricType,
 			Influx: InfluxMetrics{
 				Host:     "http://fakeurl.com",
 				Database: "database-value",
-				Enabled:  test.in.influxEnabled,
+				Enabled:  tc.in.influxEnabled,
 			},
 			Prometheus: PrometheusMetrics{
 				Port:      8080,
 				Namespace: "prebid",
 				Subsystem: "cache",
-				Enabled:   test.in.prometheusEnabled,
+				Enabled:   tc.in.prometheusEnabled,
 			},
 		}
 
@@ -472,8 +472,8 @@ func TestEnabledFlagGetsModified(t *testing.T) {
 		metricsCfg.validateAndLog()
 
 		// Assert `Enabled` flags value
-		assert.Equal(t, test.out.expectedInfluxEnabled, metricsCfg.Influx.Enabled, "Test case %d failed. `cfg.Influx.Enabled` carries wrong value.", i+1)
-		assert.Equal(t, test.out.expectedprometheusEnabled, metricsCfg.Prometheus.Enabled, "Test case %d failed. `cfg.Prometheus.Enabled` carries wrong value.", i+1)
+		assert.Equal(t, tc.out.expectedInfluxEnabled, metricsCfg.Influx.Enabled, "Test case %d failed. `cfg.Influx.Enabled` carries wrong value.", i+1)
+		assert.Equal(t, tc.out.expectedprometheusEnabled, metricsCfg.Prometheus.Enabled, "Test case %d failed. `cfg.Prometheus.Enabled` carries wrong value.", i+1)
 
 		//Reset log after every test
 		hook.Reset()
@@ -483,7 +483,7 @@ func TestEnabledFlagGetsModified(t *testing.T) {
 func TestInfluxValidateAndLog(t *testing.T) {
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
+	hook := testLogrus.NewGlobal()
 
 	type logComponents struct {
 		msg string
@@ -603,25 +603,25 @@ func TestInfluxValidateAndLog(t *testing.T) {
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
 
-	for j, test := range testCases {
+	for j, tc := range testCases {
 		// Reset the fatal flag to false every test
 		fatal = false
 
 		//run test
-		test.influxConfig.validateAndLog()
+		tc.influxConfig.validateAndLog()
 
 		// Assert logrus expected entries
-		if assert.Equal(t, len(test.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(test.expectedLogInfo) = %d len(hook.Entries) = %d", j, len(test.expectedLogInfo), len(hook.Entries)) {
-			for i := 0; i < len(test.expectedLogInfo); i++ {
-				assert.Equal(t, test.expectedLogInfo[i].msg, hook.Entries[i].Message, "Test case %d failed", j)
-				assert.Equal(t, test.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Test case %d failed", j)
+		if assert.Equal(t, len(tc.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.expectedLogInfo) = %d len(hook.Entries) = %d", j, len(tc.expectedLogInfo), len(hook.Entries)) {
+			for i := 0; i < len(tc.expectedLogInfo); i++ {
+				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message, "Test case %d failed", j)
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Test case %d failed", j)
 			}
 		} else {
 			return
 		}
 
 		// Assert log.Fatalf() was called or not
-		assert.Equal(t, test.expectError, fatal)
+		assert.Equal(t, tc.expectError, fatal)
 
 		//Reset log after every test and assert successful reset
 		hook.Reset()
@@ -755,32 +755,32 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 	}
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
+	hook := testLogrus.NewGlobal()
 
 	//substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
 
-	for j, test := range testCases {
+	for j, tc := range testCases {
 		// Reset the fatal flag to false every test
 		fatal = false
 
 		//run test
-		test.prometheusConfig.validateAndLog()
+		tc.prometheusConfig.validateAndLog()
 
 		// Assert logrus expected entries
-		if assert.Equal(t, len(test.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(test.expectedLogInfo) = %d len(hook.Entries) = %d", j, len(test.expectedLogInfo), len(hook.Entries)) {
-			for i := 0; i < len(test.expectedLogInfo); i++ {
-				assert.Equal(t, test.expectedLogInfo[i].msg, hook.Entries[i].Message)
-				assert.Equal(t, test.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Expected Info entry in log")
+		if assert.Equal(t, len(tc.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.expectedLogInfo) = %d len(hook.Entries) = %d", j, len(tc.expectedLogInfo), len(hook.Entries)) {
+			for i := 0; i < len(tc.expectedLogInfo); i++ {
+				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message)
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Expected Info entry in log")
 			}
 		} else {
 			return
 		}
 
 		// Assert log.Fatalf() was called or not
-		assert.Equal(t, test.expectError, fatal)
+		assert.Equal(t, tc.expectError, fatal)
 
 		//Reset log after every test and assert successful reset
 		hook.Reset()
@@ -791,7 +791,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 func TestRequestLimitsValidateAndLog(t *testing.T) {
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
+	hook := testLogrus.NewGlobal()
 
 	type logComponents struct {
 		msg string
@@ -895,7 +895,7 @@ func TestRequestLimitsValidateAndLog(t *testing.T) {
 func TestCompressionValidateAndLog(t *testing.T) {
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
+	hook := testLogrus.NewGlobal()
 
 	type logComponents struct {
 		msg string
@@ -966,7 +966,7 @@ func TestCompressionValidateAndLog(t *testing.T) {
 
 func TestNewConfigFromFile(t *testing.T) {
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
+	hook := testLogrus.NewGlobal()
 
 	type logComponents struct {
 		msg string
@@ -1044,7 +1044,7 @@ func TestNewConfigFromFile(t *testing.T) {
 
 func TestConfigurationValidateAndLog(t *testing.T) {
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
+	hook := testLogrus.NewGlobal()
 	//substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
@@ -1100,7 +1100,7 @@ func TestPrometheusTimeoutDuration(t *testing.T) {
 
 func TestRoutesValidateAndLog(t *testing.T) {
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
-	hook := test.NewGlobal()
+	hook := testLogrus.NewGlobal()
 
 	type logComponents struct {
 		msg string

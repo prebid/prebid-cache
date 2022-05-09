@@ -1,0 +1,25 @@
+{
+  "description": "Store JSON type value, which Prebid Cache allows. Store under a random UUID",
+  "putRequest": {
+    "puts": [
+      {
+        "type": "json",
+        "ttlseconds": 60,
+        "value": "{\"field\":100}"
+      }
+    ]
+  },
+  "expectedMetrics": [
+    "RecordPutTotal",
+    "RecordPutBackendJson",
+    "RecordPutBackendSize",
+    "RecordPutBackendTTLSeconds",
+    "RecordPutBackendDuration",
+    "RecordPutDuration"
+  ],
+  "expectedResponse": {
+    "responses": [
+      {"uuid": "random"}
+    ]
+  }
+}
