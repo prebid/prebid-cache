@@ -12,11 +12,11 @@ require (
 	github.com/golang/snappy v0.0.4
 	github.com/google/gomemcache v0.0.0-20210709172713-c1c93e4523ee
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/prometheus/client_golang v1.5.1
+	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/client_model v0.2.0
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/rs/cors v1.8.2
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/viper v1.11.0
 	github.com/stretchr/testify v1.7.1
 	github.com/vrischmann/go-metrics-influxdb v0.1.1
