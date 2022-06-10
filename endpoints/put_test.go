@@ -70,6 +70,8 @@ func TestPutJsonTests(t *testing.T) {
 			desc:        "invalid 'value' field values, expect error",
 			expectError: true,
 			tests: []string{
+				"sample-requests/put-endpoint/invalid-value/json-value-empty.json",
+				"sample-requests/put-endpoint/invalid-value/xml-value-empty.json",
 				"sample-requests/put-endpoint/invalid-value/value-missing.json",
 				"sample-requests/put-endpoint/invalid-value/value-greater-than-max.json",
 			},
@@ -319,17 +321,6 @@ func TestSuccessfulPut(t *testing.T) {
 					},
 				},
 				{
-					desc:                "TestNumber",
-					inPutBody:           "{\"puts\":[{\"type\":\"json\",\"value\":5}]}",
-					expectedStoredValue: "5",
-					expectedMetrics: []string{
-						"RecordGetTotal",
-						"RecordGetDuration",
-						"RecordPutTotal",
-						"RecordPutDuration",
-					},
-				},
-				{
 					desc:                "TestObject",
 					inPutBody:           "{\"puts\":[{\"type\":\"json\",\"value\":{\"custom_key\":\"foo\"}}]}",
 					expectedStoredValue: "{\"custom_key\":\"foo\"}",
@@ -429,7 +420,7 @@ func TestSuccessfulPut(t *testing.T) {
 			// Response was a 200, extract responses
 			var parsed PutResponse
 			err := json.Unmarshal(putResponse.Body.Bytes(), &parsed)
-			assert.NoError(t, err, "Response from POST doesn't conform to the expected format: %s", putResponse.Body.String())
+			assert.NoError(t, err, "%s - %s: Response from POST doesn't conform to the expected format: %s", group.groupDesc, tc.desc, putResponse.Body.String())
 
 			// Assert responses
 			for _, putResponse := range parsed.Responses {
@@ -489,7 +480,7 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 		{
 			desc:             "Invalid XML",
 			inPutBody:        `{"puts":[{"type":"xml","value":5}]}`,
-			expectedError:    utils.NewPBCError(utils.MALFORMED_XML, "XML messages must have a String value. Found [53]"),
+			expectedError:    utils.NewPBCError(utils.MISSING_VALUE),
 			expectedPutCalls: 0,
 		},
 	}
@@ -936,9 +927,9 @@ func TestEmptyPutRequests(t *testing.T) {
 			desc:    "Blank value in put element",
 			reqBody: `{"puts":[{"type":"xml","value":""}]}`,
 			expected: testOutput{
-				jsonResponse:          `{"responses":\[\{"uuid":"[a-z0-9-]+"\}\]}`,
-				statusCode:            http.StatusOK,
-				durationMetricsLogged: true,
+				jsonResponse:            `Missing value.\n`,
+				statusCode:              http.StatusBadRequest,
+				badRequestMetricsLogged: true,
 			},
 		},
 		// This test is meant to come right after the "Blank value in put element" test in order to assert the correction
@@ -1082,6 +1073,7 @@ func TestParseRequest(t *testing.T) {
 			testOut{nil, utils.NewPBCError(utils.PUT_MAX_NUM_VALUES, "More keys than allowed: 1")},
 		},
 	}
+
 	for _, tc := range testCases {
 		// set test
 		putHandler := &PutHandler{
@@ -1100,92 +1092,250 @@ func TestParseRequest(t *testing.T) {
 	}
 }
 
+// TestParseValueField
+func TestParseValueField(t *testing.T) {
+	type testOut struct {
+		toCache string
+		err     error
+	}
+	type testCase struct {
+		desc     string
+		in       putObject
+		expected testOut
+	}
+
+	testGroups := []struct {
+		groupDesc string
+		valueType string
+		tests     []testCase
+	}{
+		{
+			"XML test cases",
+			utils.XML_PREFIX,
+			[]testCase{
+				{
+					"byte slice doesn't start nor end with double quotes. Expect error",
+					putObject{
+						Value: json.RawMessage(`<tag>XML</tag>`),
+					},
+					testOut{
+						toCache: "",
+						err:     utils.NewPBCError(utils.MALFORMED_XML, "XML messages must have a String value. Found [60 116 97 103 62 88 77 76 60 47 116 97 103 62]"),
+					},
+				},
+				{
+					"byte slice doesn't end with double quotes. Expect error",
+					putObject{
+						Value: json.RawMessage(`"<tag>XML</tag>'`),
+					},
+					testOut{
+						toCache: "",
+						err:     utils.NewPBCError(utils.MALFORMED_XML, "XML messages must have a String value. Found [34 60 116 97 103 62 88 77 76 60 47 116 97 103 62 39]"),
+					},
+				},
+				{
+					"byte slice makes the threshold to be considered valid XML.",
+					putObject{
+						Value: json.RawMessage(`"<tag>XML</tag>"`),
+					},
+					testOut{
+						toCache: "xml<tag>XML</tag>",
+						err:     nil,
+					},
+				},
+			},
+		},
+		{
+			"JSON test cases",
+			utils.JSON_PREFIX,
+			[]testCase{
+				{
+					"invalid JSON input, error expected",
+					putObject{
+						Value: json.RawMessage("malformed"),
+					},
+					testOut{
+						"",
+						utils.NewPBCError(utils.MALFORMED_JSON, "Invalid JSON format: malformed"),
+					},
+				},
+				{
+					"empty JSON input, error expected",
+					putObject{
+						Value: json.RawMessage(`{ }`),
+					},
+					testOut{
+						"",
+						utils.NewPBCError(utils.MALFORMED_JSON, "Invalid JSON format: { }"),
+					},
+				},
+				{
+					"valid JSON input, no errors expected",
+					putObject{
+						Value: json.RawMessage(`{"native":"{\"context\":1,\"plcmttype\":1,\"assets\":[{\"img\":{\"wmin\":30}}]}"}`),
+					},
+					testOut{
+						`json{"native":"{\"context\":1,\"plcmttype\":1,\"assets\":[{\"img\":{\"wmin\":30}}]}"}`,
+						nil,
+					},
+				},
+			},
+		},
+	}
+
+	for _, group := range testGroups {
+		for _, tc := range group.tests {
+			tc.in.Type = group.valueType
+
+			// run
+			actualPutString, actualError := parseValueField(tc.in)
+
+			// assertions
+			assert.Equal(t, tc.expected.toCache, actualPutString, tc.desc)
+			assert.Equal(t, tc.expected.err, actualError, tc.desc)
+		}
+	}
+}
+
 // TestParsePutObject asserts *PutHandler's parsePutObject(p PutObject) method
 func TestParsePutObject(t *testing.T) {
 	type testOut struct {
 		value string
 		err   error
 	}
-	testCases := []struct {
+	type testCase struct {
 		desc     string
 		in       putObject
 		expected testOut
+	}
+	testGroups := []struct {
+		groupDesc string
+		tests     []testCase
 	}{
 		{
-			"empty value, expect error",
-			putObject{},
-			testOut{
-				value: "",
-				err:   utils.NewPBCError(utils.MISSING_VALUE),
+			"Type field tests",
+			[]testCase{
+				{
+					"type field missing, expect error",
+					putObject{},
+					testOut{
+						value: "",
+						err:   utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, "Type must be one of [\"json\", \"xml\"]. Found ''"),
+					},
+				},
+				{
+					"non xml nor json type, expect error",
+					putObject{
+						Type:  "unknown",
+						Value: json.RawMessage(`<tag>Your XML content goes here.</tag>`),
+					},
+					testOut{
+						value: "",
+						err:   utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, "Type must be one of [\"json\", \"xml\"]. Found 'unknown'"),
+					},
+				},
 			},
 		},
 		{
-			"negative time-to-live, expect error",
-			putObject{
-				TTLSeconds: -1,
-				Value:      json.RawMessage(`<tag>Your XML content goes here.</tag>`),
-			},
-			testOut{
-				value: "",
-				err:   utils.NewPBCError(utils.NEGATIVE_TTL, "ttlseconds must not be negative -1."),
-			},
-		},
-		{
-			"non xml nor json type, expect error",
-			putObject{
-				Type:       "unknown",
-				TTLSeconds: 60,
-				Value:      json.RawMessage(`<tag>Your XML content goes here.</tag>`),
-			},
-			testOut{
-				value: "",
-				err:   utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, "Type must be one of [\"json\", \"xml\"]. Found 'unknown'"),
-			},
-		},
-		{
-			"xml type value is not a string, expect error",
-			putObject{
-				Type:       "xml",
-				TTLSeconds: 60,
-				Value:      json.RawMessage(`<tag>XML</tag>`),
-			},
-			testOut{
-				value: "",
-				err:   utils.NewPBCError(utils.MALFORMED_XML, "XML messages must have a String value. Found [60 116 97 103 62 88 77 76 60 47 116 97 103 62]"),
-			},
-		},
-		{
-			"xml type value is surrounded by quotes and, therefore, a string. No errors expected",
-			putObject{
-				Type:       "xml",
-				TTLSeconds: 60,
-				Value:      json.RawMessage(`"<tag>XML</tag>"`),
-			},
-			testOut{
-				"xml<tag>XML</tag>",
-				nil,
+			"Time-to-live tests",
+			[]testCase{
+				{
+					"Valid input but missing TTL field. No error expected",
+					putObject{
+						Type:  utils.JSON_PREFIX,
+						Value: json.RawMessage(`{"field":"value"}`),
+					},
+					testOut{
+						value: `json{"field":"value"}`,
+						err:   nil,
+					},
+				},
+				{
+					"negative time-to-live, expect error",
+					putObject{
+						Type:       utils.XML_PREFIX,
+						TTLSeconds: -1,
+						Value:      json.RawMessage(`<tag>Your XML content goes here.</tag>`),
+					},
+					testOut{
+						value: "",
+						err:   utils.NewPBCError(utils.NEGATIVE_TTL, "ttlseconds must not be negative -1."),
+					},
+				},
+				{
+					"Valid input, non-negative time-to-live. No error expected",
+					putObject{
+						Type:       utils.XML_PREFIX,
+						TTLSeconds: 60,
+						Value:      json.RawMessage(`"<tag>Your XML content goes here.</tag>"`),
+					},
+					testOut{
+						value: "xml<tag>Your XML content goes here.</tag>",
+						err:   nil,
+					},
+				},
 			},
 		},
 		{
-			"valid JSON input, no errors expected",
-			putObject{
-				Type:       "json",
-				TTLSeconds: 60,
-				Value:      json.RawMessage(`{"native":"{\"context\":1,\"plcmttype\":1,\"assets\":[{\"img\":{\"wmin\":30}}]}}`),
-			},
-			testOut{
-				`json{"native":"{\"context\":1,\"plcmttype\":1,\"assets\":[{\"img\":{\"wmin\":30}}]}}`,
-				nil,
+			"Value field tests",
+			[]testCase{
+				{
+					"supported type, nil byte array Value. Expect MISSING_VALUE error",
+					putObject{
+						Type:  utils.XML_PREFIX,
+						Value: nil,
+					},
+					testOut{
+						value: "",
+						err:   utils.NewPBCError(utils.MISSING_VALUE),
+					},
+				},
+				{
+					"supported type, non-nil empty byte array Value. Expect MISSING_VALUE error",
+					putObject{
+						Type:  utils.JSON_PREFIX,
+						Value: json.RawMessage(``),
+					},
+					testOut{
+						value: "",
+						err:   utils.NewPBCError(utils.MISSING_VALUE),
+					},
+				},
+				{
+					"supported type. Non-nil, non-empty byte array Value with insuffient lenght. Expect MISSING_VALUE error",
+					putObject{
+						Type:  utils.XML_PREFIX,
+						Value: json.RawMessage(`""`),
+					},
+					testOut{
+						value: "",
+						err:   utils.NewPBCError(utils.MISSING_VALUE),
+					},
+				},
+				{
+					"Valid input, non-negative time-to-live. No error expected",
+					putObject{
+						Type:  utils.XML_PREFIX,
+						Value: json.RawMessage(`"<tag>Your XML content goes here.</tag>"`),
+					},
+					testOut{
+						value: "xml<tag>Your XML content goes here.</tag>",
+						err:   nil,
+					},
+				},
 			},
 		},
 	}
-	for _, tc := range testCases {
-		// run
-		actualPutString, actualError := parsePutObject(tc.in)
 
-		// assertions
-		assert.Equal(t, tc.expected.value, actualPutString, tc.desc)
-		assert.Equal(t, tc.expected.err, actualError, tc.desc)
+	for _, group := range testGroups {
+		for _, tc := range group.tests {
+			// run
+			actualPutString, actualError := parsePutObject(tc.in)
+
+			// assertions
+			assert.Equal(t, tc.expected.value, actualPutString, tc.desc)
+			assert.Equal(t, tc.expected.err, actualError, tc.desc)
+		}
 	}
 }
 

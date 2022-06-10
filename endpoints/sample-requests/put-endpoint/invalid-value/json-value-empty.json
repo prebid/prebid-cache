@@ -1,0 +1,26 @@
+{
+  "description": "Prebid Cache does not allow the storage of empty JSON values. Respond with error",
+  "putRequest": {
+    "puts": [
+      {
+        "type": "json",
+        "value": {}
+      }
+    ]
+  },
+  "expectedLogEntries": [
+    {
+      "message": "POST /cache Error while writing to the back-end: Missing value.",
+      "level": 2
+    },
+    {
+      "message": "POST /cache had an unexpected error:Missing value.",
+      "level": 2
+    }
+  ],
+  "expectedMetrics": [
+    "RecordPutTotal",
+    "RecordPutBadRequest"
+  ],
+  "expectedErrorMessage": "Missing value.\n"
+}

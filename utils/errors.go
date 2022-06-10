@@ -12,6 +12,7 @@ const (
 	PUT_BAD_REQUEST                  // PUT http.StatusBadRequest 400
 	NEGATIVE_TTL                     // PUT http.StatusBadRequest 400
 	MALFORMED_XML                    // PUT http.StatusBadRequest 400
+	MALFORMED_JSON                   // PUT http.StatusBadRequest 400
 	UNSUPPORTED_DATA_TO_STORE        // PUT http.StatusBadRequest 400
 	MISSING_VALUE                    // PUT http.StatusBadRequest 400
 	BAD_PAYLOAD_SIZE                 // PUT http.StatusBadRequest 400
@@ -34,6 +35,7 @@ var errToStatusCodes map[int]int = map[int]int{
 	PUT_BAD_REQUEST:           http.StatusBadRequest,
 	NEGATIVE_TTL:              http.StatusBadRequest,
 	MALFORMED_XML:             http.StatusBadRequest,
+	MALFORMED_JSON:            http.StatusBadRequest,
 	UNSUPPORTED_DATA_TO_STORE: http.StatusBadRequest,
 	MISSING_VALUE:             http.StatusBadRequest,
 	BAD_PAYLOAD_SIZE:          http.StatusBadRequest,

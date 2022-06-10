@@ -109,11 +109,10 @@ func (e *PutHandler) parseRequest(r *http.Request) (*putRequest, error) {
 //   - JSON content gets prepended by its type
 // No other formats are supported.
 func parsePutObject(p putObject) (string, error) {
-	var toCache string
 
-	// Make sure there's data to store
-	if len(p.Value) == 0 {
-		return "", utils.NewPBCError(utils.MISSING_VALUE)
+	// Make sure data type is specified
+	if p.Type != utils.XML_PREFIX && p.Type != utils.JSON_PREFIX {
+		return "", utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found '%s'", p.Type))
 	}
 
 	// Make sure a non-negative time-to-live quantity was provided
@@ -121,24 +120,43 @@ func parsePutObject(p putObject) (string, error) {
 		return "", utils.NewPBCError(utils.NEGATIVE_TTL, fmt.Sprintf("ttlseconds must not be negative %d.", p.TTLSeconds))
 	}
 
-	// Limit the type of data to XML or JSON
-	if p.Type == utils.XML_PREFIX {
+	// Make sure Value is not an empty byte array
+	if len(p.Value) < 3 {
+		return "", utils.NewPBCError(utils.MISSING_VALUE)
+	}
+
+	return parseValueField(p)
+}
+
+// parseValueField expects a value of either utils.XML_PREFIX or utils.JSON_PREFIX. In the case of the first our validation
+// will be limitted to check whether or not the value starts and end with double quotes. For utils.JSON_PREFIX values, we'll
+// use JSON library validation
+func parseValueField(p putObject) (string, error) {
+	var toCache string
+
+	switch p.Type {
+	case utils.XML_PREFIX:
+		// validate
 		if p.Value[0] != byte('"') || p.Value[len(p.Value)-1] != byte('"') {
 			return "", utils.NewPBCError(utils.MALFORMED_XML, fmt.Sprintf("XML messages must have a String value. Found %v", p.Value))
 		}
 
-		// Be careful about the cross-script escaping issues here. JSON requires quotation marks to be escaped,
-		// for example... so we'll need to un-escape it before we consider it to be XML content.
+		// unmarshall
 		var interpreted string
 		if err := json.Unmarshal(p.Value, &interpreted); err != nil {
 			return "", utils.NewPBCError(utils.MALFORMED_XML, fmt.Sprintf("Error unmarshalling XML value: %v", p.Value))
 		}
 
+		// set toCache value
 		toCache = p.Type + interpreted
-	} else if p.Type == utils.JSON_PREFIX {
+	case utils.JSON_PREFIX:
+		// validate
+		if !json.Valid(p.Value) || string(p.Value) == "{ }" {
+			return "", utils.NewPBCError(utils.MALFORMED_JSON, fmt.Sprintf("Invalid JSON format: %s", string(p.Value)))
+		}
+
+		// set toCache value
 		toCache = p.Type + string(p.Value)
-	} else {
-		return "", utils.NewPBCError(utils.UNSUPPORTED_DATA_TO_STORE, fmt.Sprintf("Type must be one of [\"json\", \"xml\"]. Found '%s'", p.Type))
 	}
 
 	return toCache, nil
