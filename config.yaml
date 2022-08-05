@@ -11,11 +11,11 @@ request_limits:
   max_num_values: 10
   max_ttl_seconds: 3600
 backend:
-  type: "memory" # Can also be "aerospike", "cassandra", "memcache" or "redis"
+  type: "aerospike" # Can also be "aerospike", "cassandra", "memcache" or "redis"
   aerospike:
-    host: "aerospike.prebid.com"
+    host: "aerospike-bids.prod.nym2.adnxs.net" #"aerospike.prebid.com"
     port: 3000
-    namespace: "whatever"
+    namespace: "prebid"
   cassandra:
     hosts: "127.0.0.1"
     keyspace: "prebid"
