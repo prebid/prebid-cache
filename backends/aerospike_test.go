@@ -122,9 +122,8 @@ func TestClassifyAerospikeError(t *testing.T) {
 			expectedErr: fmt.Errorf("client.Get returned nil record"),
 		},
 		{
-			desc:  "Aerospike error is neither KEY_NOT_FOUND_ERROR nor KEY_EXISTS_ERROR, expect same error as output",
-			inErr: &as.AerospikeError{ResultCode: as_types.SERVER_NOT_AVAILABLE},
-			//expectedErr: as_types.NewAerospikeError(as_types.SERVER_NOT_AVAILABLE),
+			desc:        "Aerospike error is neither KEY_NOT_FOUND_ERROR nor KEY_EXISTS_ERROR, expect same error as output",
+			inErr:       &as.AerospikeError{ResultCode: as_types.SERVER_NOT_AVAILABLE},
 			expectedErr: &as.AerospikeError{ResultCode: as_types.SERVER_NOT_AVAILABLE},
 		},
 		{
