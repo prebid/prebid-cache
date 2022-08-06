@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	as "github.com/aerospike/aerospike-client-go"
-	as_types "github.com/aerospike/aerospike-client-go/types"
+	as "github.com/aerospike/aerospike-client-go/v6"
+	as_types "github.com/aerospike/aerospike-client-go/v6/types"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/utils"
@@ -134,11 +134,12 @@ func (a *AerospikeBackend) Put(ctx context.Context, key string, value string, tt
 
 func classifyAerospikeError(err error) error {
 	if err != nil {
-		if aerr, ok := err.(as_types.AerospikeError); ok {
-			if aerr.ResultCode() == as_types.KEY_NOT_FOUND_ERROR {
+		ae := &as.AerospikeError{}
+		if errors.As(err, &ae) {
+			if errors.Is(err, &as.AerospikeError{ResultCode: as_types.KEY_NOT_FOUND_ERROR}) {
 				return utils.NewPBCError(utils.KEY_NOT_FOUND)
 			}
-			if aerr.ResultCode() == as_types.KEY_EXISTS_ERROR {
+			if errors.Is(err, &as.AerospikeError{ResultCode: as_types.KEY_EXISTS_ERROR}) {
 				return utils.NewPBCError(utils.RECORD_EXISTS)
 			}
 		}

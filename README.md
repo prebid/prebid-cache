@@ -216,6 +216,7 @@ backend:
 ```
 
 ### Aerospike
+Prebid Cache makes use of an Aerospike Go client that requires Aerospike server version 4.9+ and will not work properly with older versions. Full documentation of the Aerospike Go client can be found [here](https://github.com/aerospike/aerospike-client-go/tree/v6).
 | Configuration field | Type | Description |
 | --- | --- | --- |
 | host | string | aerospike server URI |
@@ -223,6 +224,7 @@ backend:
 | namespace | string | aerospike service namespace where keys get initialized |
 
 ### Cassandra
+Prebid Cache makes use of a Cassandra client that supports latest 3 major releases of Cassandra (2.1.x, 2.2.x, and 3.x.x). Full documentation of the Cassandra Go client can be found [here](https://github.com/gocql/gocql).
 | Configuration field | Type | Description |
 | --- | --- | --- |
 | hosts | string | Cassandra server URI |
@@ -236,6 +238,7 @@ backend:
 | hosts | string array | List of nodes when not using auto discovery | 
 
 ### Redis:
+Prebid Cache makes use of a Redis Go client compatible with Redis 6. Full documentation of the Redis Go client Prebid Cache uses can be found [here](https://github.com/go-redis/redis).
 | Configuration field | Type | Description |
 | --- | --- | --- |
 | host | string | Redis server URI |
