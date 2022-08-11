@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	as "github.com/aerospike/aerospike-client-go"
-	as_types "github.com/aerospike/aerospike-client-go/types"
+	as "github.com/aerospike/aerospike-client-go/v6"
+	as_types "github.com/aerospike/aerospike-client-go/v6/types"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
@@ -38,7 +38,7 @@ func TestNewAerospikeBackend(t *testing.T) {
 			expectPanic: true,
 			expectedLogEntries: []logEntry{
 				{
-					msg: "Error creating Aerospike backend: Failed to connect to host(s): [foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
+					msg: "Error creating Aerospike backend: ResultCode: TIMEOUT, Iteration: 0, InDoubt: false, Node: <nil>: command execution timed out on client: See `Policy.Timeout`",
 					lvl: logrus.FatalLevel,
 				},
 			},
@@ -57,13 +57,13 @@ func TestNewAerospikeBackend(t *testing.T) {
 					lvl: logrus.InfoLevel,
 				},
 				{
-					msg: "Error creating Aerospike backend: Failed to connect to host(s): [fakeTestUrl.foo:8888 foo.com:8888 bat.com:8888]; error: Connecting to the cluster timed out.",
+					msg: "Error creating Aerospike backend: ResultCode: TIMEOUT, Iteration: 0, InDoubt: false, Node: <nil>: command execution timed out on client: See `Policy.Timeout`",
 					lvl: logrus.FatalLevel,
 				},
 			},
 		},
 		{
-			desc: "Unable to connect hoost panic and log fatal error",
+			desc: "Unable to connect host panic and log fatal error",
 			inCfg: config.Aerospike{
 				Host: "fakeTestUrl.foo",
 				Port: 8888,
@@ -75,7 +75,7 @@ func TestNewAerospikeBackend(t *testing.T) {
 					lvl: logrus.InfoLevel,
 				},
 				{
-					msg: "Error creating Aerospike backend: Failed to connect to host(s): [fakeTestUrl.foo:8888]; error: Connecting to the cluster timed out.",
+					msg: "Error creating Aerospike backend: ResultCode: TIMEOUT, Iteration: 0, InDoubt: false, Node: <nil>: command execution timed out on client: See `Policy.Timeout`",
 					lvl: logrus.FatalLevel,
 				},
 			},
@@ -123,17 +123,17 @@ func TestClassifyAerospikeError(t *testing.T) {
 		},
 		{
 			desc:        "Aerospike error is neither KEY_NOT_FOUND_ERROR nor KEY_EXISTS_ERROR, expect same error as output",
-			inErr:       as_types.NewAerospikeError(as_types.SERVER_NOT_AVAILABLE),
-			expectedErr: as_types.NewAerospikeError(as_types.SERVER_NOT_AVAILABLE),
+			inErr:       &as.AerospikeError{ResultCode: as_types.SERVER_NOT_AVAILABLE},
+			expectedErr: &as.AerospikeError{ResultCode: as_types.SERVER_NOT_AVAILABLE},
 		},
 		{
 			desc:        "Aerospike KEY_NOT_FOUND_ERROR error, expect Prebid Cache's KEY_NOT_FOUND error",
-			inErr:       as_types.NewAerospikeError(as_types.KEY_NOT_FOUND_ERROR),
+			inErr:       &as.AerospikeError{ResultCode: as_types.KEY_NOT_FOUND_ERROR},
 			expectedErr: utils.NewPBCError(utils.KEY_NOT_FOUND),
 		},
 		{
 			desc:        "Aerospike KEY_EXISTS_ERROR error, expect Prebid Cache's RECORD_EXISTS error",
-			inErr:       as_types.NewAerospikeError(as_types.KEY_EXISTS_ERROR),
+			inErr:       &as.AerospikeError{ResultCode: as_types.KEY_EXISTS_ERROR},
 			expectedErr: utils.NewPBCError(utils.RECORD_EXISTS),
 		},
 	}
@@ -168,7 +168,7 @@ func TestAerospikeClientGet(t *testing.T) {
 			desc:              "AerospikeBackend.Get() throws error when trying to generate new key",
 			inAerospikeClient: &errorProneAerospikeClient{errorThrowingFunction: "TEST_KEY_GEN_ERROR"},
 			expectedValue:     "",
-			expectedErrorMsg:  "Not authenticated",
+			expectedErrorMsg:  "ResultCode: NOT_AUTHENTICATED, Iteration: 0, InDoubt: false, Node: <nil>: ",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error when 'client.Get(..)' gets called",
@@ -251,7 +251,7 @@ func TestClientPut(t *testing.T) {
 			inKey:             "testKey",
 			inValueToStore:    "not default value",
 			expectedStoredVal: "",
-			expectedErrorMsg:  "Not authenticated",
+			expectedErrorMsg:  "ResultCode: NOT_AUTHENTICATED, Iteration: 0, InDoubt: false, Node: <nil>: ",
 		},
 		{
 			desc:              "AerospikeBackend.Put() throws error when 'client.Put(..)' gets called",
@@ -306,14 +306,14 @@ type errorProneAerospikeClient struct {
 
 func (c *errorProneAerospikeClient) NewUUIDKey(namespace string, key string) (*as.Key, error) {
 	if c.errorThrowingFunction == "TEST_KEY_GEN_ERROR" {
-		return nil, as_types.NewAerospikeError(as_types.NOT_AUTHENTICATED)
+		return nil, &as.AerospikeError{ResultCode: as_types.NOT_AUTHENTICATED}
 	}
 	return nil, nil
 }
 
 func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
 	if c.errorThrowingFunction == "TEST_GET_ERROR" {
-		return nil, as_types.NewAerospikeError(as_types.KEY_NOT_FOUND_ERROR)
+		return nil, &as.AerospikeError{ResultCode: as_types.KEY_NOT_FOUND_ERROR}
 	} else if c.errorThrowingFunction == "TEST_NO_BUCKET_ERROR" {
 		return &as.Record{Bins: as.BinMap{"AnyKey": "any_value"}}, nil
 	} else if c.errorThrowingFunction == "TEST_NON_STRING_VALUE_ERROR" {
@@ -324,7 +324,7 @@ func (c *errorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
 
 func (c *errorProneAerospikeClient) Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error {
 	if c.errorThrowingFunction == "TEST_PUT_ERROR" {
-		return as_types.NewAerospikeError(as_types.KEY_EXISTS_ERROR)
+		return &as.AerospikeError{ResultCode: as_types.KEY_EXISTS_ERROR}
 	}
 	return nil
 }
@@ -342,7 +342,7 @@ func (c *goodAerospikeClient) Get(aeKey *as.Key) (*as.Record, error) {
 			return rec, nil
 		}
 	}
-	return nil, as_types.NewAerospikeError(as_types.KEY_NOT_FOUND_ERROR)
+	return nil, &as.AerospikeError{ResultCode: as_types.KEY_NOT_FOUND_ERROR}
 }
 
 func (c *goodAerospikeClient) Put(policy *as.WritePolicy, aeKey *as.Key, binMap as.BinMap) error {
@@ -353,7 +353,7 @@ func (c *goodAerospikeClient) Put(policy *as.WritePolicy, aeKey *as.Key, binMap 
 		}
 		return nil
 	}
-	return as_types.NewAerospikeError(as_types.KEY_MISMATCH)
+	return &as.AerospikeError{ResultCode: as_types.KEY_MISMATCH}
 }
 
 func (c *goodAerospikeClient) NewUUIDKey(namespace string, key string) (*as.Key, error) {

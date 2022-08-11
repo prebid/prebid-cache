@@ -3,7 +3,7 @@ module github.com/prebid/prebid-cache
 go 1.16
 
 require (
-	github.com/aerospike/aerospike-client-go v4.0.0+incompatible
+	github.com/aerospike/aerospike-client-go/v6 v6.2.1
 	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-redis/redis/v8 v8.11.5
@@ -20,5 +20,6 @@ require (
 	github.com/spf13/viper v1.11.0
 	github.com/stretchr/testify v1.7.1
 	github.com/vrischmann/go-metrics-influxdb v0.1.1
-	github.com/yuin/gopher-lua v0.0.0-20180630135845-46796da1b0b4 // indirect
+	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64 // indirect
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 )
