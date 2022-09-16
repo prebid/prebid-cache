@@ -293,19 +293,12 @@ type PrometheusMetrics struct {
 	Enabled          bool   `mapstructure:"enabled"`
 }
 
+// validateAndLog will error out when the value of port is 0
 func (promMetricsConfig *PrometheusMetrics) validateAndLog() {
-	// validate
 	if promMetricsConfig.Port == 0 {
 		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty port number: config.metrics.prometheus.port = 0`)
 	}
-	if promMetricsConfig.Namespace == "" {
-		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty name space: config.metrics.prometheus.namespace = %s.`, promMetricsConfig.Namespace)
-	}
-	if promMetricsConfig.Subsystem == "" {
-		log.Fatalf(`Despite being enabled, prometheus metrics came with an empty subsystem value: config.metrics.prometheus.subsystem = \"\".`)
-	}
 
-	// log
 	log.Infof("config.metrics.prometheus.namespace: %s", promMetricsConfig.Namespace)
 	log.Infof("config.metrics.prometheus.subsystem: %s", promMetricsConfig.Subsystem)
 	log.Infof("config.metrics.prometheus.port: %d", promMetricsConfig.Port)

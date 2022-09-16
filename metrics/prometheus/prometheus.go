@@ -161,7 +161,14 @@ func CreatePrometheusMetrics(cfg config.PrometheusMetrics) *PrometheusMetrics {
 	// Should be the equivalent of the following influx collectors
 	// go metrics.CaptureRuntimeMemStats(m.Registry, flushTime)
 	// go metrics.CaptureDebugGCStats(m.Registry, flushTime)
-	collectorNamespace := fmt.Sprintf("%s_%s", cfg.Namespace, cfg.Subsystem)
+	collectorNamespace := ""
+	if len(cfg.Namespace) > 0 {
+		collectorNamespace += fmt.Sprintf("%s_", cfg.Namespace)
+	}
+	if len(cfg.Subsystem) > 0 {
+		collectorNamespace += fmt.Sprintf("%s", cfg.Subsystem)
+	}
+
 	promMetrics.Registry.MustRegister(
 		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{Namespace: collectorNamespace}),
 	)
