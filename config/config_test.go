@@ -645,7 +645,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 	}
 	testCases := []aTest{
 		{
-			description: "Port invalid, Namespace valid, Subsystem valid. Expect error",
+			description: "Port invalid, both Namespace and Subsystem were set. Expect error",
 			prometheusConfig: &PrometheusMetrics{
 				Port:      0,
 				Namespace: "prebid",
@@ -672,7 +672,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 			},
 		},
 		{
-			description: "Port valid, Namespace invalid, Subsystem valid. Don't expect error",
+			description: "Port valid, Namespace empty, Subsystem not set. Don't expect error",
 			prometheusConfig: &PrometheusMetrics{
 				Port:      8080,
 				Namespace: "",
@@ -695,7 +695,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 			},
 		},
 		{
-			description: "Port valid, Namespace valid, Subsystem invalid. Expect error",
+			description: "Port valid, Namespace set, Subsystem empty. Don't expect error",
 			prometheusConfig: &PrometheusMetrics{
 				Port:      8080,
 				Namespace: "prebid",
@@ -718,7 +718,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 			},
 		},
 		{
-			description: "Port valid, Namespace valid, Subsystem valid. Expect elements in log",
+			description: "Port valid, both Namespace and Subsystem set. Expect elements in log",
 			prometheusConfig: &PrometheusMetrics{
 				Port:      8080,
 				Namespace: "prebid",
@@ -732,6 +732,29 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 				},
 				{
 					msg: "config.metrics.prometheus.subsystem: cache",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.port: 8080",
+					lvl: logrus.InfoLevel,
+				},
+			},
+		},
+		{
+			description: "Port valid, Namespace and Subsystem empty. Expect log messages with blank Namespace and Subsystem",
+			prometheusConfig: &PrometheusMetrics{
+				Port:      8080,
+				Namespace: "",
+				Subsystem: "",
+			},
+			expectError: false,
+			expectedLogInfo: []logComponents{
+				{
+					msg: "config.metrics.prometheus.namespace: ",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.subsystem: ",
 					lvl: logrus.InfoLevel,
 				},
 				{
