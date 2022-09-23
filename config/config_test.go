@@ -672,7 +672,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 			},
 		},
 		{
-			description: "Port valid, Namespace empty, Subsystem not set. Don't expect error",
+			description: "Port valid, Namespace empty, Subsystem set. Don't expect error",
 			prometheusConfig: &PrometheusMetrics{
 				Port:      8080,
 				Namespace: "",
