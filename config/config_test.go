@@ -645,13 +645,12 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 	}
 	testCases := []aTest{
 		{
-			description: "[1] Port invalid, Namespace valid, Subsystem valid. Expect error",
+			description: "Port invalid, both Namespace and Subsystem were set. Expect error",
 			prometheusConfig: &PrometheusMetrics{
 				Port:      0,
 				Namespace: "prebid",
 				Subsystem: "cache",
 			},
-			//out
 			expectError: true,
 			expectedLogInfo: []logComponents{
 				{
@@ -673,19 +672,14 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 			},
 		},
 		{
-			description: "[2] Port valid, Namespace invalid, Subsystem valid. Expect error",
+			description: "Port valid, Namespace empty, Subsystem set. Don't expect error",
 			prometheusConfig: &PrometheusMetrics{
 				Port:      8080,
 				Namespace: "",
 				Subsystem: "cache",
 			},
-			//out
-			expectError: true,
+			expectError: false,
 			expectedLogInfo: []logComponents{
-				{
-					msg: `Despite being enabled, prometheus metrics came with an empty name space: config.metrics.prometheus.namespace = .`,
-					lvl: logrus.FatalLevel,
-				},
 				{
 					msg: "config.metrics.prometheus.namespace: ",
 					lvl: logrus.InfoLevel,
@@ -701,19 +695,14 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 			},
 		},
 		{
-			description: "[3] Port valid, Namespace valid, Subsystem invalid. Expect error",
+			description: "Port valid, Namespace set, Subsystem empty. Don't expect error",
 			prometheusConfig: &PrometheusMetrics{
 				Port:      8080,
 				Namespace: "prebid",
 				Subsystem: "",
 			},
-			//out
-			expectError: true,
+			expectError: false,
 			expectedLogInfo: []logComponents{
-				{
-					msg: `Despite being enabled, prometheus metrics came with an empty subsystem value: config.metrics.prometheus.subsystem = \"\".`,
-					lvl: logrus.FatalLevel,
-				},
 				{
 					msg: "config.metrics.prometheus.namespace: prebid",
 					lvl: logrus.InfoLevel,
@@ -729,13 +718,12 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 			},
 		},
 		{
-			description: "[4] Port valid, Namespace valid, Subsystem valid. Expect elements in log",
+			description: "Port valid, both Namespace and Subsystem set. Expect elements in log",
 			prometheusConfig: &PrometheusMetrics{
 				Port:      8080,
 				Namespace: "prebid",
 				Subsystem: "cache",
 			},
-			//out
 			expectError: false,
 			expectedLogInfo: []logComponents{
 				{
@@ -744,6 +732,29 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 				},
 				{
 					msg: "config.metrics.prometheus.subsystem: cache",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.port: 8080",
+					lvl: logrus.InfoLevel,
+				},
+			},
+		},
+		{
+			description: "Port valid, Namespace and Subsystem empty. Expect log messages with blank Namespace and Subsystem",
+			prometheusConfig: &PrometheusMetrics{
+				Port:      8080,
+				Namespace: "",
+				Subsystem: "",
+			},
+			expectError: false,
+			expectedLogInfo: []logComponents{
+				{
+					msg: "config.metrics.prometheus.namespace: ",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "config.metrics.prometheus.subsystem: ",
 					lvl: logrus.InfoLevel,
 				},
 				{
@@ -762,7 +773,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
 
-	for j, tc := range testCases {
+	for _, tc := range testCases {
 		// Reset the fatal flag to false every test
 		fatal = false
 
@@ -770,10 +781,10 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 		tc.prometheusConfig.validateAndLog()
 
 		// Assert logrus expected entries
-		if assert.Equal(t, len(tc.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %d: len(tc.expectedLogInfo) = %d len(hook.Entries) = %d", j, len(tc.expectedLogInfo), len(hook.Entries)) {
+		if assert.Equal(t, len(tc.expectedLogInfo), len(hook.Entries), "Incorrect number of entries were logged to logrus in test %s.", tc.description) {
 			for i := 0; i < len(tc.expectedLogInfo); i++ {
 				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message)
-				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Expected Info entry in log")
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, "Expected Info entry in log. Test %s.", tc.description)
 			}
 		} else {
 			return
