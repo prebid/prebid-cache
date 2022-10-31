@@ -74,14 +74,17 @@ func (cfg *Aerospike) validateAndLog() error {
 	log.Infof("config.backend.aerospike.user: %s", cfg.User)
 
 	if cfg.MaxReadRetries < 2 {
-		log.Infof("config.backend.aerospike.max_read_retries: %d. Values less than two will default to two", cfg.MaxReadRetries)
+		log.Infof("config.backend.aerospike.max_read_retries value will default to 2")
 		cfg.MaxReadRetries = 2
+	} else if cfg.MaxReadRetries > 2 {
+		log.Infof("config.backend.aerospike.max_read_retries: %d.", cfg.MaxReadRetries)
 	}
+
 	if cfg.MaxWriteRetries < 0 {
-		log.Infof("config.backend.aerospike.max_write_retries: %d. Value cannot be negative and will default to 0", cfg.MaxWriteRetries)
+		log.Infof("config.backend.aerospike.max_write_retries value cannot be negative and will default to 0")
 		cfg.MaxWriteRetries = 0
 	} else if cfg.MaxWriteRetries > 0 {
-		log.Warnf("config.backend.aerospike.max_write_retries: %d. Database writes that are not idempotent may be performed multiple times when retried", cfg.MaxWriteRetries)
+		log.Infof("config.backend.aerospike.max_write_retries: %d.", cfg.MaxWriteRetries)
 	}
 
 	return nil

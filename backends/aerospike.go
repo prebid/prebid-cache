@@ -83,9 +83,8 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 	}
 
 	// client.DefaultWritePolicy.MaxRetries determines the maximum number of retries for write before aborting
-	// a transaction. Writes may not be idempotent. Database writes that are not idempotent (such as AddOp)
-	// should not be retried because the write operation may be performed multiple times if the client timed
-	// out previous transaction attempts. We do not allow retries on writes by default.
+	// a transaction. Prebid Cache uses the Aerospike backend to do CREATE_ONLY writes, which are idempotent so
+	// it's safe to increase the maximum value of write retries.
 	// Default for write: 0 (no retries)
 	if cfg.MaxWriteRetries > 0 {
 		client.DefaultWritePolicy.MaxRetries = cfg.MaxWriteRetries
