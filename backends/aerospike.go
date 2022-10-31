@@ -76,6 +76,21 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 	}
 	log.Infof("Connected to Aerospike host(s) %v on port %d", append(cfg.Hosts, cfg.Host), cfg.Port)
 
+	// client.DefaultPolicy.MaxRetries determines the maximum number of retries before aborting a transaction.
+	// Default for read: 2 (initial attempt + 2 retries = 3 attempts)
+	if cfg.MaxReadRetries > 2 {
+		client.DefaultPolicy.MaxRetries = cfg.MaxReadRetries
+	}
+
+	// client.DefaultWritePolicy.MaxRetries determines the maximum number of retries for write before aborting
+	// a transaction. Writes may not be idempotent. Database writes that are not idempotent (such as AddOp)
+	// should not be retried because the write operation may be performed multiple times if the client timed
+	// out previous transaction attempts. We do not allow retries on writes by default.
+	// Default for write: 0 (no retries)
+	if cfg.MaxWriteRetries > 0 {
+		client.DefaultWritePolicy.MaxRetries = cfg.MaxWriteRetries
+	}
+
 	return &AerospikeBackend{
 		namespace: cfg.Namespace,
 		client:    &AerospikeDBClient{client},

@@ -45,13 +45,15 @@ const (
 )
 
 type Aerospike struct {
-	DefaultTTL int      `mapstructure:"default_ttl_seconds"`
-	Host       string   `mapstructure:"host"`
-	Hosts      []string `mapstructure:"hosts"`
-	Port       int      `mapstructure:"port"`
-	Namespace  string   `mapstructure:"namespace"`
-	User       string   `mapstructure:"user"`
-	Password   string   `mapstructure:"password"`
+	DefaultTTL      int      `mapstructure:"default_ttl_seconds"`
+	Host            string   `mapstructure:"host"`
+	Hosts           []string `mapstructure:"hosts"`
+	Port            int      `mapstructure:"port"`
+	Namespace       string   `mapstructure:"namespace"`
+	User            string   `mapstructure:"user"`
+	Password        string   `mapstructure:"password"`
+	MaxReadRetries  int      `mapstructure:"max_read_retries"`
+	MaxWriteRetries int      `mapstructure:"max_write_retries"`
 }
 
 func (cfg *Aerospike) validateAndLog() error {
@@ -70,6 +72,17 @@ func (cfg *Aerospike) validateAndLog() error {
 	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
 	log.Infof("config.backend.aerospike.namespace: %s", cfg.Namespace)
 	log.Infof("config.backend.aerospike.user: %s", cfg.User)
+
+	if cfg.MaxReadRetries < 2 {
+		log.Infof("config.backend.aerospike.max_read_retries: %d. Values less than two will default to two", cfg.MaxReadRetries)
+		cfg.MaxReadRetries = 2
+	}
+	if cfg.MaxWriteRetries < 0 {
+		log.Infof("config.backend.aerospike.max_write_retries: %d. Value cannot be negative and will default to 0", cfg.MaxWriteRetries)
+		cfg.MaxWriteRetries = 0
+	} else if cfg.MaxWriteRetries > 0 {
+		log.Warnf("config.backend.aerospike.max_write_retries: %d. Database writes that are not idempotent may be performed multiple times when retried", cfg.MaxWriteRetries)
+	}
 
 	return nil
 }
