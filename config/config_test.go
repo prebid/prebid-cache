@@ -1195,7 +1195,8 @@ func getExpectedDefaultConfig() Configuration {
 				Hosts: []string{},
 			},
 			Aerospike: Aerospike{
-				Hosts: []string{},
+				Hosts:          []string{},
+				MaxReadRetries: 2,
 			},
 			Cassandra: Cassandra{
 				DefaultTTL: utils.CASSANDRA_DEFAULT_TTL_SECONDS,
@@ -1244,13 +1245,14 @@ func getExpectedFullConfigForTestFile() Configuration {
 		Backend: Backend{
 			Type: BackendMemory,
 			Aerospike: Aerospike{
-				DefaultTTL: 3600,
-				Host:       "aerospike.prebid.com",
-				Hosts:      []string{"aerospike2.prebid.com", "aerospike3.prebid.com"},
-				Port:       3000,
-				Namespace:  "whatever",
-				User:       "foo",
-				Password:   "bar",
+				DefaultTTL:     3600,
+				Host:           "aerospike.prebid.com",
+				Hosts:          []string{"aerospike2.prebid.com", "aerospike3.prebid.com"},
+				Port:           3000,
+				Namespace:      "whatever",
+				User:           "foo",
+				Password:       "bar",
+				MaxReadRetries: 2,
 			},
 			Cassandra: Cassandra{
 				Hosts:      "127.0.0.1",
