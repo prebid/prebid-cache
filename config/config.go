@@ -55,6 +55,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("backend.aerospike.default_ttl_seconds", 0)
 	v.SetDefault("backend.aerospike.max_read_retries", 2)
 	v.SetDefault("backend.aerospike.max_write_retries", 0)
+	v.SetDefault("backend.aerospike.connection_idle_timeout", 0)
 	v.SetDefault("backend.cassandra.hosts", "")
 	v.SetDefault("backend.cassandra.keyspace", "")
 	v.SetDefault("backend.cassandra.default_ttl_seconds", utils.CASSANDRA_DEFAULT_TTL_SECONDS)

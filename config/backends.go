@@ -45,15 +45,16 @@ const (
 )
 
 type Aerospike struct {
-	DefaultTTL      int      `mapstructure:"default_ttl_seconds"`
-	Host            string   `mapstructure:"host"`
-	Hosts           []string `mapstructure:"hosts"`
-	Port            int      `mapstructure:"port"`
-	Namespace       string   `mapstructure:"namespace"`
-	User            string   `mapstructure:"user"`
-	Password        string   `mapstructure:"password"`
-	MaxReadRetries  int      `mapstructure:"max_read_retries"`
-	MaxWriteRetries int      `mapstructure:"max_write_retries"`
+	DefaultTTL            int      `mapstructure:"default_ttl_seconds"`
+	Host                  string   `mapstructure:"host"`
+	Hosts                 []string `mapstructure:"hosts"`
+	Port                  int      `mapstructure:"port"`
+	Namespace             string   `mapstructure:"namespace"`
+	User                  string   `mapstructure:"user"`
+	Password              string   `mapstructure:"password"`
+	MaxReadRetries        int      `mapstructure:"max_read_retries"`
+	MaxWriteRetries       int      `mapstructure:"max_write_retries"`
+	ConnectionIdleTimeout int      `mapstructure:"connection_idle_timeout"`
 }
 
 func (cfg *Aerospike) validateAndLog() error {
@@ -64,14 +65,20 @@ func (cfg *Aerospike) validateAndLog() error {
 	if cfg.Port <= 0 {
 		return fmt.Errorf("Cannot connect to Aerospike host at port %d", cfg.Port)
 	}
-	if cfg.DefaultTTL > 0 {
-		log.Infof("config.backend.aerospike.default_ttl_seconds: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.DefaultTTL)
-	}
+
 	log.Infof("config.backend.aerospike.host: %s", cfg.Host)
 	log.Infof("config.backend.aerospike.hosts: %v", cfg.Hosts)
 	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
 	log.Infof("config.backend.aerospike.namespace: %s", cfg.Namespace)
 	log.Infof("config.backend.aerospike.user: %s", cfg.User)
+
+	if cfg.DefaultTTL > 0 {
+		log.Infof("config.backend.aerospike.default_ttl_seconds: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.DefaultTTL)
+	}
+
+	if cfg.ConnectionIdleTimeout > 0 {
+		log.Infof("config.backend.aerospike.connection_idle_timeout: %d. Will substitute Aerospike's default 55 seconds.", cfg.ConnectionIdleTimeout)
+	}
 
 	if cfg.MaxReadRetries < 2 {
 		log.Infof("config.backend.aerospike.max_read_retries value will default to 2")

@@ -3,6 +3,7 @@ package backends
 import (
 	"context"
 	"errors"
+	"time"
 
 	as "github.com/aerospike/aerospike-client-go/v6"
 	as_types "github.com/aerospike/aerospike-client-go/v6/types"
@@ -60,6 +61,12 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 	// string and be ignored
 	clientPolicy.User = cfg.User
 	clientPolicy.Password = cfg.Password
+
+	// Aerospike's connection idle deadline default is 55 seconds. If greater than zero, this
+	// value will override
+	if cfg.ConnectionIdleTimeout > 0 {
+		clientPolicy.IdleTimeout = time.Duration(cfg.ConnectionIdleTimeout) * time.Second
+	}
 
 	if len(cfg.Host) > 1 {
 		hosts = append(hosts, as.NewHost(cfg.Host, cfg.Port))
