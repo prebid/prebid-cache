@@ -45,16 +45,21 @@ const (
 )
 
 type Aerospike struct {
-	DefaultTTL            int      `mapstructure:"default_ttl_seconds"`
-	Host                  string   `mapstructure:"host"`
-	Hosts                 []string `mapstructure:"hosts"`
-	Port                  int      `mapstructure:"port"`
-	Namespace             string   `mapstructure:"namespace"`
-	User                  string   `mapstructure:"user"`
-	Password              string   `mapstructure:"password"`
-	MaxReadRetries        int      `mapstructure:"max_read_retries"`
-	MaxWriteRetries       int      `mapstructure:"max_write_retries"`
-	ConnectionIdleTimeout int      `mapstructure:"connection_idle_timeout"`
+	DefaultTTL      int      `mapstructure:"default_ttl_seconds"`
+	Host            string   `mapstructure:"host"`
+	Hosts           []string `mapstructure:"hosts"`
+	Port            int      `mapstructure:"port"`
+	Namespace       string   `mapstructure:"namespace"`
+	User            string   `mapstructure:"user"`
+	Password        string   `mapstructure:"password"`
+	MaxReadRetries  int      `mapstructure:"max_read_retries"`
+	MaxWriteRetries int      `mapstructure:"max_write_retries"`
+	// Please set this to a value lower than the `proto-fd-idle-ms` (converted
+	// to seconds) value set in your Aerospike Server. This is to avoid having
+	// race conditions where the server closes the connection but the client still
+	// tries to use it. If set to a value less than or equal to 0, Aerospike
+	// Client's default value will be used which is 55 seconds.
+	ConnectionIdleTimeout int `mapstructure:"connection_idle_timeout_seconds"`
 }
 
 func (cfg *Aerospike) validateAndLog() error {
@@ -77,7 +82,7 @@ func (cfg *Aerospike) validateAndLog() error {
 	}
 
 	if cfg.ConnectionIdleTimeout > 0 {
-		log.Infof("config.backend.aerospike.connection_idle_timeout: %d. Will substitute Aerospike's default 55 seconds.", cfg.ConnectionIdleTimeout)
+		log.Infof("config.backend.aerospike.connection_idle_timeout_seconds: %d.", cfg.ConnectionIdleTimeout)
 	}
 
 	if cfg.MaxReadRetries < 2 {

@@ -187,7 +187,7 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 					},
 				},
 				{
-					desc: "aerospike.connection_idle_timeout value found in config",
+					desc: "aerospike.connection_idle_timeout_seconds value found in config",
 					inCfg: Aerospike{
 						Host:                  "foo.com",
 						Port:                  8888,
@@ -200,7 +200,7 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.port: 8888", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.namespace: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
-						{msg: "config.backend.aerospike.connection_idle_timeout: 1. Will substitute Aerospike's default 55 seconds.", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_idle_timeout_seconds: 1.", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_read_retries value will default to 2", lvl: logrus.InfoLevel},
 					},
 				},
