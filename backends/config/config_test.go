@@ -233,7 +233,7 @@ func TestGetMaxTTLSeconds(t *testing.T) {
 						Backend: config.Backend{
 							Type: config.BackendAerospike,
 							Aerospike: config.Aerospike{
-								DefaultTTL: 0,
+								DefaultTTLSecs: 0,
 							},
 						},
 						RequestLimits: config.RequestLimits{
@@ -248,7 +248,7 @@ func TestGetMaxTTLSeconds(t *testing.T) {
 						Backend: config.Backend{
 							Type: config.BackendAerospike,
 							Aerospike: config.Aerospike{
-								DefaultTTL: 100,
+								DefaultTTLSecs: 100,
 							},
 						},
 						RequestLimits: config.RequestLimits{
@@ -263,7 +263,7 @@ func TestGetMaxTTLSeconds(t *testing.T) {
 						Backend: config.Backend{
 							Type: config.BackendAerospike,
 							Aerospike: config.Aerospike{
-								DefaultTTL: 1,
+								DefaultTTLSecs: 1,
 							},
 						},
 						RequestLimits: config.RequestLimits{

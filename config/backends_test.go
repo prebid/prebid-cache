@@ -100,10 +100,10 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 				{
 					desc: "both aerospike.host, aerospike.hosts and aerospike.default_ttl_seconds set",
 					inCfg: Aerospike{
-						Host:       "foo.com",
-						Hosts:      []string{"foo.com", "bat.com"},
-						Port:       8888,
-						DefaultTTL: 3600,
+						Host:           "foo.com",
+						Hosts:          []string{"foo.com", "bat.com"},
+						Port:           8888,
+						DefaultTTLSecs: 3600,
 					},
 					hasError: false,
 					logEntries: []logComponents{
@@ -189,9 +189,9 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 				{
 					desc: "aerospike.connection_idle_timeout_seconds value found in config",
 					inCfg: Aerospike{
-						Host:                  "foo.com",
-						Port:                  8888,
-						ConnectionIdleTimeout: 1,
+						Host:                "foo.com",
+						Port:                8888,
+						ConnIdleTimeoutSecs: 1,
 					},
 					hasError: false,
 					logEntries: []logComponents{

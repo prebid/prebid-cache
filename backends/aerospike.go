@@ -64,8 +64,8 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 
 	// Aerospike's connection idle deadline default is 55 seconds. If greater than zero, this
 	// value will override
-	if cfg.ConnectionIdleTimeout > 0 {
-		clientPolicy.IdleTimeout = time.Duration(cfg.ConnectionIdleTimeout) * time.Second
+	if cfg.ConnIdleTimeoutSecs > 0 {
+		clientPolicy.IdleTimeout = time.Duration(cfg.ConnIdleTimeoutSecs) * time.Second
 	}
 
 	if len(cfg.Host) > 1 {
