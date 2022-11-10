@@ -45,7 +45,7 @@ const (
 )
 
 type Aerospike struct {
-	DefaultTTL      int      `mapstructure:"default_ttl_seconds"`
+	DefaultTTLSecs  int      `mapstructure:"default_ttl_seconds"`
 	Host            string   `mapstructure:"host"`
 	Hosts           []string `mapstructure:"hosts"`
 	Port            int      `mapstructure:"port"`
@@ -54,6 +54,12 @@ type Aerospike struct {
 	Password        string   `mapstructure:"password"`
 	MaxReadRetries  int      `mapstructure:"max_read_retries"`
 	MaxWriteRetries int      `mapstructure:"max_write_retries"`
+	// Please set this to a value lower than the `proto-fd-idle-ms` (converted
+	// to seconds) value set in your Aerospike Server. This is to avoid having
+	// race conditions where the server closes the connection but the client still
+	// tries to use it. If set to a value less than or equal to 0, Aerospike
+	// Client's default value will be used which is 55 seconds.
+	ConnIdleTimeoutSecs int `mapstructure:"connection_idle_timeout_seconds"`
 }
 
 func (cfg *Aerospike) validateAndLog() error {
@@ -64,14 +70,20 @@ func (cfg *Aerospike) validateAndLog() error {
 	if cfg.Port <= 0 {
 		return fmt.Errorf("Cannot connect to Aerospike host at port %d", cfg.Port)
 	}
-	if cfg.DefaultTTL > 0 {
-		log.Infof("config.backend.aerospike.default_ttl_seconds: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.DefaultTTL)
-	}
+
 	log.Infof("config.backend.aerospike.host: %s", cfg.Host)
 	log.Infof("config.backend.aerospike.hosts: %v", cfg.Hosts)
 	log.Infof("config.backend.aerospike.port: %d", cfg.Port)
 	log.Infof("config.backend.aerospike.namespace: %s", cfg.Namespace)
 	log.Infof("config.backend.aerospike.user: %s", cfg.User)
+
+	if cfg.DefaultTTLSecs > 0 {
+		log.Infof("config.backend.aerospike.default_ttl_seconds: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.DefaultTTLSecs)
+	}
+
+	if cfg.ConnIdleTimeoutSecs > 0 {
+		log.Infof("config.backend.aerospike.connection_idle_timeout_seconds: %d.", cfg.ConnIdleTimeoutSecs)
+	}
 
 	if cfg.MaxReadRetries < 2 {
 		log.Infof("config.backend.aerospike.max_read_retries value will default to 2")
