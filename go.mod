@@ -3,7 +3,7 @@ module github.com/prebid/prebid-cache
 go 1.16
 
 require (
-	github.com/aerospike/aerospike-client-go/v6 v6.2.1
+	github.com/aerospike/aerospike-client-go/v6 v6.7.0
 	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-redis/redis/v8 v8.11.5
