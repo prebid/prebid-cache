@@ -44,6 +44,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("port", 2424)
 	v.SetDefault("admin_port", 2525)
 	v.SetDefault("index_response", "This application stores short-term data for use in Prebid.")
+	v.SetDefault("status_response", "")
 	v.SetDefault("log.level", "info")
 	v.SetDefault("backend.type", "memory")
 	v.SetDefault("backend.aerospike.host", "")
@@ -103,16 +104,17 @@ func setEnvVarsLookup(v *viper.Viper) {
 }
 
 type Configuration struct {
-	Port          int           `mapstructure:"port"`
-	AdminPort     int           `mapstructure:"admin_port"`
-	IndexResponse string        `mapstructure:"index_response"`
-	Log           Log           `mapstructure:"log"`
-	RateLimiting  RateLimiting  `mapstructure:"rate_limiter"`
-	RequestLimits RequestLimits `mapstructure:"request_limits"`
-	Backend       Backend       `mapstructure:"backend"`
-	Compression   Compression   `mapstructure:"compression"`
-	Metrics       Metrics       `mapstructure:"metrics"`
-	Routes        Routes        `mapstructure:"routes"`
+	Port           int           `mapstructure:"port"`
+	AdminPort      int           `mapstructure:"admin_port"`
+	IndexResponse  string        `mapstructure:"index_response"`
+	Log            Log           `mapstructure:"log"`
+	RateLimiting   RateLimiting  `mapstructure:"rate_limiter"`
+	RequestLimits  RequestLimits `mapstructure:"request_limits"`
+	StatusResponse string        `mapstructure:"status_response"`
+	Backend        Backend       `mapstructure:"backend"`
+	Compression    Compression   `mapstructure:"compression"`
+	Metrics        Metrics       `mapstructure:"metrics"`
+	Routes         Routes        `mapstructure:"routes"`
 }
 
 // ValidateAndLog validates the config, terminating the program on any errors.
