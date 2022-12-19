@@ -107,6 +107,7 @@ func (e *PutHandler) parseRequest(r *http.Request) (*putRequest, error) {
 //   - XML content gets unmarshaled in order to un-escape it and then gets
 //     prepended by its type
 //   - JSON content gets prepended by its type
+//
 // No other formats are supported.
 func parsePutObject(p putObject) (string, error) {
 	var toCache string

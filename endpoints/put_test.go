@@ -263,18 +263,44 @@ func assertLogEntries(t *testing.T, expectedLogEntries []logEntry, actualLogEntr
 // TestStatusEndpointReadiness asserts the http://<prebid-cache-host>/status endpoint
 // is responds as expected.
 func TestStatusEndpointReadiness(t *testing.T) {
-	// Set up
-	requestRecorder := httptest.NewRecorder()
+	type testCase struct {
+		description      string
+		handler          httprouter.Handle
+		expectedRespCode int
+		expectedRespBody *bytes.Buffer
+	}
 
-	router := httprouter.New()
-	router.GET("/status", Status)
-	req, _ := http.NewRequest("GET", "/status", new(bytes.Buffer))
+	testCases := []testCase{
+		{
+			description:      "Empty response",
+			handler:          NewStatusEndpoint(""),
+			expectedRespCode: http.StatusNoContent,
+			expectedRespBody: bytes.NewBuffer(nil),
+		},
+		{
+			description:      "string response",
+			handler:          NewStatusEndpoint("ready"),
+			expectedRespCode: http.StatusOK,
+			expectedRespBody: bytes.NewBuffer([]byte("ready")),
+		},
+		{
+			description:      "JSON string response",
+			handler:          NewStatusEndpoint(`{"status": "ok"}`),
+			expectedRespCode: http.StatusOK,
+			expectedRespBody: bytes.NewBuffer([]byte(`{"status": "ok"}`)),
+		},
+	}
 
-	// Run
-	router.ServeHTTP(requestRecorder, req)
+	for _, tc := range testCases {
+		router := httprouter.New()
+		requestRecorder := httptest.NewRecorder()
+		router.GET("/status", tc.handler)
+		req, _ := http.NewRequest("GET", "/status", new(bytes.Buffer))
+		router.ServeHTTP(requestRecorder, req)
+		assert.Equal(t, tc.expectedRespCode, requestRecorder.Code, "/status endpoint returned unexpected response", tc.description)
+		assert.Equal(t, tc.expectedRespBody, requestRecorder.Body, "/status reqturned unexpected response body", tc.description)
+	}
 
-	// Assert
-	assert.Equal(t, http.StatusNoContent, requestRecorder.Code, "/status endpoint should always return a 204. Got %d", requestRecorder.Code)
 }
 
 // TestSuccessfulPut asserts the *PuntHandler.handle() function both successfully
