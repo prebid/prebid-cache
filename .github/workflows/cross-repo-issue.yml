@@ -19,6 +19,6 @@ jobs:
              -H "Content-Type: text/plain; charset=utf-8" \
              -d $'{
                "title": "New PR in PBC-Go: ${{ github.event.pull_request.title }}",
-               "body": "A PR was merged over on test 1\\n\\n- [https://github.com/prebid/prebid-cache/pull/${{github.event.number}}](https://github.com/prebid/prebid-cache/pull/${{github.event.number}})\\n- timestamp: ${{ github.event.pull_request.merged_at}}",
+               "body": "A PR was merged over in PBC-Go\\n\\n- [https://github.com/prebid/prebid-cache/pull/${{github.event.number}}](https://github.com/prebid/prebid-cache/pull/${{github.event.number}})\\n- timestamp: ${{ github.event.pull_request.merged_at}}",
                "labels": [ "auto" ]
             }'
