@@ -1,0 +1,24 @@
+name: Cross-repo Issue Creation
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - "main"
+
+jobs:
+  cross-repo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: create issue in other repo
+        if: "!contains(github.event.pull_request.labels.*.name, 'do not port') && github.event.pull_request.merged"
+        run: |
+          curl -X "POST" "https://api.github.com/repos/prebid/prebid-cache-java/issues?state=all" \
+             -H "Cookie: logged_in=no" \
+             -u ${{ secrets.CROSSREPO_TOKEN }} \
+             -H "Content-Type: text/plain; charset=utf-8" \
+             -d $'{
+               "title": "New PR in PBC-Go: ${{ github.event.pull_request.title }}",
+               "body": "A PR was merged over on test 1\\n\\n- [https://github.com/prebid/prebid-cache/pull/${{github.event.number}}](https://github.com/prebid/prebid-cache/pull/${{github.event.number}})\\n- timestamp: ${{ github.event.pull_request.merged_at}}",
+               "labels": [ "auto" ]
+            }'
