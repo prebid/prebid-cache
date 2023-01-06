@@ -44,6 +44,7 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.namespace: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_read_retries value will default to 2", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
 					},
 				},
 				{
@@ -62,6 +63,7 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.namespace: prebid", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.user: prebid-user", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_read_retries value will default to 2", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
 					},
 				},
 				{
@@ -78,6 +80,7 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.namespace: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_read_retries value will default to 2", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
 					},
 				},
 				{
@@ -95,6 +98,7 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.namespace: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_read_retries value will default to 2", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
 					},
 				},
 				{
@@ -114,6 +118,7 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.default_ttl_seconds: 3600. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_read_retries value will default to 2", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
 					},
 				},
 				{
@@ -131,6 +136,7 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.namespace: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_read_retries value will default to 2", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
 					},
 				},
 				{
@@ -148,10 +154,11 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.namespace: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_read_retries: 3.", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
 					},
 				},
 				{
-					desc: "aerospike.max_write_retries invalid value. Default to 2 retries",
+					desc: "aerospike.max_write_retries invalid value. Default to 0 retries",
 					inCfg: Aerospike{
 						Host:            "foo.com",
 						Port:            8888,
@@ -166,6 +173,7 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.namespace: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_write_retries value cannot be negative and will default to 0", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
 					},
 				},
 				{
@@ -184,6 +192,7 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.namespace: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_write_retries: 1.", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
 					},
 				},
 				{
@@ -202,6 +211,43 @@ func TestAerospikeValidateAndLog(t *testing.T) {
 						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.connection_idle_timeout_seconds: 1.", lvl: logrus.InfoLevel},
 						{msg: "config.backend.aerospike.max_read_retries value will default to 2", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
+					},
+				},
+				{
+					desc: "config.backend.aerospike.connection_queue_size invalid value found in config",
+					inCfg: Aerospike{
+						Host:          "foo.com",
+						Port:          8888,
+						ConnQueueSize: -1,
+					},
+					hasError: false,
+					logEntries: []logComponents{
+						{msg: "config.backend.aerospike.host: foo.com", lvl: logrus.InfoLevel},
+						{msg: fmt.Sprintf("config.backend.aerospike.hosts: %v", []string{}), lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.port: 8888", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.namespace: ", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.max_read_retries value will default to 2", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size value will default to 256", lvl: logrus.InfoLevel},
+					},
+				},
+				{
+					desc: "config.backend.aerospike.connection_queue_size valid value found in config",
+					inCfg: Aerospike{
+						Host:          "foo.com",
+						Port:          8888,
+						ConnQueueSize: 64,
+					},
+					hasError: false,
+					logEntries: []logComponents{
+						{msg: "config.backend.aerospike.host: foo.com", lvl: logrus.InfoLevel},
+						{msg: fmt.Sprintf("config.backend.aerospike.hosts: %v", []string{}), lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.port: 8888", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.namespace: ", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.user: ", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.max_read_retries value will default to 2", lvl: logrus.InfoLevel},
+						{msg: "config.backend.aerospike.connection_queue_size: 64", lvl: logrus.InfoLevel},
 					},
 				},
 			},
