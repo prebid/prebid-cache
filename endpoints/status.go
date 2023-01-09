@@ -6,9 +6,17 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// Status is the handler function of the "/status" endpoint
-func Status(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// We might want more logic here eventually... but for now, we're ok to serve more traffic as
-	// long as the server responds.
-	w.WriteHeader(http.StatusNoContent)
+// NewStatusEndpoint returns a handler which writes the given response when the app is ready to serve requests.
+func NewStatusEndpoint(response string) httprouter.Handle {
+	// Today, the app always considers itself ready to serve requests.
+	if response == "" {
+		return func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+			w.WriteHeader(http.StatusNoContent)
+		}
+	}
+
+	responseBytes := []byte(response)
+	return func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+		w.Write(responseBytes)
+	}
 }
