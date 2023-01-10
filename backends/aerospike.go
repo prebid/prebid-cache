@@ -68,7 +68,8 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 		clientPolicy.IdleTimeout = time.Duration(cfg.ConnIdleTimeoutSecs) * time.Second
 	}
 
-	// If set, specify the size of the Connection Queue cache per node.
+	// Aerospike's default connection queue size per node is 256.
+	// If cfg.ConnQueueSize is greater than zero, it will override the default.
 	if cfg.ConnQueueSize > 0 {
 		clientPolicy.ConnectionQueueSize = cfg.ConnQueueSize
 	}
