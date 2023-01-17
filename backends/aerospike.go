@@ -68,6 +68,12 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 		clientPolicy.IdleTimeout = time.Duration(cfg.ConnIdleTimeoutSecs) * time.Second
 	}
 
+	// Aerospike's default connection queue size per node is 256.
+	// If cfg.ConnQueueSize is greater than zero, it will override the default.
+	if cfg.ConnQueueSize > 0 {
+		clientPolicy.ConnectionQueueSize = cfg.ConnQueueSize
+	}
+
 	if len(cfg.Host) > 1 {
 		hosts = append(hosts, as.NewHost(cfg.Host, cfg.Port))
 		log.Info("config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts")

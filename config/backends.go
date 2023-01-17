@@ -60,6 +60,8 @@ type Aerospike struct {
 	// tries to use it. If set to a value less than or equal to 0, Aerospike
 	// Client's default value will be used which is 55 seconds.
 	ConnIdleTimeoutSecs int `mapstructure:"connection_idle_timeout_seconds"`
+	// Specifies the size of the connection queue per node.
+	ConnQueueSize int `mapstructure:"connection_queue_size"`
 }
 
 func (cfg *Aerospike) validateAndLog() error {
@@ -97,6 +99,12 @@ func (cfg *Aerospike) validateAndLog() error {
 		cfg.MaxWriteRetries = 0
 	} else if cfg.MaxWriteRetries > 0 {
 		log.Infof("config.backend.aerospike.max_write_retries: %d.", cfg.MaxWriteRetries)
+	}
+
+	if cfg.ConnQueueSize > 0 {
+		log.Infof("config.backend.aerospike.connection_queue_size: %d", cfg.ConnQueueSize)
+	} else {
+		log.Infof("config.backend.aerospike.connection_queue_size value will default to 256")
 	}
 
 	return nil
