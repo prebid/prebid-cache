@@ -16,6 +16,12 @@ import (
 
 func NewBackend(cfg config.Configuration, appMetrics *metrics.Metrics) backends.Backend {
 	backend := newBaseBackend(cfg.Backend, appMetrics)
+	backend = DecorateBackend(cfg, appMetrics, backend)
+
+	return backend
+}
+
+func DecorateBackend(cfg config.Configuration, appMetrics *metrics.Metrics, backend backends.Backend) backends.Backend {
 	backend = applyCompression(cfg.Compression, backend)
 	if cfg.RequestLimits.MaxSize > 0 {
 		backend = decorators.EnforceSizeLimit(backend, cfg.RequestLimits.MaxSize)
@@ -25,6 +31,7 @@ func NewBackend(cfg config.Configuration, appMetrics *metrics.Metrics) backends.
 	// We should re-work this strategy at some point.
 	backend = decorators.LogMetrics(backend, appMetrics)
 	backend = decorators.LimitTTLs(backend, getMaxTTLSeconds(cfg))
+
 	return backend
 }
 
