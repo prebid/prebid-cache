@@ -89,6 +89,13 @@ func TestPutJsonTests(t *testing.T) {
 				"sample-requests/put-endpoint/custom-keys/not-allowed/key-field-included.json",
 			},
 		},
+		{
+			desc:        "Overwrite test, lets find out where to put it",
+			expectError: false,
+			tests: []string{
+				"sample-requests/put-endpoint/valid-whole/cant-overwrite.json",
+			},
+		},
 	}
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
@@ -123,7 +130,15 @@ func TestPutJsonTests(t *testing.T) {
 				},
 			}
 
-			backend := backendConfig.NewBackend(cfg, m)
+			var backend backends.Backend
+
+			if len(testInfo.ServerConfig.StoredData) > 0 {
+				backend = newMemoryBackendWithValues(testInfo.ServerConfig.StoredData)
+				backend = backendConfig.DecorateBackend(cfg, m, backend)
+			} else {
+				backend = backendConfig.NewBackend(cfg, m)
+			}
+
 			router := httprouter.New()
 			router.POST("/cache", NewPutHandler(backend, m, testInfo.ServerConfig.MaxNumValues, testInfo.ServerConfig.AllowSettingKeys))
 			request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(testInfo.PutRequest)))
@@ -209,10 +224,11 @@ type logEntry struct {
 }
 
 type testConfig struct {
-	AllowSettingKeys bool `json:"allow_setting_keys"`
-	MaxSizeBytes     int  `json:"max_size_bytes"`
-	MaxNumValues     int  `json:"max_num_values"`
-	MaxTTLSeconds    int  `json:"max_ttl_seconds"`
+	AllowSettingKeys bool        `json:"allow_setting_keys"`
+	MaxSizeBytes     int         `json:"max_size_bytes"`
+	MaxNumValues     int         `json:"max_num_values"`
+	MaxTTLSeconds    int         `json:"max_ttl_seconds"`
+	StoredData       []putObject `json:"stored_data_on_backend"`
 }
 
 // Remove this function in the future and make it part of the mock metrics to self-assert if possible.
@@ -691,7 +707,7 @@ func TestCustomKey(t *testing.T) {
 		for _, tc := range tgroup.testCases {
 			// Instantiate prebid cache prod server with mock metrics and a mock metrics that
 			// already contains some values
-			mockBackendWithValues := newMockBackend()
+			mockBackendWithValues := newMemoryBackendWithValues(nil)
 			mockMetrics := metricstest.CreateMockMetrics()
 			m := &metrics.Metrics{
 				MetricEngines: []metrics.CacheMetrics{
@@ -730,7 +746,7 @@ func TestCustomKey(t *testing.T) {
 
 func TestRequestReadError(t *testing.T) {
 	// Setup server and mock body request reader
-	mockBackendWithValues := newMockBackend()
+	mockBackendWithValues := newMemoryBackendWithValues(nil)
 	mockMetrics := metricstest.CreateMockMetrics()
 	m := &metrics.Metrics{
 		MetricEngines: []metrics.CacheMetrics{
@@ -1351,12 +1367,20 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 	}
 }
 
-func newMockBackend() *backends.MemoryBackend {
+// newMemoryBackendWithValues creates a memory backend for testing purposes. If dataToStore
+// is empty, fill with other values
+func newMemoryBackendWithValues(dataToStore []putObject) *backends.MemoryBackend {
 	backend := backends.NewMemoryBackend()
 
-	backend.Put(context.Background(), "non-36-char-key-maps-to-json", `json{"field":"value"}`, 0)
-	backend.Put(context.Background(), "36-char-key-maps-to-non-xml-nor-json", `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`, 0)
-	backend.Put(context.Background(), "36-char-key-maps-to-actual-xml-value", "xml<tag>xml data here</tag>", 0)
+	if len(dataToStore) > 0 {
+		for _, e := range dataToStore {
+			backend.Put(context.Background(), e.Key, string(e.Value), e.TTLSeconds)
+		}
+	} else {
+		backend.Put(context.Background(), "non-36-char-key-maps-to-json", `json{"field":"value"}`, 0)
+		backend.Put(context.Background(), "36-char-key-maps-to-non-xml-nor-json", `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`, 0)
+		backend.Put(context.Background(), "36-char-key-maps-to-actual-xml-value", "xml<tag>xml data here</tag>", 0)
+	}
 
 	return backend
 }

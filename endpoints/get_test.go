@@ -184,7 +184,7 @@ func TestGetHandler(t *testing.T) {
 		fatal = false
 
 		// Set up test object
-		backend := newMockBackend()
+		backend := newMemoryBackendWithValues(nil)
 		router := httprouter.New()
 		mockMetrics := metricstest.CreateMockMetrics()
 		m := &metrics.Metrics{
