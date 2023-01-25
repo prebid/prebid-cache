@@ -49,6 +49,7 @@ func TestPutJsonTests(t *testing.T) {
 				"sample-requests/put-endpoint/valid-whole/valid-type-xml.json",
 				"sample-requests/put-endpoint/valid-whole/ttl-more-than-max.json",
 				"sample-requests/put-endpoint/valid-whole/ttl-missing.json",
+				"sample-requests/put-endpoint/valid-whole/record-exists.json",
 			},
 		},
 		{
@@ -87,13 +88,6 @@ func TestPutJsonTests(t *testing.T) {
 			expectError: false,
 			tests: []string{
 				"sample-requests/put-endpoint/custom-keys/not-allowed/key-field-included.json",
-			},
-		},
-		{
-			desc:        "Overwrite test, lets find out where to put it",
-			expectError: false,
-			tests: []string{
-				"sample-requests/put-endpoint/valid-whole/cant-overwrite.json",
 			},
 		},
 	}
@@ -702,11 +696,17 @@ func TestCustomKey(t *testing.T) {
 		},
 	}
 
+	preexistingDataInBackend := []putObject{
+		{Key: "non-36-char-key-maps-to-json", Value: json.RawMessage(`json{"field":"value"}`), TTLSeconds: 0},
+		{Key: "36-char-key-maps-to-non-xml-nor-json", Value: json.RawMessage(`#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`), TTLSeconds: 0},
+		{Key: "36-char-key-maps-to-actual-xml-value", Value: json.RawMessage("xml<tag>xml data here</tag>"), TTLSeconds: 0},
+	}
+
 	for _, tgroup := range testGroups {
 		for _, tc := range tgroup.testCases {
 			// Instantiate prebid cache prod server with mock metrics and a mock metrics that
 			// already contains some values
-			mockBackendWithValues := newMemoryBackendWithValues(nil)
+			mockBackendWithValues := newMemoryBackendWithValues(preexistingDataInBackend)
 			mockMetrics := metricstest.CreateMockMetrics()
 			m := &metrics.Metrics{
 				MetricEngines: []metrics.CacheMetrics{
@@ -1367,7 +1367,7 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 }
 
 // newMemoryBackendWithValues creates a memory backend for testing purposes. If customData
-// is empty or nil, it stores with hardcoded values
+// is empty or nil, returns a memory backend with hardcoded values
 func newMemoryBackendWithValues(customData []putObject) *backends.MemoryBackend {
 	backend := backends.NewMemoryBackend()
 
@@ -1375,12 +1375,7 @@ func newMemoryBackendWithValues(customData []putObject) *backends.MemoryBackend 
 		for _, e := range customData {
 			backend.Put(context.Background(), e.Key, string(e.Value), e.TTLSeconds)
 		}
-	} else {
-		backend.Put(context.Background(), "non-36-char-key-maps-to-json", `json{"field":"value"}`, 0)
-		backend.Put(context.Background(), "36-char-key-maps-to-non-xml-nor-json", `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`, 0)
-		backend.Put(context.Background(), "36-char-key-maps-to-actual-xml-value", "xml<tag>xml data here</tag>", 0)
 	}
-
 	return backend
 }
 
