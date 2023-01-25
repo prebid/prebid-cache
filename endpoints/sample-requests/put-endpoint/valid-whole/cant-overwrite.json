@@ -1,23 +1,23 @@
 {
-  "description": "Prebid Cache doesn't allow stored entries to be rewritten. Don't return error, simply a regular response with a missing 'uuid' field",
+  "description": "Prebid Cache doesn't allow stored entries to be rewritten. Return a non-error response body with blank 'uuid' value",
   "serverConfig": {
     "allow_setting_keys": true,
     "stored_data_on_backend": [
       {
-        "key":"the-custom-thrity-six-character-uuid",
-        "value":"<tag>original_XML</tag>",
-        "type":"xml",
-        "ttlseconds":60
+        "key": "the-custom-thrity-six-character-uuid",
+        "value": "<tag>original_XML</tag>",
+        "type": "xml",
+        "ttlseconds": 60
       }
     ]
   },
   "putRequest": {
-    "puts":[
+    "puts": [
       {
-        "type":"xml",
-        "ttlseconds":60,
-        "value":"<tag>updated_XML</tag>",
-        "key":"the-custom-thrity-six-character-uuid"
+        "type": "xml",
+        "ttlseconds": 60,
+        "value": "<tag>updated_XML</tag>",
+        "key": "the-custom-thrity-six-character-uuid"
       }
     ]
   },
@@ -32,9 +32,9 @@
   ],
   "expectedResponse": {
     "responses": [
-      {"uuid": ""}
+      {
+        "uuid": ""
+      }
     ]
   }
 }
-
-

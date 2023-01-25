@@ -131,7 +131,6 @@ func TestPutJsonTests(t *testing.T) {
 			}
 
 			var backend backends.Backend
-
 			if len(testInfo.ServerConfig.StoredData) > 0 {
 				backend = newMemoryBackendWithValues(testInfo.ServerConfig.StoredData)
 				backend = backendConfig.DecorateBackend(cfg, m, backend)
@@ -1367,13 +1366,13 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 	}
 }
 
-// newMemoryBackendWithValues creates a memory backend for testing purposes. If dataToStore
-// is empty, fill with other values
-func newMemoryBackendWithValues(dataToStore []putObject) *backends.MemoryBackend {
+// newMemoryBackendWithValues creates a memory backend for testing purposes. If customData
+// is empty or nil, it stores with hardcoded values
+func newMemoryBackendWithValues(customData []putObject) *backends.MemoryBackend {
 	backend := backends.NewMemoryBackend()
 
-	if len(dataToStore) > 0 {
-		for _, e := range dataToStore {
+	if len(customData) > 0 {
+		for _, e := range customData {
 			backend.Put(context.Background(), e.Key, string(e.Value), e.TTLSeconds)
 		}
 	} else {
