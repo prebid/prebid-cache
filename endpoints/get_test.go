@@ -42,7 +42,7 @@ func TestGetInvalidUUIDs(t *testing.T) {
 
 func TestGetHandler(t *testing.T) {
 
-	preexistingDataInBackend := []putObject{
+	preExistentDataInBackend := []putObject{
 		{Key: "non-36-char-key-maps-to-json", Value: json.RawMessage(`json{"field":"value"}`), TTLSeconds: 0},
 		{Key: "36-char-key-maps-to-non-xml-nor-json", Value: json.RawMessage(`#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`), TTLSeconds: 0},
 		{Key: "36-char-key-maps-to-actual-xml-value", Value: json.RawMessage("xml<tag>xml data here</tag>"), TTLSeconds: 0},
@@ -192,7 +192,10 @@ func TestGetHandler(t *testing.T) {
 		fatal = false
 
 		// Set up test object
-		backend := newMemoryBackendWithValues(preexistingDataInBackend)
+		backend, err := newMemoryBackendWithValues(preExistentDataInBackend)
+		if !assert.NoError(t, err, "%s. Mock backend could not be created", test.desc) {
+			continue
+		}
 		router := httprouter.New()
 		mockMetrics := metricstest.CreateMockMetrics()
 		m := &metrics.Metrics{
