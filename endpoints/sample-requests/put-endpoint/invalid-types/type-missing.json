@@ -1,5 +1,5 @@
 {
-  "description": "Prebid Cache only allows to store JSON or XML types and the type field is required. Respond with error",
+  "description": "Request is missing the 'type' field. Respond with error",
   "putRequest": {
     "puts": [
       {

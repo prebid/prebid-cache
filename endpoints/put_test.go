@@ -126,7 +126,10 @@ func TestPutJsonTests(t *testing.T) {
 
 			var backend backends.Backend
 			if len(testInfo.ServerConfig.StoredData) > 0 {
-				backend = newMemoryBackendWithValues(testInfo.ServerConfig.StoredData)
+				backend, err = newMemoryBackendWithValues(testInfo.ServerConfig.StoredData)
+				if !assert.NoError(t, err, "Failed to create Mock backend for test: %s Error: %v", testFile, err) {
+					continue
+				}
 				backend = backendConfig.DecorateBackend(cfg, m, backend)
 			} else {
 				backend = backendConfig.NewBackend(cfg, m)
@@ -696,7 +699,7 @@ func TestCustomKey(t *testing.T) {
 		},
 	}
 
-	preexistingDataInBackend := []putObject{
+	preExistentDataInBackend := []putObject{
 		{Key: "non-36-char-key-maps-to-json", Value: json.RawMessage(`json{"field":"value"}`), TTLSeconds: 0},
 		{Key: "36-char-key-maps-to-non-xml-nor-json", Value: json.RawMessage(`#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`), TTLSeconds: 0},
 		{Key: "36-char-key-maps-to-actual-xml-value", Value: json.RawMessage("xml<tag>xml data here</tag>"), TTLSeconds: 0},
@@ -706,7 +709,8 @@ func TestCustomKey(t *testing.T) {
 		for _, tc := range tgroup.testCases {
 			// Instantiate prebid cache prod server with mock metrics and a mock metrics that
 			// already contains some values
-			mockBackendWithValues := newMemoryBackendWithValues(preexistingDataInBackend)
+			mockBackendWithValues, err := newMemoryBackendWithValues(preExistentDataInBackend)
+			assert.NoError(t, err, "Mock backend could not be created")
 			mockMetrics := metricstest.CreateMockMetrics()
 			m := &metrics.Metrics{
 				MetricEngines: []metrics.CacheMetrics{
@@ -745,7 +749,7 @@ func TestCustomKey(t *testing.T) {
 
 func TestRequestReadError(t *testing.T) {
 	// Setup server and mock body request reader
-	mockBackendWithValues := newMemoryBackendWithValues(nil)
+	mockBackendWithValues, _ := newMemoryBackendWithValues(nil)
 	mockMetrics := metricstest.CreateMockMetrics()
 	m := &metrics.Metrics{
 		MetricEngines: []metrics.CacheMetrics{
@@ -1368,15 +1372,17 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 
 // newMemoryBackendWithValues creates a memory backend for testing purposes. If customData
 // is empty or nil, returns a memory backend with hardcoded values
-func newMemoryBackendWithValues(customData []putObject) *backends.MemoryBackend {
+func newMemoryBackendWithValues(customData []putObject) (*backends.MemoryBackend, error) {
 	backend := backends.NewMemoryBackend()
 
 	if len(customData) > 0 {
 		for _, e := range customData {
-			backend.Put(context.Background(), e.Key, string(e.Value), e.TTLSeconds)
+			if err := backend.Put(context.Background(), e.Key, string(e.Value), e.TTLSeconds); err != nil {
+				return backend, err
+			}
 		}
 	}
-	return backend
+	return backend, nil
 }
 
 type faultyRequestBodyReader struct {
