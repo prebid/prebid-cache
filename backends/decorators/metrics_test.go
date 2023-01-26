@@ -38,6 +38,7 @@ func TestGetBackendMetrics(t *testing.T) {
 			&mockMetrics,
 		},
 	}
+	allMetricNames := metrics.GetMetricsNames()
 
 	rawBackend := backends.NewMemoryBackend()
 	rawBackend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
@@ -47,7 +48,7 @@ func TestGetBackendMetrics(t *testing.T) {
 	backendWithMetrics.Get(context.Background(), "foo")
 
 	// Assert
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, allMetricNames, mockMetrics)
 }
 
 func TestGetBackendErrorMetrics(t *testing.T) {
@@ -99,6 +100,7 @@ func TestGetBackendErrorMetrics(t *testing.T) {
 		},
 	}
 
+	allMetricNames := metrics.GetMetricsNames()
 	for _, group := range testGroups {
 		for _, test := range group.tests {
 			// Fresh mock metrics
@@ -117,7 +119,7 @@ func TestGetBackendErrorMetrics(t *testing.T) {
 			// Assertions
 			assert.Empty(t, retrievedValue, "%s - %s", group.name, test.desc)
 			assert.Equal(t, test.expectedError, err, "%s - %s", group.name, test.desc)
-			metricstest.AssertMetrics(t, test.expectedMetrics, mockMetrics)
+			metricstest.AssertMetrics(t, test.expectedMetrics, allMetricNames, mockMetrics)
 		}
 	}
 }
@@ -138,13 +140,14 @@ func TestPutSuccessMetrics(t *testing.T) {
 			&mockMetrics,
 		},
 	}
+	allMetricNames := metrics.GetMetricsNames()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 
 	// Run test
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 60)
 
 	// Assert
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, allMetricNames, mockMetrics)
 }
 
 func TestPutErrorMetrics(t *testing.T) {
@@ -163,13 +166,14 @@ func TestPutErrorMetrics(t *testing.T) {
 			&mockMetrics,
 		},
 	}
+	allMetricNames := metrics.GetMetricsNames()
 	backend := LogMetrics(&failedBackend{errors.New("Failure")}, m)
 
 	// Run test
 	backend.Put(context.Background(), "foo", "xml<vast></vast>", 0)
 
 	// Assert
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, allMetricNames, mockMetrics)
 }
 
 func TestJsonPayloadMetrics(t *testing.T) {
@@ -188,13 +192,14 @@ func TestJsonPayloadMetrics(t *testing.T) {
 			&mockMetrics,
 		},
 	}
+	allMetricNames := metrics.GetMetricsNames()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 
 	// Run test
 	backend.Put(context.Background(), "foo", "json{\"key\":\"value\"", 0)
 
 	// Assert
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, allMetricNames, mockMetrics)
 }
 
 func TestInvalidPayloadMetrics(t *testing.T) {
@@ -213,11 +218,12 @@ func TestInvalidPayloadMetrics(t *testing.T) {
 			&mockMetrics,
 		},
 	}
+	allMetricNames := metrics.GetMetricsNames()
 	backend := LogMetrics(backends.NewMemoryBackend(), m)
 
 	// Run test
 	backend.Put(context.Background(), "foo", "bar", 0)
 
 	// Assert
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, allMetricNames, mockMetrics)
 }

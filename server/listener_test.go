@@ -77,7 +77,7 @@ func TestConnections(t *testing.T) {
 			err = conn.Close()
 		}
 		assert.Equal(t, tc.expectedConnectionError, err, tc.desc)
-		metricstest.AssertMetrics(t, tc.expectedMetrics, mockMetrics)
+		metricstest.AssertMetrics(t, tc.expectedMetrics, metrics.GetMetricsNames(), mockMetrics)
 	}
 }
 

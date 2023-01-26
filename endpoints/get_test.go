@@ -179,6 +179,7 @@ func TestGetHandler(t *testing.T) {
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
 
+	allMetricNames := metrics.GetMetricsNames()
 	for _, test := range testCases {
 		// Reset the fatal flag to false every test
 		fatal = false
@@ -212,7 +213,7 @@ func TestGetHandler(t *testing.T) {
 		}
 
 		// Assert recorded metrics
-		metricstest.AssertMetrics(t, test.out.expectedMetrics, mockMetrics)
+		metricstest.AssertMetrics(t, test.out.expectedMetrics, allMetricNames, mockMetrics)
 
 		// Reset log
 		hook.Reset()

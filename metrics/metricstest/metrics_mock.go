@@ -1,94 +1,47 @@
 package metricstest
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/prebid/prebid-cache/config"
+	"github.com/prebid/prebid-cache/metrics"
 	"github.com/stretchr/testify/mock"
 )
 
-func AssertMetrics(t *testing.T, expectedMetrics []string, actualMetrics MockMetrics) {
+func AssertMetrics(t *testing.T, expectedMetrics []string, iallMetricsNames map[string]struct{}, actualMetrics MockMetrics) {
 	t.Helper()
 
-	// All the names of our metric interface methods
-	allMetrics := map[string]struct{}{
-		"RecordAcceptConnectionErrors": {},
-		"RecordCloseConnectionErrors":  {},
-		"RecordConnectionClosed":       {},
-		"RecordConnectionOpen":         {},
-		"RecordGetBackendDuration":     {},
-		"RecordGetBackendError":        {},
-		"RecordGetBackendTotal":        {},
-		"RecordGetBadRequest":          {},
-		"RecordGetDuration":            {},
-		"RecordGetError":               {},
-		"RecordGetTotal":               {},
-		"RecordKeyNotFoundError":       {},
-		"RecordMissingKeyError":        {},
-		"RecordPutBackendDuration":     {},
-		"RecordPutBackendError":        {},
-		"RecordPutBackendInvalid":      {},
-		"RecordPutBackendJson":         {},
-		"RecordPutBackendSize":         {},
-		"RecordPutBackendTTLSeconds":   {},
-		"RecordPutBackendXml":          {},
-		"RecordPutBadRequest":          {},
-		"RecordPutDuration":            {},
-		"RecordPutError":               {},
-		"RecordPutKeyProvided":         {},
-		"RecordPutTotal":               {},
+	m := metrics.Metrics{}
+	mt := reflect.TypeOf(m)
+	allMetricsNames := make(map[string]struct{}, mt.NumMethod())
+	for i := 0; i < mt.NumMethod(); i++ {
+		allMetricsNames[mt.Method(i).Name] = struct{}{}
 	}
+	metricsLogged := make(map[string]struct{}, len(allMetricsNames))
 
 	// Assert the metrics found in the expectedMetrics array where called. If a given element is not a known metric, throw error.
 	for _, metricName := range expectedMetrics {
-		_, exists := allMetrics[metricName]
+		_, exists := allMetricsNames[metricName]
 		if exists {
 			actualMetrics.AssertCalled(t, metricName)
-			delete(allMetrics, metricName)
+			metricsLogged[metricName] = struct{}{}
+			//delete(metricNamesCopy, metricName)
 		} else {
 			t.Errorf("Cannot assert unrecognized metric '%s' was called", metricName)
 		}
 	}
 
 	// Assert the metrics not found in the expectedMetrics array where not called
-	for metricName := range allMetrics {
-		actualMetrics.AssertNotCalled(t, metricName)
+	for metric := range allMetricsNames {
+		_, metricWasLogged := metricsLogged[metric]
+
+		// Assert that metrics not found in metricsLogged were effectively not logged
+		if !metricWasLogged {
+			actualMetrics.AssertNotCalled(t, metric)
+		}
 	}
-}
-
-// MetricsRecorded is a structure used to document the exepected metrics to be recorded when running unit tests
-type MetricsRecorded struct {
-	// Connection metrics
-	RecordAcceptConnectionErrors int64 `json:"RecordAcceptConnectionErrors"`
-	RecordCloseConnectionErrors  int64 `json:"RecordCloseConnectionErrors"`
-	RecordConnectionClosed       int64 `json:"RecordConnectionClosed"`
-	RecordConnectionOpen         int64 `json:"RecordConnectionOpen"`
-
-	// Get metrics
-	RecordGetBackendDuration float64 `json:"RecordGetBackendDuration"`
-	RecordGetBackendError    int64   `json:"RecordGetBackendError"`
-	RecordGetBackendTotal    int64   `json:"RecordGetBackendTotal"`
-	RecordGetBadRequest      int64   `json:"RecordGetBadRequest"`
-	RecordGetDuration        float64 `json:"RecordGetDuration"`
-	RecordGetError           int64   `json:"RecordGetError"`
-	RecordGetTotal           int64   `json:"RecordGetTotal"`
-
-	// Put metrics
-	RecordKeyNotFoundError     int64   `json:"RecordKeyNotFoundError"`
-	RecordMissingKeyError      int64   `json:"RecordMissingKeyError"`
-	RecordPutBackendDuration   float64 `json:"RecordPutBackendDuration"`
-	RecordPutBackendError      int64   `json:"RecordPutBackendError"`
-	RecordPutBackendInvalid    int64   `json:"RecordPutBackendInvalid"`
-	RecordPutBackendJson       int64   `json:"RecordPutBackendJson"`
-	RecordPutBackendSize       float64 `json:"RecordPutBackendSize"`
-	RecordPutBackendTTLSeconds float64 `json:"RecordPutBackendTTLSeconds"`
-	RecordPutBackendXml        int64   `json:"RecordPutBackendXml"`
-	RecordPutBadRequest        int64   `json:"RecordPutBadRequest"`
-	RecordPutDuration          float64 `json:"RecordPutDuration"`
-	RecordPutError             int64   `json:"RecordPutError"`
-	RecordPutKeyProvided       int64   `json:"RecordPutKeyProvided"`
-	RecordPutTotal             int64   `json:"RecordPutTotal"`
 }
 
 func CreateMockMetrics() MockMetrics {
