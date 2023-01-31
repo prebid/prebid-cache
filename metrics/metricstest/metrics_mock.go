@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func AssertMetrics(t *testing.T, expectedMetrics []string, iallMetricsNames map[string]struct{}, actualMetrics MockMetrics) {
+func AssertMetrics(t *testing.T, expectedMetrics []string, actualMetrics MockMetrics) {
 	t.Helper()
 
 	m := metrics.Metrics{}

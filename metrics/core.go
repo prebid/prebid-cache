@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"reflect"
 	"time"
 
 	"github.com/prebid/prebid-cache/config"
@@ -224,14 +223,4 @@ func CreateMetrics(cfg config.Configuration) *Metrics {
 		engineList = append(engineList, prometheus.CreatePrometheusMetrics(cfg.Metrics.Prometheus))
 	}
 	return &Metrics{MetricEngines: engineList}
-}
-
-func GetMetricsNames() map[string]struct{} {
-	m := Metrics{}
-	mt := reflect.TypeOf(m)
-	allMetrics := make(map[string]struct{}, mt.NumMethod())
-	for i := 0; i < mt.NumMethod(); i++ {
-		allMetrics[mt.Method(i).Name] = struct{}{}
-	}
-	return allMetrics
 }
