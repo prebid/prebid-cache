@@ -33,7 +33,6 @@ import (
 )
 
 func TestPutJsonTests(t *testing.T) {
-
 	testGroups := []struct {
 		desc        string
 		expectError bool
@@ -99,7 +98,6 @@ func TestPutJsonTests(t *testing.T) {
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
-	m := &metrics.Metrics{}
 	for _, group := range testGroups {
 		for _, testFile := range group.tests {
 			// TEST SETUP
@@ -119,8 +117,10 @@ func TestPutJsonTests(t *testing.T) {
 
 			//   Instantiate memory backend, request, router, recorder
 			mockMetrics := metricstest.CreateMockMetrics()
-			m.MetricEngines = []metrics.CacheMetrics{
-				&mockMetrics,
+			m := &metrics.Metrics{
+				MetricEngines: []metrics.CacheMetrics{
+					&mockMetrics,
+				},
 			}
 
 			backend := backendConfig.NewBackend(cfg, m)
@@ -189,7 +189,6 @@ func TestPutJsonTests(t *testing.T) {
 			assert.Nil(t, hook.LastEntry())
 
 			// assert the put call above logged the expected metrics
-
 			metricstest.AssertMetrics(t, testInfo.ExpectedMetrics, mockMetrics)
 		}
 	}
@@ -432,15 +431,16 @@ func TestSuccessfulPut(t *testing.T) {
 		},
 	}
 
-	m := &metrics.Metrics{}
 	for _, group := range testGroups {
 		for _, tc := range group.testCases {
 			// set test
 			router := httprouter.New()
 			backend := backends.NewMemoryBackend()
 			mockMetrics := metricstest.CreateMockMetrics()
-			m.MetricEngines = []metrics.CacheMetrics{
-				&mockMetrics,
+			m := &metrics.Metrics{
+				MetricEngines: []metrics.CacheMetrics{
+					&mockMetrics,
+				},
 			}
 
 			router.POST("/cache", NewPutHandler(backend, m, 10, true))
@@ -520,7 +520,6 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 		},
 	}
 
-	m := &metrics.Metrics{}
 	for _, tc := range testCases {
 		router := httprouter.New()
 
@@ -528,8 +527,10 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 		backend.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		mockMetrics := metricstest.CreateMockMetrics()
-		m.MetricEngines = []metrics.CacheMetrics{
-			&mockMetrics,
+		m := &metrics.Metrics{
+			MetricEngines: []metrics.CacheMetrics{
+				&mockMetrics,
+			},
 		}
 
 		router.POST("/cache", NewPutHandler(backend, m, 10, true))
@@ -686,15 +687,16 @@ func TestCustomKey(t *testing.T) {
 		},
 	}
 
-	m := &metrics.Metrics{}
 	for _, tgroup := range testGroups {
 		for _, tc := range tgroup.testCases {
 			// Instantiate prebid cache prod server with mock metrics and a mock metrics that
 			// already contains some values
 			mockBackendWithValues := newMockBackend()
 			mockMetrics := metricstest.CreateMockMetrics()
-			m.MetricEngines = []metrics.CacheMetrics{
-				&mockMetrics,
+			m := &metrics.Metrics{
+				MetricEngines: []metrics.CacheMetrics{
+					&mockMetrics,
+				},
 			}
 
 			router := httprouter.New()

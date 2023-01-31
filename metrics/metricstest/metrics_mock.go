@@ -16,10 +16,12 @@ func AssertMetrics(t *testing.T, expectedMetrics []string, actualMetrics MockMet
 	m := metrics.Metrics{}
 	mt := reflect.TypeOf(m)
 	allMetricsNames := make(map[string]struct{}, mt.NumMethod())
+	metricsLogged := make(map[string]struct{}, mt.NumMethod())
+
+	// List methods of the Metrics interface into map
 	for i := 0; i < mt.NumMethod(); i++ {
 		allMetricsNames[mt.Method(i).Name] = struct{}{}
 	}
-	metricsLogged := make(map[string]struct{}, len(allMetricsNames))
 
 	// Assert the metrics found in the expectedMetrics array where called. If a given element is not a known metric, throw error.
 	for _, metricName := range expectedMetrics {
@@ -27,7 +29,6 @@ func AssertMetrics(t *testing.T, expectedMetrics []string, actualMetrics MockMet
 		if exists {
 			actualMetrics.AssertCalled(t, metricName)
 			metricsLogged[metricName] = struct{}{}
-			//delete(metricNamesCopy, metricName)
 		} else {
 			t.Errorf("Cannot assert unrecognized metric '%s' was called", metricName)
 		}
@@ -35,10 +36,8 @@ func AssertMetrics(t *testing.T, expectedMetrics []string, actualMetrics MockMet
 
 	// Assert the metrics not found in the expectedMetrics array where not called
 	for metric := range allMetricsNames {
-		_, metricWasLogged := metricsLogged[metric]
-
 		// Assert that metrics not found in metricsLogged were effectively not logged
-		if !metricWasLogged {
+		if _, metricWasLogged := metricsLogged[metric]; !metricWasLogged {
 			actualMetrics.AssertNotCalled(t, metric)
 		}
 	}
