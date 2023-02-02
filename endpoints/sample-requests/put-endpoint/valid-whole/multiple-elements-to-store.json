@@ -27,9 +27,12 @@
     "RecordPutDuration"
   ],
   "expectedResponse": {
-    "responses": [
-      {"uuid": "random"},
-      {"uuid": "random"}
-    ]
+    "code": 200,
+    "putresponse": {
+      "responses": [
+        {"uuid": "random"},
+        {"uuid": "random"}
+      ]
+    }
   }
 }

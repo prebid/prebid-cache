@@ -22,5 +22,8 @@
     "RecordPutTotal",
     "RecordPutBadRequest"
   ],
-  "expectedErrorMessage": "Type must be one of [\"json\", \"xml\"]. Found ''\n"
+  "expectedResponse": {
+    "code": 400,
+    "expectedErrorMessage": "Type must be one of [\"json\", \"xml\"]. Found ''\n"
+  }
 }

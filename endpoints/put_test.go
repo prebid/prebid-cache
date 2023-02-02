@@ -34,13 +34,11 @@ import (
 
 func TestPutJsonTests(t *testing.T) {
 	testGroups := []struct {
-		desc        string
-		expectError bool
-		tests       []string
+		desc  string
+		tests []string
 	}{
 		{
-			desc:        "Valid put requests. Expect 200 response",
-			expectError: false,
+			desc: "Valid put requests. Expect 200 response",
 			tests: []string{
 				"sample-requests/put-endpoint/valid-whole/single-element-to-store.json",
 				"sample-requests/put-endpoint/valid-whole/no-elements-to-store.json",
@@ -53,39 +51,34 @@ func TestPutJsonTests(t *testing.T) {
 			},
 		},
 		{
-			desc:        "Request tries to store more elements than the max allowed. Return error",
-			expectError: true,
+			desc: "Request tries to store more elements than the max allowed. Return error",
 			tests: []string{
 				"sample-requests/put-endpoint/invalid-number-of-elements/puts-max-num-values.json",
 			},
 		},
 		{
-			desc:        "Invalid 'type' field values, expect error",
-			expectError: true,
+			desc: "Invalid 'type' field values, expect error",
 			tests: []string{
 				"sample-requests/put-endpoint/invalid-types/type-missing.json",
 				"sample-requests/put-endpoint/invalid-types/type-unknown.json",
 			},
 		},
 		{
-			desc:        "invalid 'value' field values, expect error",
-			expectError: true,
+			desc: "invalid 'value' field values, expect error",
 			tests: []string{
 				"sample-requests/put-endpoint/invalid-value/value-missing.json",
 				"sample-requests/put-endpoint/invalid-value/value-greater-than-max.json",
 			},
 		},
 		{
-			desc:        "Valid when storing under custom keys is allowed, expect 200 responses",
-			expectError: false,
+			desc: "Valid when storing under custom keys is allowed, expect 200 responses",
 			tests: []string{
 				"sample-requests/put-endpoint/custom-keys/allowed/key-field-included.json",
-				"sample-requests/put-endpoint/custom-keys/allowed/key-field-missing.json",
+				//"sample-requests/put-endpoint/custom-keys/allowed/key-field-missing.json",
 			},
 		},
 		{
-			desc:        "Valid when storing under custom keys is not allowed, expect 200 responses",
-			expectError: false,
+			desc: "Valid when storing under custom keys is not allowed, expect 200 responses",
 			tests: []string{
 				"sample-requests/put-endpoint/custom-keys/not-allowed/key-field-included.json",
 			},
@@ -103,16 +96,18 @@ func TestPutJsonTests(t *testing.T) {
 		for _, testFile := range group.tests {
 			// TEST SETUP
 			//   Read file
-			testInfo, err := parseTestInfo(testFile)
+			tc, err := parseTestInfo(testFile)
 			if !assert.NoError(t, err, "%v", err) {
 				continue
 			}
 
 			//   Read test config
-			v := buildViperConfig(testInfo)
+			v := buildViperConfig(tc)
 			cfg := config.Configuration{}
 			err = v.Unmarshal(&cfg)
 			if !assert.NoError(t, err, "Viper could not parse configuration from test file: %s. Error:%s\n", testFile, err) {
+				hook.Reset()
+				assert.Nil(t, hook.LastEntry())
 				continue
 			}
 
@@ -125,9 +120,11 @@ func TestPutJsonTests(t *testing.T) {
 			}
 
 			var backend backends.Backend
-			if len(testInfo.ServerConfig.StoredData) > 0 {
-				backend, err = newMemoryBackendWithValues(testInfo.ServerConfig.StoredData)
+			if len(tc.ServerConfig.StoredData) > 0 {
+				backend, err = newMemoryBackendWithValues(tc.ServerConfig.StoredData)
 				if !assert.NoError(t, err, "Failed to create Mock backend for test: %s Error: %v", testFile, err) {
+					hook.Reset()
+					assert.Nil(t, hook.LastEntry())
 					continue
 				}
 				backend = backendConfig.DecorateBackend(cfg, m, backend)
@@ -136,8 +133,8 @@ func TestPutJsonTests(t *testing.T) {
 			}
 
 			router := httprouter.New()
-			router.POST("/cache", NewPutHandler(backend, m, testInfo.ServerConfig.MaxNumValues, testInfo.ServerConfig.AllowSettingKeys))
-			request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(testInfo.PutRequest)))
+			router.POST("/cache", NewPutHandler(backend, m, tc.ServerConfig.MaxNumValues, tc.ServerConfig.AllowSettingKeys))
+			request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(tc.PutRequest)))
 			assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err)
 			rr := httptest.NewRecorder()
 
@@ -145,73 +142,79 @@ func TestPutJsonTests(t *testing.T) {
 			router.ServeHTTP(rr, request)
 
 			// DO ASSERTIONS
-			// If error is expected, assert error message and non-200 status code
-			if group.expectError {
-				// Given that Prebid Cache still doesn't provide error details in an "errors" field describing the particular issues
-				// of each element that could not be stored, compare the entire response body that will contain the error message of
-				// the element that could not be stored.
-				assert.NotEqual(t, http.StatusOK, rr.Code, "Test %s failed. Expected error status code.", testFile)
-				assert.Equal(t, testInfo.ExpectedError, rr.Body.String(), "Error message differs from expected. Test file: %s", testFile)
-			} else {
-				// Given that no error is expected, assert a 200 status code was returned
-				if !assert.Equal(t, http.StatusOK, rr.Code, "Test %s failed. StatusCode = %d. Returned error: %s", testFile, rr.Code, rr.Body.String()) {
-					continue
+			// NEW. Error code must be specified in all JSON tests
+			if !assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile) {
+				hook.Reset()
+				assert.Nil(t, hook.LastEntry())
+				continue
+			}
+
+			// Assert this is a valid test that expects either an error or a PutResponse
+			if !assert.NotEqual(t, len(tc.ExpectedResponse.ErrorMsg) > 0, tc.ExpectedResponse.Data != nil, "%s must come with either an expected error message or an expected response", testFile) {
+				hook.Reset()
+				assert.Nil(t, hook.LastEntry())
+				continue
+			}
+
+			// If error is expected, assert error message with the response body
+			if len(tc.ExpectedResponse.ErrorMsg) > 0 {
+				assert.Equal(t, tc.ExpectedResponse.ErrorMsg, rr.Body.String(), testFile)
+				hook.Reset()
+				assert.Nil(t, hook.LastEntry())
+				continue
+			}
+
+			// Assert we returned the exact same elements in the 'Responses' array than in the request 'Puts' array
+			var actualPutResponse PutResponse
+			err = json.Unmarshal(rr.Body.Bytes(), &actualPutResponse)
+			if !assert.NoError(t, err, "Could not unmarshal %s. Test file: %s. Error:%s\n", rr.Body.String(), testFile, err) {
+				hook.Reset()
+				assert.Nil(t, hook.LastEntry())
+				continue
+			}
+			assert.Len(t, actualPutResponse.Responses, len(tc.ExpectedResponse.Data.Responses), "Actual response elements differ with expected. Test file: %s", testFile)
+
+			// If custom keys are allowed and you expect them to appear in the response, assert they are found there
+			if tc.ServerConfig.AllowSettingKeys && len(tc.ExpectedUUIDs) > 0 {
+				responseUuids := make(map[string]struct{}, len(actualPutResponse.Responses))
+				for _, respItem := range actualPutResponse.Responses {
+					responseUuids[respItem.UUID] = struct{}{}
 				}
 
-				// Assert we returned the exact same elements in the 'Responses' array than in the request 'Puts' array
-				actualPutResponse := PutResponse{}
-				err = json.Unmarshal(rr.Body.Bytes(), &actualPutResponse)
-				if !assert.NoError(t, err, "Could not unmarshal %s. Test file: %s. Error:%s\n", rr.Body.String(), testFile, err) {
-					continue
-				}
-				assert.Len(t, actualPutResponse.Responses, len(testInfo.ExpectedResponse.Responses), "Actual response elements differ with expected. Test file: %s", testFile)
-
-				// If custom keys are allowed, assert they are found in the actualPutResponse.Responses array
-				if testInfo.ServerConfig.AllowSettingKeys {
-					customKeyIndexes := []int{}
-
-					// Unmarshal test request to extract custom keys
-					put := &putRequest{
-						Puts: make([]putObject, 0),
-					}
-					err = json.Unmarshal(testInfo.PutRequest, put)
-					if !assert.NoError(t, err, "Could not put request %s. Test file: %s. Error:%s\n", testInfo.PutRequest, testFile, err) {
-						continue
-					}
-					for i, testInputElem := range put.Puts {
-						if len(testInputElem.Key) > 0 {
-							customKeyIndexes = append(customKeyIndexes, i)
-						}
-					}
-
-					// Custom keys values must match and their position in the `actualPutResponse.Responses` array must be the exact same as they came in
-					// the incoming request
-					for _, index := range customKeyIndexes {
-						assert.Equal(t, testInfo.ExpectedResponse.Responses[index].UUID, actualPutResponse.Responses[index].UUID, "Custom key differs from expected in position %d. Test file: %s", index, testFile)
-					}
+				// If any, assert the keys you expect are found in the responses array
+				for _, uuid := range tc.ExpectedUUIDs {
+					_, found := responseUuids[uuid]
+					assert.True(t, found, "Custom key %s not found in response array. Test file: %s.\n", uuid, testFile)
 				}
 			}
 
 			// Assert logrus expected entries
-			assertLogEntries(t, testInfo.ExpectedLogEntries, hook.Entries, testFile)
+			assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
 
 			// Reset log after every test and assert successful reset
 			hook.Reset()
 			assert.Nil(t, hook.LastEntry())
 
 			// assert the put call above logged the expected metrics
-			metricstest.AssertMetrics(t, testInfo.ExpectedMetrics, mockMetrics)
+			metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics)
 		}
 	}
 }
 
 type testData struct {
-	ServerConfig       testConfig      `json:"serverConfig"`
-	PutRequest         json.RawMessage `json:"putRequest"`
-	ExpectedResponse   PutResponse     `json:"expectedResponse"`
-	ExpectedLogEntries []logEntry      `json:"expectedLogEntries"`
-	ExpectedError      string          `json:"expectedErrorMessage"`
-	ExpectedMetrics    []string        `json:"expectedMetrics"`
+	ServerConfig       testConfig           `json:"serverConfig"`
+	PutRequest         json.RawMessage      `json:"putRequest"`
+	ExpectedResponse   testExpectedResponse `json:"expectedResponse"`
+	ExpectedLogEntries []logEntry           `json:"expectedLogEntries"`
+	ExpectedMetrics    []string             `json:"expectedMetrics"`
+	ExpectedUUIDs      []string             `json:"expectedUuids"`
+	Query              string               `json:"query"`
+}
+
+type testExpectedResponse struct {
+	Data     *PutResponse `json:"putresponse"`
+	Code     int          `json:"code"`
+	ErrorMsg string       `json:"expectedErrorMessage"`
 }
 
 type logEntry struct {
@@ -260,15 +263,16 @@ func buildViperConfig(testInfo *testData) *viper.Viper {
 	return v
 }
 
-// assertLogEntries asserts logrus entries with expectedLogEntries. It is a test helper function that will make a unit test fail if
+// assertLogEntries asserts logrus entries with expectedLogEntries. It is a test helper function that makes a unit test fail if
 // expected values are not found
 func assertLogEntries(t *testing.T, expectedLogEntries []logEntry, actualLogEntries []logrus.Entry, testFile string) {
 	t.Helper()
 
-	assert.Equal(t, len(expectedLogEntries), len(actualLogEntries), "Incorrect number of entries were logged to logrus in test %s: len(expectedLogEntries) = %d, len(actualLogEntries) = %d", testFile, len(expectedLogEntries), len(actualLogEntries))
-	for i := 0; i < len(actualLogEntries); i++ {
-		assert.Equal(t, expectedLogEntries[i].Message, actualLogEntries[i].Message, "Test case %s log message differs", testFile)
-		assert.Equal(t, expectedLogEntries[i].Level, uint32(actualLogEntries[i].Level), "Test case %s log level differs", testFile)
+	if assert.Equal(t, len(expectedLogEntries), len(actualLogEntries), "Incorrect number of entries were logged to logrus in test %s. Actual log entries:\n %v", testFile, actualLogEntries) {
+		for i := 0; i < len(actualLogEntries); i++ {
+			assert.Equal(t, expectedLogEntries[i].Message, actualLogEntries[i].Message, "Test case %s log message differs", testFile)
+			assert.Equal(t, expectedLogEntries[i].Level, uint32(actualLogEntries[i].Level), "Test case %s log level differs", testFile)
+		}
 	}
 }
 

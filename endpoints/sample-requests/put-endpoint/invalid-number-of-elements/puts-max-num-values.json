@@ -13,5 +13,8 @@
     "RecordPutTotal",
     "RecordPutBadRequest"
   ],
-  "expectedErrorMessage": "More keys than allowed: 1\n"
+  "expectedResponse": {
+    "code": 400,
+    "expectedErrorMessage": "More keys than allowed: 1\n"
+  }
 }

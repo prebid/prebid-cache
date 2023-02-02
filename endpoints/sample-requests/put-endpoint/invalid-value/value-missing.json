@@ -22,5 +22,8 @@
     "RecordPutTotal",
     "RecordPutBadRequest"
   ],
-  "expectedErrorMessage": "Missing value.\n"
+  "expectedResponse": {
+    "code": 400,
+    "expectedErrorMessage": "Missing value.\n"
+  }
 }
