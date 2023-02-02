@@ -4,12 +4,12 @@
     "allow_setting_keys": true
   },
   "putRequest": {
-    "puts":[
+    "puts": [
       {
-        "type":"xml",
-        "ttlseconds":60,
-        "value":"<tag>other_XML_content</tag>",
-        "key":"the-custom-thrity-six-character-uuid"
+        "type": "xml",
+        "ttlseconds": 60,
+        "value": "<tag>other_XML_content</tag>",
+        "key": "the-custom-thrity-six-character-uuid"
       }
     ]
   },
@@ -23,8 +23,13 @@
     "RecordPutDuration"
   ],
   "expectedResponse": {
-    "responses": [
-      {"uuid": "the-custom-thrity-six-character-uuid"}
-    ]
+    "code": 200,
+    "putresponse": {
+      "responses": [
+        {
+          "uuid": "the-custom-thrity-six-character-uuid"
+        }
+      ]
+    }
   }
 }

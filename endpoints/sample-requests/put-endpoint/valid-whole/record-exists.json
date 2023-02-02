@@ -31,10 +31,13 @@
     "RecordPutBackendError"
   ],
   "expectedResponse": {
-    "responses": [
-      {
-        "uuid": ""
-      }
-    ]
+    "code": 200,
+    "putresponse": {
+      "responses": [
+        {
+          "uuid": ""
+        }
+      ]
+    }
   }
 }

@@ -8,6 +8,9 @@
     "RecordPutDuration"
   ],
   "expectedResponse": {
-    "responses": [ ]
+    "code": 200,
+    "putresponse": {
+      "responses": [ ]
+    }
   }
 }

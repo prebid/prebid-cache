@@ -30,5 +30,8 @@
     "RecordPutBackendError",
     "RecordPutBadRequest"
   ],
-  "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 73 exceeded max 5\n"
+  "expectedResponse": {
+    "code": 400,
+    "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 73 exceeded max 5\n"
+  }
 }

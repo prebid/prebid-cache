@@ -1,8 +1,10 @@
 package endpoints
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/julienschmidt/httprouter"
@@ -13,6 +15,90 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
+
+//func TestGetJsonTests(t *testing.T) {
+//	testGroups := []struct {
+//		desc        string
+//		expectError bool
+//		tests       []string
+//	}{}
+//
+//	// Log entries
+//	hook := testLogrus.NewGlobal()
+//	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+//	logrus.StandardLogger().ExitFunc = func(int) {}
+//
+//	for _, group := range testGroups {
+//		for _, testFile := range group.tests {
+//			tc, err := parseTestInfo(testFile)
+//			if !assert.NoError(t, err, "%v", err) {
+//				continue
+//			}
+//
+//			// Setup
+//			v := buildViperConfig(tc)
+//			cfg := config.Configuration{}
+//			err = v.Unmarshal(&cfg)
+//			if !assert.NoError(t, err, "Viper could not parse configuration from test file: %s. Error:%s\n", testFile, err) {
+//				continue
+//			}
+//
+//			mockMetrics := metricstest.CreateMockMetrics()
+//			m := &metrics.Metrics{
+//				MetricEngines: []metrics.CacheMetrics{
+//					&mockMetrics,
+//				},
+//			}
+//
+//			var backend backends.Backend
+//			if len(tc.ServerConfig.StoredData) > 0 {
+//				backend, err = newMemoryBackendWithValues(tc.ServerConfig.StoredData)
+//				if !assert.NoError(t, err, "Failed to create Mock backend for test: %s Error: %v", testFile, err) {
+//					continue
+//				}
+//				backend = backendConfig.DecorateBackend(cfg, m, backend)
+//			} else {
+//				backend = backendConfig.NewBackend(cfg, m)
+//			}
+//
+//			router := httprouter.New()
+//			router.GET("/cache", NewGetHandler(backend, m, tc.ServerConfig.AllowSettingKeys))
+//
+//			// Run test
+//			getResults := httptest.NewRecorder()
+//			getReq, err := http.NewRequest("GET", "/cache?"+tc.Query, nil)
+//			if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
+//				continue
+//			}
+//			router.ServeHTTP(getResults, getReq)
+//
+//			// Assertions
+//			assert.Equal(t, tc.ExpectedResponse.Code, getResults.Code, testFile)
+//
+//			// Assert this is a valid test that expects either an error or a PutResponse
+//			if !assert.NotEqual(t, len(tc.ExpectedResponse.Error) > 0, tc.ExpectedResponse.Data != nil, "%s must come with either an expected error message or an expected response", testFile) {
+//				continue
+//			}
+//
+//			if len(tc.ExpectedResponse.Error) > 0 && !assert.Equal(t, tc.ExpectedResponse.Error, getResults.Body.String(), testFile) {
+//				continue
+//			}
+//
+//			var actualResponse PutResponse
+//			if err := Unmarshall(actual.body, &actualResponse); !(assert.NoError(t, err, testFile) && assert.Equal(t, expected.resp, actualResponse, testFile)) {
+//				continue
+//			}
+//
+//			// Assert logrus expected entries
+//			assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
+//
+//			metricstest.AssertMetrics(t, tc.out.expectedMetrics, mockMetrics)
+//
+//			// Reset log
+//			hook.Reset()
+//		}
+//	}
+//}
 
 func TestGetInvalidUUIDs(t *testing.T) {
 	backend := backends.NewMemoryBackend()
@@ -206,7 +292,15 @@ func TestGetHandler(t *testing.T) {
 		router.GET("/cache", NewGetHandler(backend, m, test.in.allowKeys))
 
 		// Run test
-		getResults := doMockGet(t, router, test.in.uuid)
+		getResults := httptest.NewRecorder()
+
+		body := new(bytes.Buffer)
+		getReq, err := http.NewRequest("GET", "/cache"+"?uuid="+test.in.uuid, body)
+		if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
+			continue
+		}
+		router.ServeHTTP(getResults, getReq)
+		//  //getResults := doMockGet(t, router, test.in.uuid)
 
 		// Assert server response and status code
 		assert.Equal(t, test.out.responseCode, getResults.Code, test.desc)
