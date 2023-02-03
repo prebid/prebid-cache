@@ -24,7 +24,7 @@ func (b *MemoryBackend) Get(ctx context.Context, key string) (string, error) {
 		return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
 	}
 
-	return string(v), nil
+	return v, nil
 }
 
 // Put stores data in local memory and uses a mutex lock to aviod data race scenarios
