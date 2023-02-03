@@ -18,19 +18,11 @@ import (
 )
 
 func TestGetJsonTests(t *testing.T) {
-	jsonTests := []string{
-		"sample-requests/get-endpoint/valid/element-found.json",
-		"sample-requests/get-endpoint/invalid/missing-uuid.json",
-		"sample-requests/get-endpoint/invalid/key-not-found.json",
-		"sample-requests/get-endpoint/invalid/uuid-length.json",
-		"sample-requests/get-endpoint/invalid/data-corrupted.json",
-	}
-
-	// Log entries
 	hook := testLogrus.NewGlobal()
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
+	jsonTests := listJsonFiles("sample-requests/get-endpoint")
 	for _, testFile := range jsonTests {
 		var backend backends.Backend
 		mockMetrics := metricstest.CreateMockMetrics()

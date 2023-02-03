@@ -33,32 +33,11 @@ import (
 )
 
 func TestPutJsonTests(t *testing.T) {
-	jsonTests := []string{
-		"sample-requests/put-endpoint/valid-whole/single-element-to-store.json",
-		"sample-requests/put-endpoint/valid-whole/no-elements-to-store.json",
-		"sample-requests/put-endpoint/valid-whole/multiple-elements-to-store.json",
-		"sample-requests/put-endpoint/valid-whole/valid-type-json.json",
-		"sample-requests/put-endpoint/valid-whole/valid-type-xml.json",
-		"sample-requests/put-endpoint/valid-whole/ttl-more-than-max.json",
-		"sample-requests/put-endpoint/valid-whole/ttl-missing.json",
-		"sample-requests/put-endpoint/valid-whole/record-exists.json",
-		"sample-requests/put-endpoint/invalid-number-of-elements/puts-max-num-values.json",
-		"sample-requests/put-endpoint/invalid-types/type-missing.json",
-		"sample-requests/put-endpoint/invalid-types/type-unknown.json",
-		"sample-requests/put-endpoint/invalid-value/value-missing.json",
-		"sample-requests/put-endpoint/invalid-value/value-greater-than-max.json",
-		"sample-requests/put-endpoint/custom-keys/allowed/key-field-included.json",
-		"sample-requests/put-endpoint/custom-keys/allowed/key-field-missing.json",
-		"sample-requests/put-endpoint/custom-keys/not-allowed/key-field-included.json",
-	}
-
-	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := testLogrus.NewGlobal()
-
-	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
+	jsonTests := listJsonFiles("sample-requests/put-endpoint")
 	for _, testFile := range jsonTests {
 		var backend backends.Backend
 		mockMetrics := metricstest.CreateMockMetrics()
@@ -165,6 +144,27 @@ type testConfig struct {
 type storedData struct {
 	Value string `json:"value"`
 	Key   string `json:"key"`
+}
+
+func listJsonFiles(path string) []string {
+	files, _ := ioutil.ReadDir(path)
+	var jsonFiles []string
+
+	for _, f := range files {
+		var newPath string
+		if strings.HasSuffix(f.Name(), "/") {
+			newPath = fmt.Sprintf("%s%s", path, f.Name())
+		} else {
+			newPath = fmt.Sprintf("%s/%s", path, f.Name())
+		}
+
+		if f.IsDir() {
+			jsonFiles = append(jsonFiles, listJsonFiles(newPath)...)
+		} else if strings.HasSuffix(newPath, ".json") {
+			jsonFiles = append(jsonFiles, newPath)
+		}
+	}
+	return jsonFiles
 }
 
 func setupJsonTest(mockMetrics *metricstest.MockMetrics, backend backends.Backend, testFile string) (*testData, backends.Backend, *metrics.Metrics, error) {
