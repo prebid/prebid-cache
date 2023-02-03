@@ -33,56 +33,23 @@ import (
 )
 
 func TestPutJsonTests(t *testing.T) {
-	testGroups := []struct {
-		desc  string
-		tests []string
-	}{
-		{
-			desc: "Valid put requests. Expect 200 response",
-			tests: []string{
-				"sample-requests/put-endpoint/valid-whole/single-element-to-store.json",
-				"sample-requests/put-endpoint/valid-whole/no-elements-to-store.json",
-				"sample-requests/put-endpoint/valid-whole/multiple-elements-to-store.json",
-				"sample-requests/put-endpoint/valid-whole/valid-type-json.json",
-				"sample-requests/put-endpoint/valid-whole/valid-type-xml.json",
-				"sample-requests/put-endpoint/valid-whole/ttl-more-than-max.json",
-				"sample-requests/put-endpoint/valid-whole/ttl-missing.json",
-				"sample-requests/put-endpoint/valid-whole/record-exists.json",
-			},
-		},
-		{
-			desc: "Request tries to store more elements than the max allowed. Return error",
-			tests: []string{
-				"sample-requests/put-endpoint/invalid-number-of-elements/puts-max-num-values.json",
-			},
-		},
-		{
-			desc: "Invalid 'type' field values, expect error",
-			tests: []string{
-				"sample-requests/put-endpoint/invalid-types/type-missing.json",
-				"sample-requests/put-endpoint/invalid-types/type-unknown.json",
-			},
-		},
-		{
-			desc: "invalid 'value' field values, expect error",
-			tests: []string{
-				"sample-requests/put-endpoint/invalid-value/value-missing.json",
-				"sample-requests/put-endpoint/invalid-value/value-greater-than-max.json",
-			},
-		},
-		{
-			desc: "Valid when storing under custom keys is allowed, expect 200 responses",
-			tests: []string{
-				"sample-requests/put-endpoint/custom-keys/allowed/key-field-included.json",
-				//"sample-requests/put-endpoint/custom-keys/allowed/key-field-missing.json",
-			},
-		},
-		{
-			desc: "Valid when storing under custom keys is not allowed, expect 200 responses",
-			tests: []string{
-				"sample-requests/put-endpoint/custom-keys/not-allowed/key-field-included.json",
-			},
-		},
+	jsonTests := []string{
+		"sample-requests/put-endpoint/valid-whole/single-element-to-store.json",
+		"sample-requests/put-endpoint/valid-whole/no-elements-to-store.json",
+		"sample-requests/put-endpoint/valid-whole/multiple-elements-to-store.json",
+		"sample-requests/put-endpoint/valid-whole/valid-type-json.json",
+		"sample-requests/put-endpoint/valid-whole/valid-type-xml.json",
+		"sample-requests/put-endpoint/valid-whole/ttl-more-than-max.json",
+		"sample-requests/put-endpoint/valid-whole/ttl-missing.json",
+		"sample-requests/put-endpoint/valid-whole/record-exists.json",
+		"sample-requests/put-endpoint/invalid-number-of-elements/puts-max-num-values.json",
+		"sample-requests/put-endpoint/invalid-types/type-missing.json",
+		"sample-requests/put-endpoint/invalid-types/type-unknown.json",
+		"sample-requests/put-endpoint/invalid-value/value-missing.json",
+		"sample-requests/put-endpoint/invalid-value/value-greater-than-max.json",
+		"sample-requests/put-endpoint/custom-keys/allowed/key-field-included.json",
+		"sample-requests/put-endpoint/custom-keys/allowed/key-field-missing.json",
+		"sample-requests/put-endpoint/custom-keys/not-allowed/key-field-included.json",
 	}
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
@@ -92,78 +59,45 @@ func TestPutJsonTests(t *testing.T) {
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
-	for _, group := range testGroups {
-		for _, testFile := range group.tests {
-			// TEST SETUP
-			//   Read file
-			tc, err := parseTestInfo(testFile)
-			if !assert.NoError(t, err, "%v", err) {
-				continue
-			}
+	for _, testFile := range jsonTests {
+		var backend backends.Backend
+		mockMetrics := metricstest.CreateMockMetrics()
+		tc, backend, m, err := setupJsonTest(&mockMetrics, backend, testFile)
+		if !assert.NoError(t, err, "%s", testFile) {
+			hook.Reset()
+			continue
+		}
 
-			//   Read test config
-			v := buildViperConfig(tc)
-			cfg := config.Configuration{}
-			err = v.Unmarshal(&cfg)
-			if !assert.NoError(t, err, "Viper could not parse configuration from test file: %s. Error:%s\n", testFile, err) {
-				hook.Reset()
-				assert.Nil(t, hook.LastEntry())
-				continue
-			}
+		router := httprouter.New()
+		router.POST("/cache", NewPutHandler(backend, m, tc.ServerConfig.MaxNumValues, tc.ServerConfig.AllowSettingKeys))
+		request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(tc.PutRequest)))
+		if !assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err) {
+			hook.Reset()
+			continue
+		}
+		rr := httptest.NewRecorder()
 
-			//   Instantiate memory backend, request, router, recorder
-			mockMetrics := metricstest.CreateMockMetrics()
-			m := &metrics.Metrics{
-				MetricEngines: []metrics.CacheMetrics{
-					&mockMetrics,
-				},
-			}
+		// RUN TEST
+		router.ServeHTTP(rr, request)
 
-			var backend backends.Backend
-			if len(tc.ServerConfig.StoredData) > 0 {
-				backend, err = newMemoryBackendWithValues(tc.ServerConfig.StoredData)
-				if !assert.NoError(t, err, "Failed to create Mock backend for test: %s Error: %v", testFile, err) {
-					hook.Reset()
-					assert.Nil(t, hook.LastEntry())
-					continue
-				}
-				backend = backendConfig.DecorateBackend(cfg, m, backend)
-			} else {
-				backend = backendConfig.NewBackend(cfg, m)
-			}
+		// ASSERTIONS
+		if !assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile) {
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+			continue
+		}
 
-			router := httprouter.New()
-			router.POST("/cache", NewPutHandler(backend, m, tc.ServerConfig.MaxNumValues, tc.ServerConfig.AllowSettingKeys))
-			request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(tc.PutRequest)))
-			assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err)
-			rr := httptest.NewRecorder()
+		// Assert this is a valid test that expects either an error or a PutResponse
+		if !assert.NotEqual(t, len(tc.ExpectedResponse.ErrorMsg) > 0, tc.ExpectedResponse.PutOutput != nil, "%s must come with either an expected error message or an expected response", testFile) {
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+			continue
+		}
 
-			// RUN TEST
-			router.ServeHTTP(rr, request)
-
-			// DO ASSERTIONS
-			// NEW. Error code must be specified in all JSON tests
-			if !assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile) {
-				hook.Reset()
-				assert.Nil(t, hook.LastEntry())
-				continue
-			}
-
-			// Assert this is a valid test that expects either an error or a PutResponse
-			if !assert.NotEqual(t, len(tc.ExpectedResponse.ErrorMsg) > 0, tc.ExpectedResponse.PutOutput != nil, "%s must come with either an expected error message or an expected response", testFile) {
-				hook.Reset()
-				assert.Nil(t, hook.LastEntry())
-				continue
-			}
-
-			// If error is expected, assert error message with the response body
-			if len(tc.ExpectedResponse.ErrorMsg) > 0 {
-				assert.Equal(t, tc.ExpectedResponse.ErrorMsg, rr.Body.String(), testFile)
-				hook.Reset()
-				assert.Nil(t, hook.LastEntry())
-				continue
-			}
-
+		// If error is expected, assert error message with the response body
+		if len(tc.ExpectedResponse.ErrorMsg) > 0 {
+			assert.Equal(t, tc.ExpectedResponse.ErrorMsg, rr.Body.String(), testFile)
+		} else {
 			// Assert we returned the exact same elements in the 'Responses' array than in the request 'Puts' array
 			var actualPutResponse PutResponse
 			err = json.Unmarshal(rr.Body.Bytes(), &actualPutResponse)
@@ -187,17 +121,14 @@ func TestPutJsonTests(t *testing.T) {
 					assert.True(t, found, "Custom key %s not found in response array. Test file: %s.\n", uuid, testFile)
 				}
 			}
-
-			// Assert logrus expected entries
-			assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
-
-			// Reset log after every test and assert successful reset
-			hook.Reset()
-			assert.Nil(t, hook.LastEntry())
-
-			// assert the put call above logged the expected metrics
-			metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics)
 		}
+
+		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
+		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics)
+
+		// Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
 	}
 }
 
@@ -236,7 +167,37 @@ type storedData struct {
 	Key   string `json:"key"`
 }
 
-// Remove this function in the future and make it part of the mock metrics to self-assert if possible.
+func setupJsonTest(mockMetrics *metricstest.MockMetrics, backend backends.Backend, testFile string) (*testData, backends.Backend, *metrics.Metrics, error) {
+	tc, err := parseTestInfo(testFile)
+	if err != nil {
+		return nil, backend, nil, err
+	}
+
+	v := buildViperConfig(tc)
+	cfg := config.Configuration{}
+	err = v.Unmarshal(&cfg)
+	if err != nil {
+		return nil, backend, nil, errors.New(fmt.Sprintf("Viper could not parse configuration from test file: %s. Error:%s\n", testFile, err))
+	}
+
+	m := &metrics.Metrics{
+		MetricEngines: []metrics.CacheMetrics{
+			mockMetrics,
+		},
+	}
+	if len(tc.ServerConfig.StoredData) > 0 {
+		backend, err = newMemoryBackendWithValues(tc.ServerConfig.StoredData)
+		if err != nil {
+			return nil, backend, nil, errors.New(fmt.Sprintf("Failed to create Mock backend for test: %s Error: %v", testFile, err))
+		}
+		backend = backendConfig.DecorateBackend(cfg, m, backend)
+	} else {
+		backend = backendConfig.NewBackend(cfg, m)
+	}
+
+	return tc, backend, m, nil
+}
+
 func parseTestInfo(testFile string) (*testData, error) {
 	var jsonTest []byte
 	var err error

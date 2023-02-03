@@ -7,37 +7,23 @@ import (
 	"testing"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/prebid/prebid-cache/backends"
-	backendConfig "github.com/prebid/prebid-cache/backends/config"
-	"github.com/prebid/prebid-cache/config"
-	"github.com/prebid/prebid-cache/metrics"
-	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	testLogrus "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/prebid/prebid-cache/backends"
+	"github.com/prebid/prebid-cache/metrics"
+	"github.com/prebid/prebid-cache/metrics/metricstest"
 )
 
 func TestGetJsonTests(t *testing.T) {
-	testGroups := []struct {
-		desc  string
-		tests []string
-	}{
-		{
-			desc: "Sucessful",
-			tests: []string{
-				"sample-requests/get-endpoint/valid/element-found.json",
-			},
-		},
-		{
-			desc: "Expect error",
-			tests: []string{
-				"sample-requests/get-endpoint/invalid/missing-uuid.json",
-				"sample-requests/get-endpoint/invalid/key-not-found.json",
-				"sample-requests/get-endpoint/invalid/uuid-length.json",
-				"sample-requests/get-endpoint/invalid/data-corrupted.json",
-			},
-		},
+	jsonTests := []string{
+		"sample-requests/get-endpoint/valid/element-found.json",
+		"sample-requests/get-endpoint/invalid/missing-uuid.json",
+		"sample-requests/get-endpoint/invalid/key-not-found.json",
+		"sample-requests/get-endpoint/invalid/uuid-length.json",
+		"sample-requests/get-endpoint/invalid/data-corrupted.json",
 	}
 
 	// Log entries
@@ -45,78 +31,55 @@ func TestGetJsonTests(t *testing.T) {
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
-	for _, group := range testGroups {
-		for _, testFile := range group.tests {
-			tc, err := parseTestInfo(testFile)
-			if !assert.NoError(t, err, "%v", err) {
-				hook.Reset()
-				continue
-			}
-
-			// Setup
-			v := buildViperConfig(tc)
-			cfg := config.Configuration{}
-			err = v.Unmarshal(&cfg)
-			if !assert.NoError(t, err, "Viper could not parse configuration from test file: %s. Error:%s\n", testFile, err) {
-				hook.Reset()
-				continue
-			}
-
-			mockMetrics := metricstest.CreateMockMetrics()
-			m := &metrics.Metrics{
-				MetricEngines: []metrics.CacheMetrics{
-					&mockMetrics,
-				},
-			}
-
-			var backend backends.Backend
-			if len(tc.ServerConfig.StoredData) > 0 {
-				backend, err = newMemoryBackendWithValues(tc.ServerConfig.StoredData)
-				if !assert.NoError(t, err, "Failed to create Mock backend for test: %s Error: %v", testFile, err) {
-					hook.Reset()
-					continue
-				}
-				backend = backendConfig.DecorateBackend(cfg, m, backend)
-			} else {
-				backend = backendConfig.NewBackend(cfg, m)
-			}
-
-			router := httprouter.New()
-			router.GET("/cache", NewGetHandler(backend, m, tc.ServerConfig.AllowSettingKeys))
-
-			// Run test
-			getResults := httptest.NewRecorder()
-			getReq, err := http.NewRequest("GET", "/cache?"+tc.Query, nil)
-			if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
-				hook.Reset()
-				continue
-			}
-			router.ServeHTTP(getResults, getReq)
-
-			// Assertions
-			assert.Equal(t, tc.ExpectedResponse.Code, getResults.Code, testFile)
-
-			// Assert this is a valid test that expects either an error or a GetResponse
-			if !assert.NotEqual(t, len(tc.ExpectedResponse.ErrorMsg) > 0, len(tc.ExpectedResponse.GetOutput) > 0, "%s must come with either an expected error message or an expected response", testFile) {
-				hook.Reset()
-				continue
-			}
-
-			// If error is expected, assert error message with the response body
-			if len(tc.ExpectedResponse.ErrorMsg) > 0 {
-				assert.Equal(t, tc.ExpectedResponse.ErrorMsg, getResults.Body.String(), testFile)
-			} else {
-				assert.Equal(t, tc.ExpectedResponse.GetOutput, getResults.Body.String(), testFile)
-			}
-
-			// Assert logrus expected entries
-			assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
-
-			metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics)
-
-			// Reset log
+	for _, testFile := range jsonTests {
+		var backend backends.Backend
+		mockMetrics := metricstest.CreateMockMetrics()
+		tc, backend, m, err := setupJsonTest(&mockMetrics, backend, testFile)
+		if !assert.NoError(t, err, "%s", testFile) {
 			hook.Reset()
+			continue
 		}
+
+		router := httprouter.New()
+		router.GET("/cache", NewGetHandler(backend, m, tc.ServerConfig.AllowSettingKeys))
+		request, err := http.NewRequest("GET", "/cache?"+tc.Query, nil)
+		if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+			continue
+		}
+		rr := httptest.NewRecorder()
+
+		// RUN TEST
+		router.ServeHTTP(rr, request)
+
+		// ASSERTIONS
+		if !assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile) {
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+			continue
+		}
+
+		// Assert this is a valid test that expects either an error or a GetResponse
+		if !assert.NotEqual(t, len(tc.ExpectedResponse.ErrorMsg) > 0, len(tc.ExpectedResponse.GetOutput) > 0, "%s must come with either an expected error message or an expected response", testFile) {
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+			continue
+		}
+
+		// If error is expected, assert error message with the response body
+		if len(tc.ExpectedResponse.ErrorMsg) > 0 {
+			assert.Equal(t, tc.ExpectedResponse.ErrorMsg, rr.Body.String(), testFile)
+		} else {
+			assert.Equal(t, tc.ExpectedResponse.GetOutput, rr.Body.String(), testFile)
+		}
+
+		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
+		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics)
+
+		// Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
 	}
 }
 
@@ -147,12 +110,6 @@ func TestGetInvalidUUIDs(t *testing.T) {
 }
 
 func TestGetHandler(t *testing.T) {
-
-	//preExistentDataInBackend := []putObject{
-	//	{Key: "non-36-char-key-maps-to-json", Value: json.RawMessage(`json{"field":"value"}`), TTLSeconds: 0},
-	//	{Key: "36-char-key-maps-to-non-xml-nor-json", Value: json.RawMessage(`#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`), TTLSeconds: 0},
-	//	{Key: "36-char-key-maps-to-actual-xml-value", Value: json.RawMessage("xml<tag>xml data here</tag>"), TTLSeconds: 0},
-	//}
 	preExistentDataInBackend := []storedData{
 		{Key: "non-36-char-key-maps-to-json", Value: `json{"field":"value"}`},
 		{Key: "36-char-key-maps-to-non-xml-nor-json", Value: `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`},
@@ -305,8 +262,8 @@ func TestGetHandler(t *testing.T) {
 		// Set up test object
 		backend, err := newMemoryBackendWithValues(preExistentDataInBackend)
 		if !assert.NoError(t, err, "%s. Mock backend could not be created", test.desc) {
-			continue
 			hook.Reset()
+			continue
 		}
 		router := httprouter.New()
 		mockMetrics := metricstest.CreateMockMetrics()
@@ -323,11 +280,10 @@ func TestGetHandler(t *testing.T) {
 		body := new(bytes.Buffer)
 		getReq, err := http.NewRequest("GET", "/cache"+"?uuid="+test.in.uuid, body)
 		if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
-			continue
 			hook.Reset()
+			continue
 		}
 		router.ServeHTTP(getResults, getReq)
-		//  //getResults := doMockGet(t, router, test.in.uuid)
 
 		// Assert server response and status code
 		assert.Equal(t, test.out.responseCode, getResults.Code, test.desc)
