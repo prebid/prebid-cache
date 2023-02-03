@@ -23,26 +23,21 @@ func TestGetJsonTests(t *testing.T) {
 		desc  string
 		tests []string
 	}{
-		// GET tests:
-		// - successful
 		{
 			desc: "Sucessful",
 			tests: []string{
 				"sample-requests/get-endpoint/valid/element-found.json",
 			},
 		},
-		// - element is not in the backend (key not found)
-		// - Request missing UUID
-		// - UUID invalid somehow
-		//{
-		//	desc: "Expect error",
-		//	tests: []string{
-		//		"sample-requests/get-endpoint/invalid/missing-uuid.json",
-		//		"sample-requests/get-endpoint/invalid/key-not-found.json",
-		//		"sample-requests/get-endpoint/invalid/uuid-length.json",
-		//		"sample-requests/get-endpoint/invalid/data-corrupted.json",
-		//	},
-		//},
+		{
+			desc: "Expect error",
+			tests: []string{
+				"sample-requests/get-endpoint/invalid/missing-uuid.json",
+				"sample-requests/get-endpoint/invalid/key-not-found.json",
+				"sample-requests/get-endpoint/invalid/uuid-length.json",
+				"sample-requests/get-endpoint/invalid/data-corrupted.json",
+			},
+		},
 	}
 
 	// Log entries
@@ -110,21 +105,8 @@ func TestGetJsonTests(t *testing.T) {
 			// If error is expected, assert error message with the response body
 			if len(tc.ExpectedResponse.ErrorMsg) > 0 {
 				assert.Equal(t, tc.ExpectedResponse.ErrorMsg, getResults.Body.String(), testFile)
-				hook.Reset()
-				assert.Nil(t, hook.LastEntry())
-				continue
-			}
-
-			if len(tc.ExpectedResponse.GetOutput) > 0 {
-				//out := ""
-				//err := json.Unmarshal(tc.ExpectedResponse.GetOutput, &out)
-				//assert.NoError(t, err, "Test file GetOutput could not be unmarshaled: %s. Error:%s\n", testFile, err)
-
+			} else {
 				assert.Equal(t, tc.ExpectedResponse.GetOutput, getResults.Body.String(), testFile)
-				//assert.Equal(t, out, getResults.Body.String(), testFile)
-				hook.Reset()
-				assert.Nil(t, hook.LastEntry())
-				continue
 			}
 
 			// Assert logrus expected entries

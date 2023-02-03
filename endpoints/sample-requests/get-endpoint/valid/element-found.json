@@ -10,12 +10,10 @@
   },
   "getRequestQuery": "uuid=36-char-uid-maps-to-actual-xml-value",
   "expectedMetrics": [
-    "RecordPutTotal",
-    "RecordPutBackendXml",
-    "RecordPutBackendSize",
-    "RecordPutBackendTTLSeconds",
-    "RecordPutBackendDuration",
-    "RecordPutDuration"
+    "RecordGetBackendTotal",
+    "RecordGetDuration",
+    "RecordGetBackendDuration",
+    "RecordGetTotal"
   ],
   "expectedResponse": {
     "code": 200,

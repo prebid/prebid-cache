@@ -1,0 +1,23 @@
+{
+  "description": "Gut request doesn't come with a UUID value in the URL query, expect MISSING_KEY error",
+  "serverConfig": {
+    "stored_data_on_backend": [
+      {
+        "key": "36-char-uid-maps-to-actual-xml-value",
+        "value": "json{\"content\":5}"
+      }
+    ]
+  },
+  "getRequestQuery": "uuid=36-char-uuid-is-not-found-in-backend",
+  "expectedMetrics": [
+    "RecordGetTotal",
+    "RecordGetBackendError",
+    "RecordGetBackendTotal",
+    "RecordKeyNotFoundError",
+    "RecordGetBadRequest"
+  ],
+  "expectedResponse": {
+    "code": 404,
+    "expectedErrorMessage": "GET /cache uuid=36-char-uuid-is-not-found-in-backend: Key not found\n"
+  }
+}
