@@ -150,7 +150,7 @@ func TestPutJsonTests(t *testing.T) {
 			}
 
 			// Assert this is a valid test that expects either an error or a PutResponse
-			if !assert.NotEqual(t, len(tc.ExpectedResponse.ErrorMsg) > 0, tc.ExpectedResponse.Data != nil, "%s must come with either an expected error message or an expected response", testFile) {
+			if !assert.NotEqual(t, len(tc.ExpectedResponse.ErrorMsg) > 0, tc.ExpectedResponse.PutOutput != nil, "%s must come with either an expected error message or an expected response", testFile) {
 				hook.Reset()
 				assert.Nil(t, hook.LastEntry())
 				continue
@@ -172,7 +172,7 @@ func TestPutJsonTests(t *testing.T) {
 				assert.Nil(t, hook.LastEntry())
 				continue
 			}
-			assert.Len(t, actualPutResponse.Responses, len(tc.ExpectedResponse.Data.Responses), "Actual response elements differ with expected. Test file: %s", testFile)
+			assert.Len(t, actualPutResponse.Responses, len(tc.ExpectedResponse.PutOutput.Responses), "Actual response elements differ with expected. Test file: %s", testFile)
 
 			// If custom keys are allowed and you expect them to appear in the response, assert they are found there
 			if tc.ServerConfig.AllowSettingKeys && len(tc.ExpectedUUIDs) > 0 {
@@ -208,13 +208,14 @@ type testData struct {
 	ExpectedLogEntries []logEntry           `json:"expectedLogEntries"`
 	ExpectedMetrics    []string             `json:"expectedMetrics"`
 	ExpectedUUIDs      []string             `json:"expectedUuids"`
-	Query              string               `json:"query"`
+	Query              string               `json:"getRequestQuery"`
 }
 
 type testExpectedResponse struct {
-	Data     *PutResponse `json:"putresponse"`
-	Code     int          `json:"code"`
-	ErrorMsg string       `json:"expectedErrorMessage"`
+	PutOutput *PutResponse `json:"putresponse"`
+	GetOutput string       `json:"getresponse"`
+	Code      int          `json:"code"`
+	ErrorMsg  string       `json:"expectedErrorMessage"`
 }
 
 type logEntry struct {
@@ -223,11 +224,16 @@ type logEntry struct {
 }
 
 type testConfig struct {
-	AllowSettingKeys bool        `json:"allow_setting_keys"`
-	MaxSizeBytes     int         `json:"max_size_bytes"`
-	MaxNumValues     int         `json:"max_num_values"`
-	MaxTTLSeconds    int         `json:"max_ttl_seconds"`
-	StoredData       []putObject `json:"stored_data_on_backend"`
+	AllowSettingKeys bool         `json:"allow_setting_keys"`
+	MaxSizeBytes     int          `json:"max_size_bytes"`
+	MaxNumValues     int          `json:"max_num_values"`
+	MaxTTLSeconds    int          `json:"max_ttl_seconds"`
+	StoredData       []storedData `json:"stored_data_on_backend"`
+}
+
+type storedData struct {
+	Value string `json:"value"`
+	Key   string `json:"key"`
 }
 
 // Remove this function in the future and make it part of the mock metrics to self-assert if possible.
@@ -703,10 +709,15 @@ func TestCustomKey(t *testing.T) {
 		},
 	}
 
-	preExistentDataInBackend := []putObject{
-		{Key: "non-36-char-key-maps-to-json", Value: json.RawMessage(`json{"field":"value"}`), TTLSeconds: 0},
-		{Key: "36-char-key-maps-to-non-xml-nor-json", Value: json.RawMessage(`#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`), TTLSeconds: 0},
-		{Key: "36-char-key-maps-to-actual-xml-value", Value: json.RawMessage("xml<tag>xml data here</tag>"), TTLSeconds: 0},
+	//preExistentDataInBackend := []putObject{
+	//	{Key: "non-36-char-key-maps-to-json", Value: json.RawMessage(`json{"field":"value"}`), TTLSeconds: 0},
+	//	{Key: "36-char-key-maps-to-non-xml-nor-json", Value: json.RawMessage(`#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`), TTLSeconds: 0},
+	//	{Key: "36-char-key-maps-to-actual-xml-value", Value: json.RawMessage("xml<tag>xml data here</tag>"), TTLSeconds: 0},
+	//}
+	preExistentDataInBackend := []storedData{
+		{Key: "non-36-char-key-maps-to-json", Value: `json{"field":"value"}`},
+		{Key: "36-char-key-maps-to-non-xml-nor-json", Value: `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`},
+		{Key: "36-char-key-maps-to-actual-xml-value", Value: "xml<tag>xml data here</tag>"},
 	}
 
 	for _, tgroup := range testGroups {
@@ -1376,12 +1387,12 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 
 // newMemoryBackendWithValues creates a memory backend for testing purposes. If customData
 // is empty or nil, returns a memory backend with hardcoded values
-func newMemoryBackendWithValues(customData []putObject) (*backends.MemoryBackend, error) {
+func newMemoryBackendWithValues(customData []storedData) (*backends.MemoryBackend, error) {
 	backend := backends.NewMemoryBackend()
 
 	if len(customData) > 0 {
 		for _, e := range customData {
-			if err := backend.Put(context.Background(), e.Key, string(e.Value), e.TTLSeconds); err != nil {
+			if err := backend.Put(context.Background(), e.Key, e.Value, 1); err != nil {
 				return backend, err
 			}
 		}

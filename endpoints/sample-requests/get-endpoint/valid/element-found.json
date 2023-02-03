@@ -1,0 +1,22 @@
+{
+  "description": "Gut request sucessfully returns stored data",
+  "serverConfig": {
+    "stored_data_on_backend": [
+      {
+        "key": "36-char-uid-maps-to-actual-xml-value",
+        "value": "json{\"content\":5}"
+      }
+    ]
+  },
+  "getRequestQuery": "uuid=36-char-uid-maps-to-actual-xml-value",
+  "expectedMetrics": [
+    "RecordGetBackendTotal",
+    "RecordGetDuration",
+    "RecordGetBackendDuration",
+    "RecordGetTotal"
+  ],
+  "expectedResponse": {
+    "code": 200,
+    "getresponse": "{\"content\":5}"
+  }
+}

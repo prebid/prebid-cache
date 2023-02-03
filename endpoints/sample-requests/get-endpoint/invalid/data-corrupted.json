@@ -1,0 +1,28 @@
+{
+  "description": "Gut request doesn't come with a UUID value in the URL query, expect MISSING_KEY error",
+  "serverConfig": {
+    "stored_data_on_backend": [
+      {
+        "key": "36-char-uid-maps-to-actual-xml-value",
+        "value": "<HTML>Not prefixed with 'json' nor 'xml' keywords</HTML>"
+      }
+    ]
+  },
+  "getRequestQuery": "uuid=36-char-uid-maps-to-actual-xml-value",
+  "expectedLogEntries": [
+    {
+      "message": "GET /cache uuid=36-char-uid-maps-to-actual-xml-value: Cache data was corrupted. Cannot determine type.",
+      "level": 2
+    }
+  ],
+  "expectedMetrics": [
+    "RecordGetTotal",
+    "RecordGetBackendTotal",
+    "RecordGetBackendDuration",
+    "RecordGetError"
+  ],
+  "expectedResponse": {
+    "code": 500,
+    "expectedErrorMessage": "GET /cache uuid=36-char-uid-maps-to-actual-xml-value: Cache data was corrupted. Cannot determine type.\n"
+  }
+}
