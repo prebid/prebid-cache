@@ -13,7 +13,7 @@ request_limits:
 backend:
   type: "memory" # Can also be "aerospike", "cassandra", "memcache" or "redis"
   aerospike:
-    host: "aerospike.prebid.com"
+    hosts: [ "aerospike.prebid.com" ]
     port: 3000
     namespace: "whatever"
   cassandra:
