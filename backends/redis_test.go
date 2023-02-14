@@ -109,9 +109,35 @@ func TestRedisClientPut(t *testing.T) {
 			},
 		},
 		{
-			"RedisBackend.Put() throws an error different from error redis.Nil, which gets returned when key does not exist.",
+			"RedisBackend.Put() does not try to overwrite already existing key and returns no error",
+			testInput{
+				&errorProneRedisClient{success: true, errorToThrow: redis.Nil},
+				"repeatedKey",
+				"overwriteValue",
+				10,
+			},
+			testExpectedValues{
+				"repeatedKey",
+				redis.Nil,
+			},
+		},
+		{
+			"RedisBackend.Put() throws an error different from error redis.Nil with success=true, which gets returned when key does not exist.",
 			testInput{
 				&errorProneRedisClient{success: true, errorToThrow: errors.New("some other Redis error")},
+				"someKey",
+				"someValue",
+				10,
+			},
+			testExpectedValues{
+				"",
+				errors.New("some other Redis error"),
+			},
+		},
+		{
+			"RedisBackend.Put() throws an error different from error redis.Nil with success=false, which gets returned when key does not exist.",
+			testInput{
+				&errorProneRedisClient{success: false, errorToThrow: errors.New("some other Redis error")},
 				"someKey",
 				"someValue",
 				10,

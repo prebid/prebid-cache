@@ -102,7 +102,7 @@ func (b *RedisBackend) Get(ctx context.Context, key string) (string, error) {
 func (b *RedisBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 
 	success, err := b.client.Put(ctx, key, value, ttlSeconds)
-	if !success {
+	if err == redis.Nil && !success {
 		return utils.NewPBCError(utils.RECORD_EXISTS)
 	}
 	return err
