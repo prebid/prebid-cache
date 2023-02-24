@@ -60,15 +60,20 @@ jobs:
             nextTag=$(echo "${currentTag}" | awk -F. '{OFS="."; $3+=1; print $0}')
           fi
 
-          git tag $nextTag
-          git push origin $nextTag
-          echo "tag=${nextTag}" >> $GITHUB_OUTPUT
+          if [ ${{ inputs.debug }} == 'true' ]; then
+            echo "running workflow in debug mode, next ${releaseType} tag: ${nextTag}"
+          else
+            git tag $nextTag
+            git push origin $nextTag
+            echo "tag=${nextTag}" >> $GITHUB_OUTPUT
+          fi
     outputs:
       releaseTag: ${{ steps.release.outputs.tag }}
 
   publish-release:
     name: Publish release
     needs: publish-tag
+    if: contains(inputs.debug, 'false')
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -90,6 +95,7 @@ jobs:
   publish-docker-image:
     name: Publish docker image
     needs: publish-tag
+    if: contains(inputs.debug, 'false')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout prebid cache
