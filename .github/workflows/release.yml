@@ -86,3 +86,25 @@ jobs:
           publish: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-docker-image:
+    name: Publish docker image
+    needs: publish-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout prebid cache
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Build image
+        run: |
+          docker build --build-arg DEPLOY_VERSION=${{ needs.publish-tag.outputs.releaseTag }} -t docker.io/prebid/prebid-cache:${{ needs.publish-tag.outputs.releaseTag }} .
+      - name: Login to docker Hub
+        if: contains(inputs.debug, 'false')
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Publish to docker Hub
+        run: |
+          docker push docker.io/prebid/prebid-cache:${{ needs.publish-tag.outputs.releaseTag }}
