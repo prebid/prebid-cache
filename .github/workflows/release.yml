@@ -4,9 +4,27 @@ on:
   workflow_dispatch
 
 jobs:
+  check-permission:
+    name: Check permission
+    if: contains(github.ref, 'refs/heads/master')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check user permission
+        uses: actions-cool/check-user-permission@v2.2.0
+        id: check
+        with:
+          require: 'write'
+    outputs:
+      hasWritePermission: ${{ steps.check.outputs.require-result }}
+
   release:
     name: Create Release
-    if: github.event.base_ref == 'refs/heads/master'
+    needs: check-permission
+    if: contains(needs.check-permission.outputs.hasWritePermission, 'true')
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Get Version
