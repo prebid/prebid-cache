@@ -72,7 +72,7 @@ jobs:
             }' -f project=$PROJECT_ID -f issue=$ISSUE_ID > issue_data.json
           
           echo 'ITEM_ID='$(jq '.data.addProjectV2ItemById.item.id' issue_data.json) >> $GITHUB_ENV
-          echo 'ITEM_CREATION_DATE='$(jq '.data.addProjectV2ItemById.item.content.createdAt' issue_data.json) >> $GITHUB_ENV
+          echo 'ITEM_CREATION_DATE='$(jq '.data.addProjectV2ItemById.item.content.createdAt' issue_data.json | cut -c 2-11) >> $GITHUB_ENV
 
       - name: Set fields
         env:
