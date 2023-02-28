@@ -70,28 +70,6 @@ jobs:
     outputs:
       releaseTag: ${{ steps.release.outputs.tag }}
 
-  publish-release:
-    name: Publish release
-    needs: publish-tag
-    if: contains(inputs.debug, 'false')
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout prebid cache
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Create & publish release
-        uses: release-drafter/release-drafter@v5.22.0
-        with:
-          name: ${{ needs.publish-tag.outputs.releaseTag }}
-          tag: ${{ needs.publish-tag.outputs.releaseTag }}
-          version: ${{ needs.publish-tag.outputs.releaseTag }}
-          publish: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   publish-docker-image:
     name: Publish docker image
     needs: publish-tag
@@ -114,3 +92,25 @@ jobs:
       - name: Publish to docker Hub
         run: |
           docker push docker.io/prebid/prebid-cache:${{ needs.publish-tag.outputs.releaseTag }}
+
+  publish-release:
+    name: Publish release
+    needs: [publish-tag, publish-docker-image] 
+    if: contains(inputs.debug, 'false')
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout prebid cache
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Create & publish release
+        uses: release-drafter/release-drafter@v5.22.0
+        with:
+          name: ${{ needs.publish-tag.outputs.releaseTag }}
+          tag: ${{ needs.publish-tag.outputs.releaseTag }}
+          version: ${{ needs.publish-tag.outputs.releaseTag }}
+          publish: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
