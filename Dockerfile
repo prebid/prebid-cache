@@ -2,7 +2,7 @@ FROM ubuntu:18.04 AS build
 RUN apt-get update && \
     apt-get -y upgrade && \
     apt-get install -y wget
-ENV GO_INSTALLER=go1.16.4.linux-amd64.tar.gz
+ENV GO_INSTALLER=go1.19.5.linux-amd64.tar.gz
 WORKDIR /tmp
 RUN wget https://dl.google.com/go/$GO_INSTALLER && \
     tar -C /usr/local -xzf $GO_INSTALLER
