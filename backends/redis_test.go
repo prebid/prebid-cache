@@ -109,19 +109,6 @@ func TestRedisClientPut(t *testing.T) {
 			},
 		},
 		{
-			"RedisBackend.Put() does not try to overwrite already existing key and returns no error",
-			testInput{
-				&errorProneRedisClient{success: true, errorToThrow: redis.Nil},
-				"repeatedKey",
-				"overwriteValue",
-				10,
-			},
-			testExpectedValues{
-				"repeatedKey",
-				redis.Nil,
-			},
-		},
-		{
 			"RedisBackend.Put() throws an error different from error redis.Nil with success=true, which gets returned when key does not exist.",
 			testInput{
 				&errorProneRedisClient{success: true, errorToThrow: errors.New("some other Redis error")},
@@ -176,7 +163,7 @@ func TestRedisClientPut(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		// Assign redis backend cient
+		// Assign redis backend client
 		redisBackend.client = tt.in.redisClient
 
 		// Run test
