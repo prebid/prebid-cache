@@ -10,7 +10,7 @@ on:
           - patch
         default: minor
         required: true
-        description: 'patch: v0.0.X, minor: v0.X.0'
+        description: 'minor: v0.X.0, patch: v0.0.X'
       debug:
         type: boolean
         default: true
