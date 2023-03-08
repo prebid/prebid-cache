@@ -1,12 +1,14 @@
 {
   "description": "Gut request doesn't come with a UUID value in the URL query, expect MISSING_KEY error",
   "serverConfig": {
-    "stored_data_on_backend": [
-      {
-        "key": "36-char-uid-maps-to-actual-xml-value",
-        "value": "json{\"content\":5}"
-      }
-    ]
+    "mock_backend": {
+      "stored_data": [
+        {
+          "key": "36-char-uid-maps-to-actual-xml-value",
+          "value": "json{\"content\":5}"
+        }
+      ]
+    }
   },
   "getRequestQuery": "uuid=",
   "expectedLogEntries": [

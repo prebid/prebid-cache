@@ -103,7 +103,7 @@ func TestPutJsonTests(t *testing.T) {
 		}
 
 		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
-		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics)
+		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics, testFile)
 
 		// Reset log after every test and assert successful reset
 		hook.Reset()
@@ -134,16 +134,102 @@ type logEntry struct {
 }
 
 type testConfig struct {
-	AllowSettingKeys bool         `json:"allow_setting_keys"`
-	MaxSizeBytes     int          `json:"max_size_bytes"`
-	MaxNumValues     int          `json:"max_num_values"`
-	MaxTTLSeconds    int          `json:"max_ttl_seconds"`
-	StoredData       []storedData `json:"stored_data_on_backend"`
+	AllowSettingKeys bool        `json:"allow_setting_keys"`
+	MaxSizeBytes     int         `json:"max_size_bytes"`
+	MaxNumValues     int         `json:"max_num_values"`
+	MaxTTLSeconds    int         `json:"max_ttl_seconds"`
+	FakeBackend      fakeBackend `json:"mock_backend"`
+}
+
+type fakeBackend struct {
+	Type       config.BackendType `json:"type"`
+	StoredData []storedData       `json:"stored_data"`
+	ErrorMsg   string             `json:"error_message"`
+	// Only mock Cassandra and mock Redis backends need this field. If this field is
+	// specified for other backends, the test will fail.
+	//ReturnBool bool `json:"returnBool"`
 }
 
 type storedData struct {
-	Value string `json:"value"`
 	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// newTestBackend returns an error-prone backend when a non-empty mockCfg.ErrorMsg string
+// is provided. With an empty mockCfg.ErrorMsg, it returns a well-behaved mock backend.
+func newTestBackend(tconf testConfig) backends.Backend {
+	var mb backends.Backend
+
+	if len(tconf.FakeBackend.ErrorMsg) > 0 {
+		// "errorProne" backend
+		switch tconf.FakeBackend.Type {
+		case config.BackendCassandra:
+			mb = backends.NewMockCassandraBackend(
+				tconf.MaxTTLSeconds,
+				&backends.ErrorProneCassandraClient{
+					Applied: false,
+					Err:     errors.New(tconf.FakeBackend.ErrorMsg),
+				},
+			)
+		case config.BackendMemcache:
+			mb = backends.NewMockMemcacheBackend(&backends.ErrorProneMemcache{ErrorToThrow: errors.New(tconf.FakeBackend.ErrorMsg)})
+		case config.BackendAerospike:
+			mb = backends.NewMockAerospikeBackend(
+				&backends.ErrorProneAerospikeClient{
+					ErrorThrowingFunction: tconf.FakeBackend.ErrorMsg,
+				},
+			)
+		case config.BackendRedis:
+			mb = backends.NewMockRedisBackend(
+				&backends.ErrorProneRedisClient{
+					ErrorToThrow: errors.New(tconf.FakeBackend.ErrorMsg),
+					Success:      false,
+				},
+			)
+		default:
+			mb = backends.NewErrorResponseMemoryBackend()
+		}
+		return mb
+	}
+
+	// Well-behaved mock backend
+	switch tconf.FakeBackend.Type {
+	case config.BackendCassandra:
+		mb = backends.NewMockCassandraBackend(
+			tconf.MaxTTLSeconds,
+			&backends.GoodCassandraClient{
+				StoredData: copyStoredData(tconf.FakeBackend.StoredData),
+			},
+		)
+	case config.BackendMemcache:
+		mb = backends.NewMockMemcacheBackend(
+			&backends.GoodMemcache{
+				copyStoredData(tconf.FakeBackend.StoredData),
+			},
+		)
+	case config.BackendAerospike:
+		mb = backends.NewMockAerospikeBackend(&backends.GoodAerospikeClient{copyStoredData(tconf.FakeBackend.StoredData)})
+	case config.BackendRedis:
+		mb = backends.NewMockRedisBackend(
+			&backends.GoodRedisClient{
+				copyStoredData(tconf.FakeBackend.StoredData),
+			},
+		)
+	default:
+		mb, _ = backends.NewMemoryBackendWithValues(copyStoredData(tconf.FakeBackend.StoredData))
+	}
+
+	return mb
+}
+
+func copyStoredData(elems []storedData) map[string]string {
+	cpy := make(map[string]string, len(elems))
+
+	for _, e := range elems {
+		cpy[e.Key] = e.Value
+	}
+
+	return cpy
 }
 
 func listJsonFiles(path string) []string {
@@ -180,20 +266,19 @@ func setupJsonTest(mockMetrics *metricstest.MockMetrics, backend backends.Backen
 		return nil, backend, nil, errors.New(fmt.Sprintf("Viper could not parse configuration from test file: %s. Error:%s\n", testFile, err))
 	}
 
-	m := &metrics.Metrics{
-		MetricEngines: []metrics.CacheMetrics{
-			mockMetrics,
-		},
-	}
-	if len(tc.ServerConfig.StoredData) > 0 {
-		backend, err = newMemoryBackendWithValues(tc.ServerConfig.StoredData)
-		if err != nil {
-			return nil, backend, nil, errors.New(fmt.Sprintf("Failed to create Mock backend for test: %s Error: %v", testFile, err))
-		}
-		backend = backendConfig.DecorateBackend(cfg, m, backend)
-	} else {
-		backend = backendConfig.NewBackend(cfg, m)
-	}
+	m := &metrics.Metrics{MetricEngines: []metrics.CacheMetrics{mockMetrics}}
+	backend = newTestBackend(tc.ServerConfig)
+	backend = backendConfig.DecorateBackend(cfg, m, backend)
+
+	//if len(tc.ServerConfig.FakeBackend.StoredData) > 0 {
+	//	backend, err = backends.NewMemoryBackendWithValues(tc.ServerConfig.FakeBackend.StoredData)
+	//	if err != nil {
+	//		return nil, backend, nil, errors.New(fmt.Sprintf("Failed to create Mock backend for test: %s Error: %v", testFile, err))
+	//	}
+	//	backend = backendConfig.DecorateBackend(cfg, m, backend)
+	//} else {
+	//	backend = backendConfig.NewBackend(cfg, m)
+	//}
 
 	return tc, backend, m, nil
 }
@@ -455,7 +540,7 @@ func TestSuccessfulPut(t *testing.T) {
 				}
 
 				// assert the put call above logged expected metrics
-				metricstest.AssertMetrics(t, tc.expectedMetrics, mockMetrics)
+				metricstest.AssertMetrics(t, tc.expectedMetrics, mockMetrics, tc.desc)
 			}
 
 		}
@@ -532,7 +617,7 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 			"RecordPutTotal",
 			"RecordPutBadRequest",
 		}
-		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, tc.desc)
 	}
 }
 
@@ -565,7 +650,7 @@ func TestNonSupportedType(t *testing.T) {
 		"RecordPutTotal",
 		"RecordPutBadRequest",
 	}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
 }
 
 func TestPutNegativeTTL(t *testing.T) {
@@ -603,7 +688,7 @@ func TestPutNegativeTTL(t *testing.T) {
 		"RecordPutTotal",
 		"RecordPutBadRequest",
 	}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
 }
 
 // TestCustomKey will assert the correct behavior when we try to store values that come with their own custom keys both
@@ -670,22 +755,17 @@ func TestCustomKey(t *testing.T) {
 		},
 	}
 
-	//preExistentDataInBackend := []putObject{
-	//	{Key: "non-36-char-key-maps-to-json", Value: json.RawMessage(`json{"field":"value"}`), TTLSeconds: 0},
-	//	{Key: "36-char-key-maps-to-non-xml-nor-json", Value: json.RawMessage(`#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`), TTLSeconds: 0},
-	//	{Key: "36-char-key-maps-to-actual-xml-value", Value: json.RawMessage("xml<tag>xml data here</tag>"), TTLSeconds: 0},
-	//}
-	preExistentDataInBackend := []storedData{
-		{Key: "non-36-char-key-maps-to-json", Value: `json{"field":"value"}`},
-		{Key: "36-char-key-maps-to-non-xml-nor-json", Value: `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`},
-		{Key: "36-char-key-maps-to-actual-xml-value", Value: "xml<tag>xml data here</tag>"},
+	preExistentDataInBackend := map[string]string{
+		"non-36-char-key-maps-to-json":         `json{"field":"value"}`,
+		"36-char-key-maps-to-non-xml-nor-json": `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`,
+		"36-char-key-maps-to-actual-xml-value": "xml<tag>xml data here</tag>",
 	}
 
 	for _, tgroup := range testGroups {
 		for _, tc := range tgroup.testCases {
 			// Instantiate prebid cache prod server with mock metrics and a mock metrics that
 			// already contains some values
-			mockBackendWithValues, err := newMemoryBackendWithValues(preExistentDataInBackend)
+			mockBackendWithValues, err := backends.NewMemoryBackendWithValues(preExistentDataInBackend)
 			assert.NoError(t, err, "Mock backend could not be created")
 			mockMetrics := metricstest.CreateMockMetrics()
 			m := &metrics.Metrics{
@@ -711,7 +791,7 @@ func TestCustomKey(t *testing.T) {
 			assert.Equal(t, http.StatusOK, recorder.Code, tc.desc)
 
 			// assert the put call above logged expected metrics
-			metricstest.AssertMetrics(t, tc.expectedMetrics, mockMetrics)
+			metricstest.AssertMetrics(t, tc.expectedMetrics, mockMetrics, "")
 
 			// Assert response UUID
 			if tc.expectedUUID == "" {
@@ -725,7 +805,7 @@ func TestCustomKey(t *testing.T) {
 
 func TestRequestReadError(t *testing.T) {
 	// Setup server and mock body request reader
-	mockBackendWithValues, _ := newMemoryBackendWithValues(nil)
+	mockBackendWithValues, _ := backends.NewMemoryBackendWithValues(nil)
 	mockMetrics := metricstest.CreateMockMetrics()
 	m := &metrics.Metrics{
 		MetricEngines: []metrics.CacheMetrics{
@@ -754,7 +834,7 @@ func TestRequestReadError(t *testing.T) {
 
 	// assert the put call above logged expected metrics
 	expectedMetrics := []string{"RecordPutTotal", "RecordPutBadRequest"}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
 }
 
 func TestTooManyPutElements(t *testing.T) {
@@ -788,7 +868,7 @@ func TestTooManyPutElements(t *testing.T) {
 
 	// assert the put call above logged expected metrics
 	expectedMetrics := []string{"RecordPutTotal", "RecordPutBadRequest"}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
 }
 
 // TestMultiPutRequest asserts results for requests with more than one element in the "puts" array
@@ -843,7 +923,7 @@ func TestMultiPutRequest(t *testing.T) {
 	//   Assert put metrics
 	// assert the put call above logged expected metrics
 	expectedMetrics := []string{"RecordPutTotal", "RecordPutDuration"}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
 
 	//   Assert put request
 	var parsed PutResponse
@@ -862,7 +942,7 @@ func TestMultiPutRequest(t *testing.T) {
 
 	//   Assert get metrics
 	expectedMetrics = append(expectedMetrics, "RecordGetTotal", "RecordGetDuration")
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
 }
 
 func TestBadPayloadSizePutError(t *testing.T) {
@@ -893,7 +973,7 @@ func TestBadPayloadSizePutError(t *testing.T) {
 
 	//   metrics
 	expectedMetrics := []string{"RecordPutTotal", "RecordPutBadRequest"}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
 }
 
 func TestInternalPutClientError(t *testing.T) {
@@ -928,7 +1008,7 @@ func TestInternalPutClientError(t *testing.T) {
 	// Assert expected response
 	assert.Equal(t, http.StatusInternalServerError, putResponse.Code, "Put should have failed because we are using an MockReturnErrorBackend")
 	assert.Equal(t, "This is a mock backend that returns this error on Put() operation\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
 }
 
 func TestEmptyPutRequests(t *testing.T) {
@@ -1018,7 +1098,7 @@ func TestEmptyPutRequests(t *testing.T) {
 		if tc.expected.durationMetricsLogged {
 			expectedMetrics = append(expectedMetrics, "RecordPutDuration")
 		}
-		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, tc.desc)
 	}
 }
 
@@ -1050,7 +1130,7 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 		"RecordPutTotal",
 		"RecordPutError",
 	}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
 }
 
 // TestParseRequest asserts *PutHandler's parseRequest(r *http.Request) method
@@ -1344,21 +1424,6 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 		router.ServeHTTP(rr, request)
 		b.StopTimer()
 	}
-}
-
-// newMemoryBackendWithValues creates a memory backend for testing purposes. If customData
-// is empty or nil, returns a memory backend with hardcoded values
-func newMemoryBackendWithValues(customData []storedData) (*backends.MemoryBackend, error) {
-	backend := backends.NewMemoryBackend()
-
-	if len(customData) > 0 {
-		for _, e := range customData {
-			if err := backend.Put(context.Background(), e.Key, e.Value, 1); err != nil {
-				return backend, err
-			}
-		}
-	}
-	return backend, nil
 }
 
 type faultyRequestBodyReader struct {
