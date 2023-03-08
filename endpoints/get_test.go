@@ -23,6 +23,9 @@ func TestGetJsonTests(t *testing.T) {
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	jsonTests := listJsonFiles("sample-requests/get-endpoint")
+	//jsonTests := []string{
+	//	"sample-requests/get-endpoint/invalid/data-corrupted.json",
+	//}
 	for _, testFile := range jsonTests {
 		var backend backends.Backend
 		mockMetrics := metricstest.CreateMockMetrics()
@@ -67,7 +70,7 @@ func TestGetJsonTests(t *testing.T) {
 		}
 
 		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
-		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics)
+		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics, testFile)
 
 		// Reset log after every test and assert successful reset
 		hook.Reset()
@@ -102,10 +105,10 @@ func TestGetInvalidUUIDs(t *testing.T) {
 }
 
 func TestGetHandler(t *testing.T) {
-	preExistentDataInBackend := []storedData{
-		{Key: "non-36-char-key-maps-to-json", Value: `json{"field":"value"}`},
-		{Key: "36-char-key-maps-to-non-xml-nor-json", Value: `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`},
-		{Key: "36-char-key-maps-to-actual-xml-value", Value: "xml<tag>xml data here</tag>"},
+	preExistentDataInBackend := map[string]string{
+		"non-36-char-key-maps-to-json":         `json{"field":"value"}`,
+		"36-char-key-maps-to-non-xml-nor-json": `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`,
+		"36-char-key-maps-to-actual-xml-value": "xml<tag>xml data here</tag>",
 	}
 
 	type logEntry struct {
@@ -252,7 +255,7 @@ func TestGetHandler(t *testing.T) {
 		fatal = false
 
 		// Set up test object
-		backend, err := newMemoryBackendWithValues(preExistentDataInBackend)
+		backend, err := backends.NewMemoryBackendWithValues(preExistentDataInBackend)
 		if !assert.NoError(t, err, "%s. Mock backend could not be created", test.desc) {
 			hook.Reset()
 			continue
@@ -292,7 +295,7 @@ func TestGetHandler(t *testing.T) {
 		}
 
 		// Assert recorded metrics
-		metricstest.AssertMetrics(t, test.out.expectedMetrics, mockMetrics)
+		metricstest.AssertMetrics(t, test.out.expectedMetrics, mockMetrics, "")
 
 		// Reset log
 		hook.Reset()

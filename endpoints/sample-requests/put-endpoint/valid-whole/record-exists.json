@@ -25,10 +25,10 @@
     "RecordPutBackendTTLSeconds",
     "RecordPutDuration",
     "RecordPutBackendSize",
+    "RecordPutBackendDuration",
     "RecordPutBackendXml",
     "RecordPutKeyProvided",
-    "RecordPutTotal",
-    "RecordPutBackendError"
+    "RecordPutTotal"
   ],
   "expectedResponse": {
     "code": 200,

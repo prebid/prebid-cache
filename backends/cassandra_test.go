@@ -31,7 +31,7 @@ func TestCassandraClientGet(t *testing.T) {
 		{
 			"CassandraBackend.Get() throws a Cassandra ErrNotFound error",
 			testInput{
-				&errorProneCassandraClient{err: gocql.ErrNotFound},
+				&ErrorProneCassandraClient{Err: gocql.ErrNotFound},
 				"someKeyThatWontBeFound",
 			},
 			testExpectedValues{
@@ -42,7 +42,7 @@ func TestCassandraClientGet(t *testing.T) {
 		{
 			"CassandraBackend.Get() throws an error different from Cassandra ErrNotFound error",
 			testInput{
-				&errorProneCassandraClient{err: errors.New("some other get error")},
+				&ErrorProneCassandraClient{Err: errors.New("some other get error")},
 				"someKey",
 			},
 			testExpectedValues{
@@ -53,7 +53,9 @@ func TestCassandraClientGet(t *testing.T) {
 		{
 			"CassandraBackend.Get() doesn't throw an error",
 			testInput{
-				&goodCassandraClient{key: "defaultKey", value: "aValue"},
+				&GoodCassandraClient{
+					StoredData: map[string]string{"defaultKey": "aValue"},
+				},
 				"defaultKey",
 			},
 			testExpectedValues{
@@ -100,7 +102,7 @@ func TestCassandraClientPut(t *testing.T) {
 		{
 			"CassandraBackend.Put() didn't store the value under the corresponding key. Because the 'applied' return value was false, expect a RECORD_EXISTS error",
 			testInput{
-				cassandraClient: &errorProneCassandraClient{applied: false},
+				cassandraClient: &ErrorProneCassandraClient{Applied: false},
 				key:             "someKey",
 				valueToStore:    "someValue",
 				ttl:             10,
@@ -113,7 +115,7 @@ func TestCassandraClientPut(t *testing.T) {
 		{
 			"CassandraBackend.Put() returns the 'applied' boolean value as 'true' in addition to a Cassandra server error. Not even sure if this scenario is feasible in practice",
 			testInput{
-				cassandraClient: &errorProneCassandraClient{applied: true, err: gocql.ErrNoConnections},
+				cassandraClient: &ErrorProneCassandraClient{Applied: true, Err: gocql.ErrNoConnections},
 				key:             "someKey",
 				valueToStore:    "someValue",
 				ttl:             10,
@@ -126,7 +128,7 @@ func TestCassandraClientPut(t *testing.T) {
 		{
 			"CassandraBackend.Put() gets called with zero ttlSeconds, value gets successfully set anyways",
 			testInput{
-				cassandraClient: &goodCassandraClient{key: "defaultKey", value: "aValue"},
+				cassandraClient: &GoodCassandraClient{StoredData: map[string]string{"defaultKey": "aValue"}},
 				key:             "defaultKey",
 				valueToStore:    "aValue",
 				ttl:             0,
@@ -139,7 +141,7 @@ func TestCassandraClientPut(t *testing.T) {
 		{
 			"CassandraBackend.Put() successful, no need to set defaultTTL because ttl is greater than zero",
 			testInput{
-				cassandraClient: &goodCassandraClient{key: "defaultKey", value: "aValue"},
+				cassandraClient: &GoodCassandraClient{StoredData: map[string]string{"defaultKey": "aValue"}},
 				key:             "defaultKey",
 				valueToStore:    "aValue",
 				ttl:             1,
@@ -168,48 +170,4 @@ func TestCassandraClientPut(t *testing.T) {
 			assert.Equal(t, tt.expected.value, storedValue, tt.desc)
 		}
 	}
-}
-
-// Cassandra client that always throws an error
-type errorProneCassandraClient struct {
-	applied bool
-	err     error
-}
-
-func (ec *errorProneCassandraClient) Init() error {
-	return errors.New("init error")
-}
-
-func (ec *errorProneCassandraClient) Get(ctx context.Context, key string) (string, error) {
-	return "", ec.err
-}
-
-func (ec *errorProneCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
-	return ec.applied, ec.err
-}
-
-// Cassandra client client that does not throw errors
-type goodCassandraClient struct {
-	key   string
-	value string
-}
-
-func (gc *goodCassandraClient) Init() error {
-	return nil
-}
-
-func (gc *goodCassandraClient) Get(ctx context.Context, key string) (string, error) {
-	if key == gc.key {
-		return gc.value, nil
-	}
-	return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
-}
-
-func (gc *goodCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
-	if gc.key != key {
-		gc.key = key
-	}
-	gc.value = value
-
-	return true, nil
 }

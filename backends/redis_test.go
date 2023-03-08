@@ -31,7 +31,7 @@ func TestRedisClientGet(t *testing.T) {
 		{
 			"RedisBackend.Get() throws a redis.Nil error",
 			testInput{
-				&errorProneRedisClient{success: false, errorToThrow: redis.Nil},
+				&ErrorProneRedisClient{Success: false, ErrorToThrow: redis.Nil},
 				"someKeyThatWontBeFound",
 			},
 			testExpectedValues{
@@ -42,7 +42,7 @@ func TestRedisClientGet(t *testing.T) {
 		{
 			"RedisBackend.Get() throws an error different from redis.Nil",
 			testInput{
-				&errorProneRedisClient{success: false, errorToThrow: errors.New("some other get error")},
+				&ErrorProneRedisClient{Success: false, ErrorToThrow: errors.New("some other get error")},
 				"someKey",
 			},
 			testExpectedValues{
@@ -53,7 +53,7 @@ func TestRedisClientGet(t *testing.T) {
 		{
 			"RedisBackend.Get() doesn't throw an error",
 			testInput{
-				&goodRedisClient{key: "defaultKey", value: "aValue"},
+				&GoodRedisClient{StoredData: map[string]string{"defaultKey": "aValue"}},
 				"defaultKey",
 			},
 			testExpectedValues{
@@ -98,7 +98,7 @@ func TestRedisClientPut(t *testing.T) {
 		{
 			"RedisBackend.Put() tries to overwrite already existing key",
 			testInput{
-				&errorProneRedisClient{success: false, errorToThrow: redis.Nil},
+				&ErrorProneRedisClient{Success: false, ErrorToThrow: redis.Nil},
 				"repeatedKey",
 				"overwriteValue",
 				10,
@@ -111,7 +111,7 @@ func TestRedisClientPut(t *testing.T) {
 		{
 			"RedisBackend.Put() throws an error different from error redis.Nil, which gets returned when key does not exist.",
 			testInput{
-				&errorProneRedisClient{success: true, errorToThrow: errors.New("some other Redis error")},
+				&ErrorProneRedisClient{Success: true, ErrorToThrow: errors.New("some other Redis error")},
 				"someKey",
 				"someValue",
 				10,
@@ -124,27 +124,27 @@ func TestRedisClientPut(t *testing.T) {
 		{
 			"RedisBackend.Put() gets called with zero ttlSeconds, value gets successfully set anyways",
 			testInput{
-				&goodRedisClient{key: "defaultKey", value: "aValue"},
+				&GoodRedisClient{StoredData: map[string]string{"defaultKey": "aValue"}},
 				"defaultKey",
 				"aValue",
 				0,
 			},
 			testExpectedValues{
 				"aValue",
-				nil,
+				redis.Nil,
 			},
 		},
 		{
 			"RedisBackend.Put() successful, no need to set defaultTTL because ttl is greater than zero",
 			testInput{
-				&goodRedisClient{key: "defaultKey", value: "aValue"},
+				&GoodRedisClient{StoredData: map[string]string{"defaultKey": "aValue"}},
 				"defaultKey",
 				"aValue",
 				1,
 			},
 			testExpectedValues{
 				"aValue",
-				nil,
+				redis.Nil,
 			},
 		},
 	}
@@ -167,40 +167,4 @@ func TestRedisClientPut(t *testing.T) {
 			assert.Equal(t, tt.expected.value, storedValue, tt.desc)
 		}
 	}
-}
-
-// errorProneRedisClient always throws an error
-type errorProneRedisClient struct {
-	success      bool
-	errorToThrow error
-}
-
-func (ec *errorProneRedisClient) Get(ctx context.Context, key string) (string, error) {
-	return "", ec.errorToThrow
-}
-
-func (ec *errorProneRedisClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
-	return ec.success, ec.errorToThrow
-}
-
-// goodRedisClient does not throw errors
-type goodRedisClient struct {
-	key   string
-	value string
-}
-
-func (gc *goodRedisClient) Get(ctx context.Context, key string) (string, error) {
-	if key == gc.key {
-		return gc.value, nil
-	}
-	return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
-}
-
-func (gc *goodRedisClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
-	if gc.key != key {
-		gc.key = key
-	}
-	gc.value = value
-
-	return true, nil
 }
