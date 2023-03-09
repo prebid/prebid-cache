@@ -48,7 +48,13 @@ jobs:
         id: release
         run: |
           currentTag=$(git describe --abbrev=0 --tags)
-          echo "current release tag ${currentTag}"
+          echo "Current release tag ${currentTag}"
+
+          echo ${currentTag}  | grep -q "[0-9]\+\.[0-9]\+\.[0-9]\+"
+          if [ $? -ne 0 ]; then
+            echo "Current tag format won't let us compute the new tag name. Required format v[0-9].[0-9].[0-9]"
+            exit 1
+          fi
 
           nextTag=''
           releaseType=${{ inputs.releaseType }}
