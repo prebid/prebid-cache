@@ -14,7 +14,7 @@ on:
       debug:
         type: boolean
         default: true
-        description: 'executes the workflow in debug mode (skip publishing tag, release and docker image)'
+        description: 'executes the workflow in debug mode (skip the publishing tag, docker image and release steps)'
 
 jobs:
   check-permission:
