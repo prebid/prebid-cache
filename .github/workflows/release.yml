@@ -56,6 +56,10 @@ jobs:
             exit 1
           fi
 
+          if [[ "${currentTag:0:1}" != "v" ]]; then
+            currentTag="v${currentTag}"
+          fi
+
           nextTag=''
           releaseType=${{ inputs.releaseType }}
           if [ $releaseType == "minor" ]; then
