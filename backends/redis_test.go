@@ -109,9 +109,22 @@ func TestRedisClientPut(t *testing.T) {
 			},
 		},
 		{
-			"RedisBackend.Put() throws an error different from error redis.Nil, which gets returned when key does not exist.",
+			"RedisBackend.Put() throws an error different from error redis.Nil with success=true, which gets returned when key does not exist.",
 			testInput{
 				&errorProneRedisClient{success: true, errorToThrow: errors.New("some other Redis error")},
+				"someKey",
+				"someValue",
+				10,
+			},
+			testExpectedValues{
+				"",
+				errors.New("some other Redis error"),
+			},
+		},
+		{
+			"RedisBackend.Put() throws an error different from error redis.Nil with success=false, which gets returned when key does not exist.",
+			testInput{
+				&errorProneRedisClient{success: false, errorToThrow: errors.New("some other Redis error")},
 				"someKey",
 				"someValue",
 				10,
@@ -150,7 +163,7 @@ func TestRedisClientPut(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		// Assign redis backend cient
+		// Assign redis backend client
 		redisBackend.client = tt.in.redisClient
 
 		// Run test
