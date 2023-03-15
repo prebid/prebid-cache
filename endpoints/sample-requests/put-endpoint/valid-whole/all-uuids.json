@@ -1,0 +1,61 @@
+{
+  "description": "Put request wants to store multiple elements but no more than the maximum allowed by the 'max_num_values' config. Store them under a random UUIDs",
+  "serverConfig": {
+    "max_num_values": 3,
+    "max_num_values": 3,
+    "max_size_bytes": 100,
+    "mock_backend": {
+      "stored_data": [
+        {
+          "key": "uuid-stored-value-we-want-overwriten",
+          "value": "<tag>original_XML</tag>",
+          "type": "xml",
+          "ttlseconds": 60
+        }
+      ]
+    },
+    "allow_setting_keys": true
+  },
+  "putRequest": {
+    "puts": [
+      {
+        "type": "json",
+        "ttlseconds": 60,
+        "value": "{\"description\": \"value will be stored under random UUID\"}"
+      },
+      {
+        "key": "the-custom-thrity-six-character-uuid",
+        "type": "json",
+        "ttlseconds": 60,
+        "value": "{\"description\": \"value will be stored under custom UUID\"}"
+      },
+      {
+        "key": "uuid-stored-value-we-want-overwriten",
+        "value": "<description>XML meant to overwrite data already stored under this key</description>",
+        "type": "xml",
+        "ttlseconds": 60
+      }
+    ]
+  },
+  "expectedMetrics": [
+    "RecordPutTotal",
+    "RecordPutBackendXml",
+    "RecordPutBackendJson",
+    "RecordPutBackendSize",
+    "RecordPutBackendTTLSeconds",
+    "RecordPutBackendDuration",
+    "RecordPutKeyProvided",
+    "RecordPutBackendError",
+    "RecordPutDuration"
+  ],
+  "expectedResponse": {
+    "code": 200,
+    "putresponse": {
+      "responses": [
+        {"uuid": "random"},
+        {"uuid": "the-custom-thrity-six-character-uuid"},
+        {"uuid": ""}
+      ]
+    }
+  }
+}
