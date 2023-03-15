@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
 	backendConfig "github.com/prebid/prebid-cache/backends/config"
@@ -38,6 +39,11 @@ func TestPutJsonTests(t *testing.T) {
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	jsonTests := listJsonFiles("sample-requests/put-endpoint")
+	//jsonTests := []string{
+	//	//"sample-requests/put-endpoint/valid-whole/record-exists.json",
+	//	//"sample-requests/put-endpoint/valid-whole/multiple-elements-to-store.json",
+	//	"sample-requests/put-endpoint/valid-whole/all-uuids.json",
+	//}
 	for _, testFile := range jsonTests {
 		var backend backends.Backend
 		mockMetrics := metricstest.CreateMockMetrics()
@@ -60,11 +66,7 @@ func TestPutJsonTests(t *testing.T) {
 		router.ServeHTTP(rr, request)
 
 		// ASSERTIONS
-		if !assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile) {
-			hook.Reset()
-			assert.Nil(t, hook.LastEntry())
-			continue
-		}
+		assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile)
 
 		// Assert this is a valid test that expects either an error or a PutResponse
 		if !assert.NotEqual(t, len(tc.ExpectedResponse.ErrorMsg) > 0, tc.ExpectedResponse.PutOutput != nil, "%s must come with either an expected error message or an expected response", testFile) {
@@ -85,21 +87,7 @@ func TestPutJsonTests(t *testing.T) {
 				assert.Nil(t, hook.LastEntry())
 				continue
 			}
-			assert.Len(t, actualPutResponse.Responses, len(tc.ExpectedResponse.PutOutput.Responses), "Actual response elements differ with expected. Test file: %s", testFile)
-
-			// If custom keys are allowed and you expect them to appear in the response, assert they are found there
-			if tc.ServerConfig.AllowSettingKeys && len(tc.ExpectedUUIDs) > 0 {
-				responseUuids := make(map[string]struct{}, len(actualPutResponse.Responses))
-				for _, respItem := range actualPutResponse.Responses {
-					responseUuids[respItem.UUID] = struct{}{}
-				}
-
-				// If any, assert the keys you expect are found in the responses array
-				for _, uuid := range tc.ExpectedUUIDs {
-					_, found := responseUuids[uuid]
-					assert.True(t, found, "Custom key %s not found in response array. Test file: %s.\n", uuid, testFile)
-				}
-			}
+			assertResponseEntries(t, tc.ExpectedResponse.PutOutput.Responses, actualPutResponse.Responses, tc.ServerConfig.AllowSettingKeys, testFile)
 		}
 
 		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
@@ -151,8 +139,8 @@ type fakeBackend struct {
 }
 
 type storedData struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key   string          `json:"key"`
+	Value json.RawMessage `json:"value"`
 }
 
 // newTestBackend returns an error-prone backend when a non-empty mockCfg.ErrorMsg string
@@ -226,7 +214,7 @@ func copyStoredData(elems []storedData) map[string]string {
 	cpy := make(map[string]string, len(elems))
 
 	for _, e := range elems {
-		cpy[e.Key] = e.Value
+		cpy[e.Key] = string(e.Value)
 	}
 
 	return cpy
@@ -313,6 +301,55 @@ func buildViperConfig(testInfo *testData) *viper.Viper {
 	v.SetDefault("request_limits.max_num_values", testInfo.ServerConfig.MaxNumValues)
 	v.SetDefault("request_limits.max_ttl_seconds", testInfo.ServerConfig.MaxTTLSeconds)
 	return v
+}
+
+// assertResponseEntries
+func assertResponseEntries(t *testing.T, expectedResponses []putResponseObject, actualResponses []putResponseObject, allowSettingKeys bool, testFile string) {
+	assert.Len(t, actualResponses, len(expectedResponses), "Actual response elements differ with expected. Test file: %s", testFile)
+
+	// Prebid Cache processes every element in parallel which makes for elements in
+	// Given the parallel nature of Prebid Cache's processing, elements in actualResponses and
+	// expectedResponses may not come in the exact same order. Use a map instead.
+	expectedUUIDs := make(map[string]int, len(expectedResponses))
+	for _, resp := range expectedResponses {
+		expectedUUIDs[resp.UUID] += 1
+	}
+
+	// Compare output with expected entries found in map
+	for _, resp := range actualResponses {
+		// Categorize UUID
+		uuidOut := resp.UUID
+		if len(uuidOut) > 0 {
+			_, err := uuid.FromString(uuidOut)
+			if err != nil {
+				// Custom key. If not allowed, fail test
+				if !assert.True(t, allowSettingKeys, "Custom keys were not expected and UUID \"%s\" is neither random nor empty. Test file: %s.\n", resp.UUID, testFile) {
+					return
+				}
+			} else {
+				// Random keys are labeled "random" in JSON test files
+				uuidOut = "random"
+			}
+		}
+
+		occurrences, found := expectedUUIDs[uuidOut]
+		if !assert.True(t, found, "An element in the response array with UUID \"%s\" was not expected. Test file: %s.\n", uuidOut, testFile) {
+			return
+		}
+		occurrences -= 1
+		if !assert.False(t, occurrences < 0, "An element in the response array with UUID \"%s\" was not expected. Test file: %s.\n", uuidOut, testFile) {
+			return
+		}
+		if occurrences == 0 {
+			delete(expectedUUIDs, uuidOut)
+		} else {
+			expectedUUIDs[uuidOut] = occurrences
+		}
+	}
+	// Do we need this?
+	for nonAccountedUUID := range expectedUUIDs {
+		assert.Fail(t, "UUID \"%s\" was expected and not found in the response body. Test file: %s.\n", nonAccountedUUID, testFile)
+	}
 }
 
 // assertLogEntries asserts logrus entries with expectedLogEntries. It is a test helper function that makes a unit test fail if
