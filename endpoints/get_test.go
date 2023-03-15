@@ -23,9 +23,6 @@ func TestGetJsonTests(t *testing.T) {
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	jsonTests := listJsonFiles("sample-requests/get-endpoint")
-	//jsonTests := []string{
-	//	"sample-requests/get-endpoint/invalid/data-corrupted.json",
-	//}
 	for _, testFile := range jsonTests {
 		var backend backends.Backend
 		mockMetrics := metricstest.CreateMockMetrics()
@@ -49,14 +46,10 @@ func TestGetJsonTests(t *testing.T) {
 		router.ServeHTTP(rr, request)
 
 		// ASSERTIONS
-		if !assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile) {
-			hook.Reset()
-			assert.Nil(t, hook.LastEntry())
-			continue
-		}
+		assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile)
 
 		// Assert this is a valid test that expects either an error or a GetResponse
-		if !assert.NotEqual(t, len(tc.ExpectedResponse.ErrorMsg) > 0, len(tc.ExpectedResponse.GetOutput) > 0, "%s must come with either an expected error message or an expected response", testFile) {
+		if !assert.False(t, len(tc.ExpectedResponse.ErrorMsg) > 0 && len(tc.ExpectedResponse.GetOutput) > 0, "%s must come with either an expected error message or an expected response", testFile) {
 			hook.Reset()
 			assert.Nil(t, hook.LastEntry())
 			continue

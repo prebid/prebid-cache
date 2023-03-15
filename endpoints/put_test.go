@@ -39,11 +39,6 @@ func TestPutJsonTests(t *testing.T) {
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	jsonTests := listJsonFiles("sample-requests/put-endpoint")
-	//jsonTests := []string{
-	//	//"sample-requests/put-endpoint/valid-whole/record-exists.json",
-	//	//"sample-requests/put-endpoint/valid-whole/multiple-elements-to-store.json",
-	//	"sample-requests/put-endpoint/valid-whole/all-uuids.json",
-	//}
 	for _, testFile := range jsonTests {
 		var backend backends.Backend
 		mockMetrics := metricstest.CreateMockMetrics()
@@ -69,7 +64,7 @@ func TestPutJsonTests(t *testing.T) {
 		assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile)
 
 		// Assert this is a valid test that expects either an error or a PutResponse
-		if !assert.NotEqual(t, len(tc.ExpectedResponse.ErrorMsg) > 0, tc.ExpectedResponse.PutOutput != nil, "%s must come with either an expected error message or an expected response", testFile) {
+		if !assert.False(t, len(tc.ExpectedResponse.ErrorMsg) > 0 && tc.ExpectedResponse.PutOutput != nil, "%s must come with either an expected error message or an expected response", testFile) {
 			hook.Reset()
 			assert.Nil(t, hook.LastEntry())
 			continue
@@ -214,7 +209,11 @@ func copyStoredData(elems []storedData) map[string]string {
 	cpy := make(map[string]string, len(elems))
 
 	for _, e := range elems {
-		cpy[e.Key] = string(e.Value)
+		interpreted, err := unescapeXML(e.Value)
+		if err != nil {
+			return nil
+		}
+		cpy[e.Key] = interpreted
 	}
 
 	return cpy

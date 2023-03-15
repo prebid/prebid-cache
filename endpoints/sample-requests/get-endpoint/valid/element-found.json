@@ -4,13 +4,13 @@
     "mock_backend": {
       "stored_data": [
         {
-          "key": "36-char-uid-maps-to-actual-xml-value",
-          "value": "json{\"content\":5}"
+          "key": "36-char-uid-maps-to-stored-xml-value",
+          "value": "xml<description>stored xml value</description>"
         }
       ]
     }
   },
-  "getRequestQuery": "uuid=36-char-uid-maps-to-actual-xml-value",
+  "getRequestQuery": "uuid=36-char-uid-maps-to-stored-xml-value",
   "expectedMetrics": [
     "RecordGetBackendTotal",
     "RecordGetDuration",
@@ -19,6 +19,6 @@
   ],
   "expectedResponse": {
     "code": 200,
-    "getresponse": "{\"content\":5}"
+    "getresponse": "<description>stored xml value</description>"
   }
 }
