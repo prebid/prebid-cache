@@ -15,15 +15,14 @@
     "puts": [
       {
         "key": "the-custom-thrity-six-character-uuid",
-        "type": "json",
-        "ttlseconds": 60,
+        "type": "xml",
         "value": "<tag>NEW_XML</tag>"
       }
     ]
   },
   "expectedMetrics": [
     "RecordPutTotal",
-    "RecordPutBackendJson",
+    "RecordPutBackendXml",
     "RecordPutBackendSize",
     "RecordPutBackendTTLSeconds",
     "RecordPutBackendError",

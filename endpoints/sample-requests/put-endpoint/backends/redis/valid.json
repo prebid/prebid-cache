@@ -3,15 +3,14 @@
   "putRequest": {
     "puts": [
       {
-        "type": "json",
-        "ttlseconds": 60,
+        "type": "xml",
         "value": "<?xml version=\"1.0\">info<\\/VAST>\r\n"
       }
     ]
   },
   "expectedMetrics": [
     "RecordPutTotal",
-    "RecordPutBackendJson",
+    "RecordPutBackendXml",
     "RecordPutBackendSize",
     "RecordPutBackendTTLSeconds",
     "RecordPutBackendDuration",
