@@ -1,0 +1,39 @@
+{
+  "description": "Redis server side error. Expect 500, an both an error message and a log entry",
+  "serverConfig": {
+    "mock_backend": {
+      "storage_type": "redis",
+      "err_message": "redis: nil"
+    }
+  },
+  "putRequest": {
+    "puts": [
+      {
+        "type": "xml",
+        "value": "xml<description>another_XML</description>"
+      }
+    ]
+  },
+  "expectedLogEntries": [
+    {
+      "message": "POST /cache Error while writing to the back-end: redis: nil",
+      "level": 2
+    },
+    {
+      "message": "POST /cache had an unexpected error:redis: nil",
+      "level": 2
+    }
+  ],
+  "expectedMetrics": [
+    "RecordPutTotal",
+    "RecordPutBackendXml",
+    "RecordPutBackendSize",
+    "RecordPutBackendTTLSeconds",
+    "RecordPutBackendError",
+    "RecordPutError"
+  ],
+  "expectedResponse": {
+    "code": 500,
+    "expectedErrorMessage": "redis: nil\n"
+  }
+}

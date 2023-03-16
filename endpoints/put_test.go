@@ -77,7 +77,7 @@ func TestPutJsonTests(t *testing.T) {
 			// Assert we returned the exact same elements in the 'Responses' array than in the request 'Puts' array
 			var actualPutResponse PutResponse
 			err = json.Unmarshal(rr.Body.Bytes(), &actualPutResponse)
-			if !assert.NoError(t, err, "Could not unmarshal %s. Test file: %s. Error:%s\n", rr.Body.String(), testFile, err) {
+			if !assert.NoError(t, err, "Could not unmarshal %s. Test file: %s.\n", rr.Body.String(), testFile) {
 				hook.Reset()
 				assert.Nil(t, hook.LastEntry())
 				continue
@@ -125,12 +125,10 @@ type testConfig struct {
 }
 
 type fakeBackend struct {
-	Type       config.BackendType `json:"type"`
-	StoredData []storedData       `json:"stored_data"`
-	ErrorMsg   string             `json:"error_message"`
-	// Only mock Cassandra and mock Redis backends need this field. If this field is
-	// specified for other backends, the test will fail.
-	//ReturnBool bool `json:"returnBool"`
+	ErrorMsg   string       `json:"throw_error_message"`
+	ReturnBool bool         `json:"throw_bool"`
+	StoredData []storedData `json:"stored_data"`
+	Type       string       `json:"storage_type"`
 }
 
 type storedData struct {
@@ -140,33 +138,34 @@ type storedData struct {
 
 // newTestBackend returns an error-prone backend when a non-empty mockCfg.ErrorMsg string
 // is provided. With an empty mockCfg.ErrorMsg, it returns a well-behaved mock backend.
-func newTestBackend(tconf testConfig) backends.Backend {
+func newTestBackend(fb fakeBackend, ttl int) backends.Backend {
 	var mb backends.Backend
+	var backendType config.BackendType = config.BackendType(fb.Type)
 
-	if len(tconf.FakeBackend.ErrorMsg) > 0 {
+	if len(fb.ErrorMsg) > 0 {
 		// "errorProne" backend
-		switch tconf.FakeBackend.Type {
+		switch backendType {
 		case config.BackendCassandra:
 			mb = backends.NewMockCassandraBackend(
-				tconf.MaxTTLSeconds,
+				ttl,
 				&backends.ErrorProneCassandraClient{
-					Applied: false,
-					Err:     errors.New(tconf.FakeBackend.ErrorMsg),
+					Applied: fb.ReturnBool,
+					Err:     errors.New(fb.ErrorMsg),
 				},
 			)
 		case config.BackendMemcache:
-			mb = backends.NewMockMemcacheBackend(&backends.ErrorProneMemcache{ErrorToThrow: errors.New(tconf.FakeBackend.ErrorMsg)})
+			mb = backends.NewMockMemcacheBackend(&backends.ErrorProneMemcache{ErrorToThrow: errors.New(fb.ErrorMsg)})
 		case config.BackendAerospike:
 			mb = backends.NewMockAerospikeBackend(
 				&backends.ErrorProneAerospikeClient{
-					ErrorThrowingFunction: tconf.FakeBackend.ErrorMsg,
+					ErrorThrowingFunction: fb.ErrorMsg,
 				},
 			)
 		case config.BackendRedis:
 			mb = backends.NewMockRedisBackend(
 				&backends.ErrorProneRedisClient{
-					ErrorToThrow: errors.New(tconf.FakeBackend.ErrorMsg),
-					Success:      false,
+					ErrorToThrow: errors.New(fb.ErrorMsg),
+					Success:      fb.ReturnBool,
 				},
 			)
 		default:
@@ -176,30 +175,30 @@ func newTestBackend(tconf testConfig) backends.Backend {
 	}
 
 	// Well-behaved mock backend
-	switch tconf.FakeBackend.Type {
+	switch backendType {
 	case config.BackendCassandra:
 		mb = backends.NewMockCassandraBackend(
-			tconf.MaxTTLSeconds,
+			ttl,
 			&backends.GoodCassandraClient{
-				StoredData: copyStoredData(tconf.FakeBackend.StoredData),
+				StoredData: copyStoredData(fb.StoredData),
 			},
 		)
 	case config.BackendMemcache:
 		mb = backends.NewMockMemcacheBackend(
 			&backends.GoodMemcache{
-				copyStoredData(tconf.FakeBackend.StoredData),
+				copyStoredData(fb.StoredData),
 			},
 		)
 	case config.BackendAerospike:
-		mb = backends.NewMockAerospikeBackend(&backends.GoodAerospikeClient{copyStoredData(tconf.FakeBackend.StoredData)})
+		mb = backends.NewMockAerospikeBackend(&backends.GoodAerospikeClient{copyStoredData(fb.StoredData)})
 	case config.BackendRedis:
 		mb = backends.NewMockRedisBackend(
 			&backends.GoodRedisClient{
-				copyStoredData(tconf.FakeBackend.StoredData),
+				copyStoredData(fb.StoredData),
 			},
 		)
 	default:
-		mb, _ = backends.NewMemoryBackendWithValues(copyStoredData(tconf.FakeBackend.StoredData))
+		mb, _ = backends.NewMemoryBackendWithValues(copyStoredData(fb.StoredData))
 	}
 
 	return mb
@@ -246,6 +245,9 @@ func setupJsonTest(mockMetrics *metricstest.MockMetrics, backend backends.Backen
 		return nil, backend, nil, err
 	}
 
+	m := &metrics.Metrics{MetricEngines: []metrics.CacheMetrics{mockMetrics}}
+	backend = newTestBackend(tc.ServerConfig.FakeBackend, tc.ServerConfig.MaxTTLSeconds)
+
 	v := buildViperConfig(tc)
 	cfg := config.Configuration{}
 	err = v.Unmarshal(&cfg)
@@ -253,19 +255,7 @@ func setupJsonTest(mockMetrics *metricstest.MockMetrics, backend backends.Backen
 		return nil, backend, nil, errors.New(fmt.Sprintf("Viper could not parse configuration from test file: %s. Error:%s\n", testFile, err))
 	}
 
-	m := &metrics.Metrics{MetricEngines: []metrics.CacheMetrics{mockMetrics}}
-	backend = newTestBackend(tc.ServerConfig)
 	backend = backendConfig.DecorateBackend(cfg, m, backend)
-
-	//if len(tc.ServerConfig.FakeBackend.StoredData) > 0 {
-	//	backend, err = backends.NewMemoryBackendWithValues(tc.ServerConfig.FakeBackend.StoredData)
-	//	if err != nil {
-	//		return nil, backend, nil, errors.New(fmt.Sprintf("Failed to create Mock backend for test: %s Error: %v", testFile, err))
-	//	}
-	//	backend = backendConfig.DecorateBackend(cfg, m, backend)
-	//} else {
-	//	backend = backendConfig.NewBackend(cfg, m)
-	//}
 
 	return tc, backend, m, nil
 }

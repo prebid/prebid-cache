@@ -1,22 +1,11 @@
 {
   "description": "Successful insertion of element in mock redis backend",
-  "serverConfig": {
-    "max_size_bytes": 100,
-    "stored_data_on_backend": [
-      {
-        "key": "the-custom-thrity-six-character-uuid",
-        "value": "<tag>original_XML</tag>",
-        "type": "xml",
-        "ttlseconds": 60
-      }
-    ]
-  },
   "putRequest": {
     "puts": [
       {
         "type": "json",
         "ttlseconds": 60,
-        "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+        "value": "<?xml version=\"1.0\">info<\\/VAST>\r\n"
       }
     ]
   },
