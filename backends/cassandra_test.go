@@ -31,7 +31,7 @@ func TestCassandraClientGet(t *testing.T) {
 		{
 			"CassandraBackend.Get() throws a Cassandra ErrNotFound error",
 			testInput{
-				&ErrorProneCassandraClient{Err: gocql.ErrNotFound},
+				&ErrorProneCassandraClient{ServerError: gocql.ErrNotFound},
 				"someKeyThatWontBeFound",
 			},
 			testExpectedValues{
@@ -42,7 +42,7 @@ func TestCassandraClientGet(t *testing.T) {
 		{
 			"CassandraBackend.Get() throws an error different from Cassandra ErrNotFound error",
 			testInput{
-				&ErrorProneCassandraClient{Err: errors.New("some other get error")},
+				&ErrorProneCassandraClient{ServerError: errors.New("some other get error")},
 				"someKey",
 			},
 			testExpectedValues{
@@ -115,7 +115,7 @@ func TestCassandraClientPut(t *testing.T) {
 		{
 			"CassandraBackend.Put() returns the 'applied' boolean value as 'true' in addition to a Cassandra server error. Not even sure if this scenario is feasible in practice",
 			testInput{
-				cassandraClient: &ErrorProneCassandraClient{Applied: true, Err: gocql.ErrNoConnections},
+				cassandraClient: &ErrorProneCassandraClient{Applied: true, ServerError: gocql.ErrNoConnections},
 				key:             "someKey",
 				valueToStore:    "someValue",
 				ttl:             10,

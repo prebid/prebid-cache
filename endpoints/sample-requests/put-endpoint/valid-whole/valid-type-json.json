@@ -4,7 +4,6 @@
     "puts": [
       {
         "type": "json",
-        "ttlseconds": 60,
         "value": "{\"field\":100}"
       }
     ]

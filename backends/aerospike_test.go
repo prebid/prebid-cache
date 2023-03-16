@@ -166,38 +166,38 @@ func TestAerospikeClientGet(t *testing.T) {
 	}{
 		{
 			desc:              "AerospikeBackend.Get() throws error when trying to generate new key",
-			inAerospikeClient: &ErrorProneAerospikeClient{ErrorThrowingFunction: "TEST_KEY_GEN_ERROR"},
+			inAerospikeClient: &ErrorProneAerospikeClient{ServerError: "TEST_KEY_GEN_ERROR"},
 			expectedValue:     "",
 			expectedErrorMsg:  "ResultCode: NOT_AUTHENTICATED, Iteration: 0, InDoubt: false, Node: <nil>: ",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error when 'client.Get(..)' gets called",
-			inAerospikeClient: &ErrorProneAerospikeClient{ErrorThrowingFunction: "TEST_GET_ERROR"},
+			inAerospikeClient: &ErrorProneAerospikeClient{ServerError: "TEST_GET_ERROR"},
 			expectedValue:     "",
 			expectedErrorMsg:  "Key not found",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error when 'client.Get(..)' returns a nil record",
-			inAerospikeClient: &ErrorProneAerospikeClient{ErrorThrowingFunction: "TEST_NIL_RECORD_ERROR"},
+			inAerospikeClient: &ErrorProneAerospikeClient{ServerError: "TEST_NIL_RECORD_ERROR"},
 			expectedValue:     "",
 			expectedErrorMsg:  "Nil record",
 		},
 		{
 			desc:              "AerospikeBackend.Get() throws error no BIN_VALUE bucket is found",
-			inAerospikeClient: &ErrorProneAerospikeClient{ErrorThrowingFunction: "TEST_NO_BUCKET_ERROR"},
+			inAerospikeClient: &ErrorProneAerospikeClient{ServerError: "TEST_NO_BUCKET_ERROR"},
 			expectedValue:     "",
 			expectedErrorMsg:  "No 'value' bucket found",
 		},
 		{
 			desc:              "AerospikeBackend.Get() returns a record that does not store a string",
-			inAerospikeClient: &ErrorProneAerospikeClient{ErrorThrowingFunction: "TEST_NON_STRING_VALUE_ERROR"},
+			inAerospikeClient: &ErrorProneAerospikeClient{ServerError: "TEST_NON_STRING_VALUE_ERROR"},
 			expectedValue:     "",
 			expectedErrorMsg:  "Unexpected non-string value found",
 		},
 		{
 			desc: "AerospikeBackend.Get() does not throw error",
 			inAerospikeClient: &GoodAerospikeClient{
-				Records: map[string]string{"defaultKey": "Default value"},
+				StoredData: map[string]string{"defaultKey": "Default value"},
 			},
 			expectedValue:    "Default value",
 			expectedErrorMsg: "",
@@ -243,7 +243,7 @@ func TestClientPut(t *testing.T) {
 	}{
 		{
 			desc:              "AerospikeBackend.Put() throws error when trying to generate new key",
-			inAerospikeClient: &ErrorProneAerospikeClient{ErrorThrowingFunction: "TEST_KEY_GEN_ERROR"},
+			inAerospikeClient: &ErrorProneAerospikeClient{ServerError: "TEST_KEY_GEN_ERROR"},
 			inKey:             "testKey",
 			inValueToStore:    "not default value",
 			expectedStoredVal: "",
@@ -251,7 +251,7 @@ func TestClientPut(t *testing.T) {
 		},
 		{
 			desc:              "AerospikeBackend.Put() throws error when 'client.Put(..)' gets called",
-			inAerospikeClient: &ErrorProneAerospikeClient{ErrorThrowingFunction: "TEST_PUT_ERROR"},
+			inAerospikeClient: &ErrorProneAerospikeClient{ServerError: "TEST_PUT_ERROR"},
 			inKey:             "testKey",
 			inValueToStore:    "not default value",
 			expectedStoredVal: "",
@@ -260,7 +260,7 @@ func TestClientPut(t *testing.T) {
 		{
 			desc: "AerospikeBackend.Put() does not throw error",
 			inAerospikeClient: &GoodAerospikeClient{
-				Records: map[string]string{"defaultKey": "Default value"},
+				StoredData: map[string]string{"defaultKey": "Default value"},
 			},
 			inKey:             "testKey",
 			inValueToStore:    "any value",

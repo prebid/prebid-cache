@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func AssertMetrics(t *testing.T, expectedMetrics []string, actualMetrics MockMetrics, testFile string) {
+func AssertMetrics(t *testing.T, expectedMetrics []string, actualMetrics MockMetrics) {
 	t.Helper()
 
 	m := metrics.Metrics{}
@@ -30,7 +30,7 @@ func AssertMetrics(t *testing.T, expectedMetrics []string, actualMetrics MockMet
 			actualMetrics.AssertCalled(t, metricName)
 			metricsLogged[metricName] = struct{}{}
 		} else {
-			t.Errorf("%s. Cannot assert unrecognized metric '%s' was called", testFile, metricName)
+			t.Errorf("Cannot assert unrecognized metric '%s' was called", metricName)
 		}
 	}
 
