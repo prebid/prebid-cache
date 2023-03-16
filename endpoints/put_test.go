@@ -86,7 +86,7 @@ func TestPutJsonTests(t *testing.T) {
 		}
 
 		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
-		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics, testFile)
+		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics)
 
 		// Reset log after every test and assert successful reset
 		hook.Reset()
@@ -149,23 +149,23 @@ func newTestBackend(fb fakeBackend, ttl int) backends.Backend {
 			mb = backends.NewMockCassandraBackend(
 				ttl,
 				&backends.ErrorProneCassandraClient{
-					Applied: fb.ReturnBool,
-					Err:     errors.New(fb.ErrorMsg),
+					Applied:     fb.ReturnBool,
+					ServerError: errors.New(fb.ErrorMsg),
 				},
 			)
 		case config.BackendMemcache:
-			mb = backends.NewMockMemcacheBackend(&backends.ErrorProneMemcache{ErrorToThrow: errors.New(fb.ErrorMsg)})
+			mb = backends.NewMockMemcacheBackend(&backends.ErrorProneMemcache{ServerError: errors.New(fb.ErrorMsg)})
 		case config.BackendAerospike:
 			mb = backends.NewMockAerospikeBackend(
 				&backends.ErrorProneAerospikeClient{
-					ErrorThrowingFunction: fb.ErrorMsg,
+					ServerError: fb.ErrorMsg,
 				},
 			)
 		case config.BackendRedis:
 			mb = backends.NewMockRedisBackend(
 				&backends.ErrorProneRedisClient{
-					ErrorToThrow: errors.New(fb.ErrorMsg),
-					Success:      fb.ReturnBool,
+					ServerError: errors.New(fb.ErrorMsg),
+					Success:     fb.ReturnBool,
 				},
 			)
 		default:
@@ -566,7 +566,7 @@ func TestSuccessfulPut(t *testing.T) {
 				}
 
 				// assert the put call above logged expected metrics
-				metricstest.AssertMetrics(t, tc.expectedMetrics, mockMetrics, tc.desc)
+				metricstest.AssertMetrics(t, tc.expectedMetrics, mockMetrics)
 			}
 
 		}
@@ -643,7 +643,7 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 			"RecordPutTotal",
 			"RecordPutBadRequest",
 		}
-		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, tc.desc)
+		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 	}
 }
 
@@ -676,7 +676,7 @@ func TestNonSupportedType(t *testing.T) {
 		"RecordPutTotal",
 		"RecordPutBadRequest",
 	}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestPutNegativeTTL(t *testing.T) {
@@ -714,7 +714,7 @@ func TestPutNegativeTTL(t *testing.T) {
 		"RecordPutTotal",
 		"RecordPutBadRequest",
 	}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 // TestCustomKey will assert the correct behavior when we try to store values that come with their own custom keys both
@@ -817,7 +817,7 @@ func TestCustomKey(t *testing.T) {
 			assert.Equal(t, http.StatusOK, recorder.Code, tc.desc)
 
 			// assert the put call above logged expected metrics
-			metricstest.AssertMetrics(t, tc.expectedMetrics, mockMetrics, "")
+			metricstest.AssertMetrics(t, tc.expectedMetrics, mockMetrics)
 
 			// Assert response UUID
 			if tc.expectedUUID == "" {
@@ -860,7 +860,7 @@ func TestRequestReadError(t *testing.T) {
 
 	// assert the put call above logged expected metrics
 	expectedMetrics := []string{"RecordPutTotal", "RecordPutBadRequest"}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestTooManyPutElements(t *testing.T) {
@@ -894,7 +894,7 @@ func TestTooManyPutElements(t *testing.T) {
 
 	// assert the put call above logged expected metrics
 	expectedMetrics := []string{"RecordPutTotal", "RecordPutBadRequest"}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 // TestMultiPutRequest asserts results for requests with more than one element in the "puts" array
@@ -949,7 +949,7 @@ func TestMultiPutRequest(t *testing.T) {
 	//   Assert put metrics
 	// assert the put call above logged expected metrics
 	expectedMetrics := []string{"RecordPutTotal", "RecordPutDuration"}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 
 	//   Assert put request
 	var parsed PutResponse
@@ -968,7 +968,7 @@ func TestMultiPutRequest(t *testing.T) {
 
 	//   Assert get metrics
 	expectedMetrics = append(expectedMetrics, "RecordGetTotal", "RecordGetDuration")
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestBadPayloadSizePutError(t *testing.T) {
@@ -999,7 +999,7 @@ func TestBadPayloadSizePutError(t *testing.T) {
 
 	//   metrics
 	expectedMetrics := []string{"RecordPutTotal", "RecordPutBadRequest"}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestInternalPutClientError(t *testing.T) {
@@ -1034,7 +1034,7 @@ func TestInternalPutClientError(t *testing.T) {
 	// Assert expected response
 	assert.Equal(t, http.StatusInternalServerError, putResponse.Code, "Put should have failed because we are using an MockReturnErrorBackend")
 	assert.Equal(t, "This is a mock backend that returns this error on Put() operation\n", putResponse.Body.String(), "Put() return error doesn't match expected.")
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 func TestEmptyPutRequests(t *testing.T) {
@@ -1124,7 +1124,7 @@ func TestEmptyPutRequests(t *testing.T) {
 		if tc.expected.durationMetricsLogged {
 			expectedMetrics = append(expectedMetrics, "RecordPutDuration")
 		}
-		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, tc.desc)
+		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 	}
 }
 
@@ -1156,7 +1156,7 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 		"RecordPutTotal",
 		"RecordPutError",
 	}
-	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics, "")
+	metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
 }
 
 // TestParseRequest asserts *PutHandler's parseRequest(r *http.Request) method

@@ -63,7 +63,7 @@ func TestGetJsonTests(t *testing.T) {
 		}
 
 		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
-		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics, testFile)
+		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics)
 
 		// Reset log after every test and assert successful reset
 		hook.Reset()
@@ -288,7 +288,7 @@ func TestGetHandler(t *testing.T) {
 		}
 
 		// Assert recorded metrics
-		metricstest.AssertMetrics(t, test.out.expectedMetrics, mockMetrics, "")
+		metricstest.AssertMetrics(t, test.out.expectedMetrics, mockMetrics)
 
 		// Reset log
 		hook.Reset()

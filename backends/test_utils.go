@@ -19,29 +19,29 @@ func NewMockAerospikeBackend(mockClient AerospikeDB) *AerospikeBackend {
 }
 
 type ErrorProneAerospikeClient struct {
-	ErrorThrowingFunction string
+	ServerError string
 }
 
 func (c *ErrorProneAerospikeClient) NewUUIDKey(namespace string, key string) (*as.Key, error) {
-	if c.ErrorThrowingFunction == "TEST_KEY_GEN_ERROR" {
+	if c.ServerError == "TEST_KEY_GEN_ERROR" {
 		return nil, &as.AerospikeError{ResultCode: as_types.NOT_AUTHENTICATED}
 	}
 	return nil, nil
 }
 
 func (c *ErrorProneAerospikeClient) Get(key *as.Key) (*as.Record, error) {
-	if c.ErrorThrowingFunction == "TEST_GET_ERROR" {
+	if c.ServerError == "TEST_GET_ERROR" {
 		return nil, &as.AerospikeError{ResultCode: as_types.KEY_NOT_FOUND_ERROR}
-	} else if c.ErrorThrowingFunction == "TEST_NO_BUCKET_ERROR" {
+	} else if c.ServerError == "TEST_NO_BUCKET_ERROR" {
 		return &as.Record{Bins: as.BinMap{"AnyKey": "any_value"}}, nil
-	} else if c.ErrorThrowingFunction == "TEST_NON_STRING_VALUE_ERROR" {
+	} else if c.ServerError == "TEST_NON_STRING_VALUE_ERROR" {
 		return &as.Record{Bins: as.BinMap{binValue: 0.0}}, nil
 	}
 	return nil, nil
 }
 
 func (c *ErrorProneAerospikeClient) Put(policy *as.WritePolicy, key *as.Key, binMap as.BinMap) error {
-	if c.ErrorThrowingFunction == "TEST_PUT_ERROR" {
+	if c.ServerError == "TEST_PUT_ERROR" {
 		return &as.AerospikeError{ResultCode: as_types.KEY_EXISTS_ERROR}
 	}
 	return nil
@@ -49,15 +49,14 @@ func (c *ErrorProneAerospikeClient) Put(policy *as.WritePolicy, key *as.Key, bin
 
 // Aerospike client that does not throw errors
 type GoodAerospikeClient struct {
-	//Records map[string]*as.Record
-	Records map[string]string
+	StoredData map[string]string
 }
 
 func (c *GoodAerospikeClient) Get(aeKey *as.Key) (*as.Record, error) {
 	if aeKey != nil && aeKey.Value() != nil {
 		key := aeKey.Value().String()
 
-		if value, found := c.Records[key]; found {
+		if value, found := c.StoredData[key]; found {
 			rec := &as.Record{
 				Bins: as.BinMap{binValue: value},
 			}
@@ -72,7 +71,7 @@ func (c *GoodAerospikeClient) Put(policy *as.WritePolicy, aeKey *as.Key, binMap 
 		key := aeKey.Value().String()
 		if interfaceValue, found := binMap[binValue]; found {
 			if str, asserted := interfaceValue.(string); asserted {
-				c.Records[key] = str
+				c.StoredData[key] = str
 			}
 		}
 
@@ -96,8 +95,8 @@ func NewMockCassandraBackend(ttl int, mockClient CassandraDB) *CassandraBackend 
 }
 
 type ErrorProneCassandraClient struct {
-	Applied bool
-	Err     error
+	Applied     bool
+	ServerError error
 }
 
 func (ec *ErrorProneCassandraClient) Init() error {
@@ -105,11 +104,11 @@ func (ec *ErrorProneCassandraClient) Init() error {
 }
 
 func (ec *ErrorProneCassandraClient) Get(ctx context.Context, key string) (string, error) {
-	return "", ec.Err
+	return "", ec.ServerError
 }
 
 func (ec *ErrorProneCassandraClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
-	return ec.Applied, ec.Err
+	return ec.Applied, ec.ServerError
 }
 
 // Cassandra client client that does not throw errors
@@ -145,15 +144,15 @@ func NewMockMemcacheBackend(mockClient MemcacheDataStore) *MemcacheBackend {
 }
 
 type ErrorProneMemcache struct {
-	ErrorToThrow error
+	ServerError error
 }
 
 func (ec *ErrorProneMemcache) Get(key string) (*memcache.Item, error) {
-	return nil, ec.ErrorToThrow
+	return nil, ec.ServerError
 }
 
 func (ec *ErrorProneMemcache) Put(key string, value string, ttlSeconds int) error {
-	return ec.ErrorToThrow
+	return ec.ServerError
 }
 
 // Memcache client that does not throw errors
@@ -185,16 +184,16 @@ func NewMockRedisBackend(mockClient RedisDB) *RedisBackend {
 }
 
 type ErrorProneRedisClient struct {
-	Success      bool
-	ErrorToThrow error
+	Success     bool
+	ServerError error
 }
 
 func (ec *ErrorProneRedisClient) Get(ctx context.Context, key string) (string, error) {
-	return "", ec.ErrorToThrow
+	return "", ec.ServerError
 }
 
 func (ec *ErrorProneRedisClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
-	return ec.Success, ec.ErrorToThrow
+	return ec.Success, ec.ServerError
 }
 
 // GoodRedisClient does not throw errors

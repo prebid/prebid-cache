@@ -4,7 +4,6 @@
     "puts": [
       {
         "type": "unknown",
-        "ttlseconds": 60,
         "value": "some-value"
       }
     ]

@@ -1,5 +1,5 @@
 {
-  "description": "Put request wants to store multiple elements but no more than the maximum allowed by the 'max_num_values' config. Store them under a random UUIDs",
+  "description": "Put request stores multiple elements without going over the 'max_num_values' cap of its config.",
   "serverConfig": {
     "max_num_values": 2
   },

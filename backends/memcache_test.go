@@ -34,7 +34,7 @@ func TestMemcacheGet(t *testing.T) {
 		{
 			"Memcache.Get() throws a memcache.ErrCacheMiss error",
 			testInput{
-				&ErrorProneMemcache{ErrorToThrow: memcache.ErrCacheMiss},
+				&ErrorProneMemcache{ServerError: memcache.ErrCacheMiss},
 				"someKeyThatWontBeFound",
 			},
 			testExpectedValues{
@@ -45,7 +45,7 @@ func TestMemcacheGet(t *testing.T) {
 		{
 			"Memcache.Get() throws an error different from Cassandra ErrNotFound error",
 			testInput{
-				&ErrorProneMemcache{ErrorToThrow: errors.New("some other get error")},
+				&ErrorProneMemcache{ServerError: errors.New("some other get error")},
 				"someKey",
 			},
 			testExpectedValues{
@@ -101,7 +101,7 @@ func TestMemcachePut(t *testing.T) {
 		{
 			"Memcache.Put() throws non-ErrNotStored error",
 			testInput{
-				&ErrorProneMemcache{ErrorToThrow: memcache.ErrServerError},
+				&ErrorProneMemcache{ServerError: memcache.ErrServerError},
 				"someKey",
 				"someValue",
 				10,
@@ -114,7 +114,7 @@ func TestMemcachePut(t *testing.T) {
 		{
 			"Memcache.Put() throws ErrNotStored error",
 			testInput{
-				&ErrorProneMemcache{ErrorToThrow: memcache.ErrNotStored},
+				&ErrorProneMemcache{ServerError: memcache.ErrNotStored},
 				"someKey",
 				"someValue",
 				10,

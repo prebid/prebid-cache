@@ -1,10 +1,9 @@
 {
-  "description": "Prebid Cache does not allow the storage of empty values. Respond with error",
+  "description": "Prebid Cache returns an error if a request doesn't come with a 'value' field.",
   "putRequest": {
     "puts": [
       {
-        "type": "xml",
-        "ttlseconds": 60
+        "type": "xml"
       }
     ]
   },

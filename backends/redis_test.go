@@ -31,7 +31,7 @@ func TestRedisClientGet(t *testing.T) {
 		{
 			"RedisBackend.Get() throws a redis.Nil error",
 			testInput{
-				&ErrorProneRedisClient{Success: false, ErrorToThrow: redis.Nil},
+				&ErrorProneRedisClient{Success: false, ServerError: redis.Nil},
 				"someKeyThatWontBeFound",
 			},
 			testExpectedValues{
@@ -42,7 +42,7 @@ func TestRedisClientGet(t *testing.T) {
 		{
 			"RedisBackend.Get() throws an error different from redis.Nil",
 			testInput{
-				&ErrorProneRedisClient{Success: false, ErrorToThrow: errors.New("some other get error")},
+				&ErrorProneRedisClient{Success: false, ServerError: errors.New("some other get error")},
 				"someKey",
 			},
 			testExpectedValues{
@@ -53,7 +53,7 @@ func TestRedisClientGet(t *testing.T) {
 		{
 			"RedisBackend.Get() doesn't throw an error",
 			testInput{
-				&GoodRedisClient{StoredData: map[string]string{"defaultKey": "aValue"}},
+				&GoodRedisClient{StoredKeyValuePairs: map[string]string{"defaultKey": "aValue"}},
 				"defaultKey",
 			},
 			testExpectedValues{
@@ -98,7 +98,7 @@ func TestRedisClientPut(t *testing.T) {
 		{
 			"RedisBackend.Put() tries to overwrite already existing key",
 			testInput{
-				&ErrorProneRedisClient{Success: false, ErrorToThrow: redis.Nil},
+				&ErrorProneRedisClient{Success: false, ServerError: redis.Nil},
 				"repeatedKey",
 				"overwriteValue",
 				10,
@@ -111,7 +111,7 @@ func TestRedisClientPut(t *testing.T) {
 		{
 			"RedisBackend.Put() throws an error different from error redis.Nil, which gets returned when key does not exist.",
 			testInput{
-				&ErrorProneRedisClient{Success: true, ErrorToThrow: errors.New("some other Redis error")},
+				&ErrorProneRedisClient{Success: true, ServerError: errors.New("some other Redis error")},
 				"someKey",
 				"someValue",
 				10,
@@ -124,7 +124,7 @@ func TestRedisClientPut(t *testing.T) {
 		{
 			"RedisBackend.Put() gets called with zero ttlSeconds, value gets successfully set anyways",
 			testInput{
-				&GoodRedisClient{StoredData: map[string]string{"defaultKey": "aValue"}},
+				&GoodRedisClient{StoredKeyValuePairs: map[string]string{"defaultKey": "aValue"}},
 				"defaultKey",
 				"aValue",
 				0,
@@ -137,7 +137,7 @@ func TestRedisClientPut(t *testing.T) {
 		{
 			"RedisBackend.Put() successful, no need to set defaultTTL because ttl is greater than zero",
 			testInput{
-				&GoodRedisClient{StoredData: map[string]string{"defaultKey": "aValue"}},
+				&GoodRedisClient{StoredKeyValuePairs: map[string]string{"defaultKey": "aValue"}},
 				"defaultKey",
 				"aValue",
 				1,

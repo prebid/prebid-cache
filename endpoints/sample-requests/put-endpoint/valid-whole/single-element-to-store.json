@@ -4,7 +4,6 @@
     "puts": [
       {
         "type": "xml",
-        "ttlseconds": 60,
         "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
       }
     ]
