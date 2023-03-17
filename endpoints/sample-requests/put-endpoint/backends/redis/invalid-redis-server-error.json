@@ -3,7 +3,7 @@
   "serverConfig": {
     "mock_backend": {
       "storage_type": "redis",
-      "err_message": "redis: nil"
+      "throw_error_message": "Redis server side error"
     }
   },
   "putRequest": {
@@ -16,11 +16,11 @@
   },
   "expectedLogEntries": [
     {
-      "message": "POST /cache Error while writing to the back-end: redis: nil",
+      "message": "POST /cache Error while writing to the back-end: Redis server side error",
       "level": 2
     },
     {
-      "message": "POST /cache had an unexpected error:redis: nil",
+      "message": "POST /cache had an unexpected error:Redis server side error",
       "level": 2
     }
   ],
@@ -34,6 +34,6 @@
   ],
   "expectedResponse": {
     "code": 500,
-    "expectedErrorMessage": "redis: nil\n"
+    "expectedErrorMessage": "Redis server side error\n"
   }
 }

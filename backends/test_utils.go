@@ -6,7 +6,6 @@ import (
 
 	as "github.com/aerospike/aerospike-client-go/v6"
 	as_types "github.com/aerospike/aerospike-client-go/v6/types"
-	"github.com/go-redis/redis/v8"
 	"github.com/google/gomemcache/memcache"
 	"github.com/prebid/prebid-cache/utils"
 )
@@ -177,42 +176,34 @@ func (gm *GoodMemcache) Put(key string, value string, ttlSeconds int) error {
 // ------------------------------------------
 // Redis client mocks
 // ------------------------------------------
-func NewMockRedisBackend(mockClient RedisDB) *RedisBackend {
+func NewFakeRedisBackend(mockClient RedisDB) *RedisBackend {
 	return &RedisBackend{
 		client: mockClient,
 	}
 }
 
-type ErrorProneRedisClient struct {
-	Success     bool
+type FakeRedisClient struct {
+	StoredData  map[string]string
 	ServerError error
+	Success     bool
 }
 
-func (ec *ErrorProneRedisClient) Get(ctx context.Context, key string) (string, error) {
-	return "", ec.ServerError
-}
-
-func (ec *ErrorProneRedisClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
-	return ec.Success, ec.ServerError
-}
-
-// GoodRedisClient does not throw errors
-type GoodRedisClient struct {
-	StoredData map[string]string
-}
-
-func (gr *GoodRedisClient) Get(ctx context.Context, key string) (string, error) {
-	if value, found := gr.StoredData[key]; found {
+// Get returns an error if the FakeRedisClient has a non-nil ServerError field.
+func (r FakeRedisClient) Get(ctx context.Context, key string) (string, error) {
+	if r.ServerError != nil {
+		return "", r.ServerError
+	}
+	if value, found := r.StoredData[key]; found {
 		return value, nil
 	}
 	return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
 }
 
-func (gr *GoodRedisClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
-	if _, found := gr.StoredData[key]; !found {
-		gr.StoredData[key] = value
+func (r FakeRedisClient) Put(ctx context.Context, key string, value string, ttlSeconds int) (bool, error) {
+	if _, found := r.StoredData[key]; !found {
+		r.StoredData[key] = value
 	}
-	return true, redis.Nil
+	return r.Success, r.ServerError
 }
 
 // ------------------------------------------

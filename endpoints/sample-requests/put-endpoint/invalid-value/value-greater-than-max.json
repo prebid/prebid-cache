@@ -13,11 +13,11 @@
   },
   "expectedLogEntries": [
     {
-      "message": "POST /cache Error while writing to the back-end: POST /cache element 0 exceeded max size: Payload size 73 exceeded max 5",
+      "message": "POST /cache Error while writing to the back-end: POST /cache element 0 exceeded max size: Payload size 73 exceeded max 1",
       "level": 2
     },
     {
-      "message": "POST /cache had an unexpected error:POST /cache element 0 exceeded max size: Payload size 73 exceeded max 5",
+      "message": "POST /cache had an unexpected error:POST /cache element 0 exceeded max size: Payload size 73 exceeded max 1",
       "level": 2
     }
   ],
@@ -31,6 +31,6 @@
   ],
   "expectedResponse": {
     "code": 400,
-    "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 73 exceeded max 5\n"
+    "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 73 exceeded max 1\n"
   }
 }

@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
@@ -162,9 +163,16 @@ func newTestBackend(fb fakeBackend, ttl int) backends.Backend {
 				},
 			)
 		case config.BackendRedis:
-			mb = backends.NewMockRedisBackend(
-				&backends.ErrorProneRedisClient{
-					ServerError: errors.New(fb.ErrorMsg),
+			var serverErr error
+			if fb.ErrorMsg == "redis: nil" {
+				serverErr = redis.Nil
+			} else {
+				serverErr = errors.New(fb.ErrorMsg)
+			}
+			mb = backends.NewFakeRedisBackend(
+				backends.FakeRedisClient{
+					StoredData:  copyStoredData(fb.StoredData),
+					ServerError: serverErr,
 					Success:     fb.ReturnBool,
 				},
 			)
@@ -192,9 +200,17 @@ func newTestBackend(fb fakeBackend, ttl int) backends.Backend {
 	case config.BackendAerospike:
 		mb = backends.NewMockAerospikeBackend(&backends.GoodAerospikeClient{copyStoredData(fb.StoredData)})
 	case config.BackendRedis:
-		mb = backends.NewMockRedisBackend(
-			&backends.GoodRedisClient{
-				copyStoredData(fb.StoredData),
+		var serverErr error
+		if fb.ErrorMsg == "redis: nil" {
+			serverErr = redis.Nil
+		} else {
+			serverErr = errors.New(fb.ErrorMsg)
+		}
+		mb = backends.NewFakeRedisBackend(
+			backends.FakeRedisClient{
+				StoredData:  copyStoredData(fb.StoredData),
+				ServerError: serverErr,
+				Success:     fb.ReturnBool,
 			},
 		)
 	default:

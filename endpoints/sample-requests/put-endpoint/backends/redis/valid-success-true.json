@@ -1,0 +1,34 @@
+{
+  "description": "Successful insertion of element in mock redis backend",
+  "serverConfig": {
+    "mock_backend": {
+      "storage_type": "redis",
+      "throw_bool": true,
+      "throw_error_message": "redis: nil"
+    }
+  },
+  "putRequest": {
+    "puts": [
+      {
+        "type": "xml",
+        "value": "<?xml version=\"1.0\">info<\\/VAST>\r\n"
+      }
+    ]
+  },
+  "expectedMetrics": [
+    "RecordPutTotal",
+    "RecordPutBackendXml",
+    "RecordPutBackendSize",
+    "RecordPutBackendTTLSeconds",
+    "RecordPutBackendDuration",
+    "RecordPutDuration"
+  ],
+  "expectedResponse": {
+    "code": 200,
+    "putresponse": {
+      "responses": [
+        {"uuid": "random"}
+      ]
+    }
+  }
+}

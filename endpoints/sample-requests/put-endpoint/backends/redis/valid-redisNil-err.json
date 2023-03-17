@@ -1,5 +1,12 @@
 {
   "description": "Successful insertion of element in mock redis backend",
+  "serverConfig": {
+    "mock_backend": {
+      "storage_type": "redis",
+      "throw_bool": true,
+      "throw_error_message": "redis: nil"
+    }
+  },
   "putRequest": {
     "puts": [
       {
