@@ -1,6 +1,6 @@
 {
   "description": "Put request tries to overwrite data stored in Redis. Expect value to not be overwritten and a blank UUID in response",
-  "serverConfig": {
+  "config": {
     "allow_setting_keys": true,
       "storage_type": "redis",
     "fake_backend": {
@@ -12,7 +12,7 @@
       ]
     }
   },
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "key": "the-custom-thrity-six-character-uuid",
@@ -21,7 +21,7 @@
       }
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendSize",
@@ -30,9 +30,9 @@
     "RecordPutKeyProvided",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 200,
-    "putresponse": {
+    "put_response": {
       "responses": [
         {"uuid": ""}
       ]

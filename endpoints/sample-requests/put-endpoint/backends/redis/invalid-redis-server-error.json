@@ -1,12 +1,12 @@
 {
   "description": "Redis server side error. Expect 500, an both an error message and a log entry",
-  "serverConfig": {
+  "config": {
     "fake_backend": {
       "storage_type": "redis",
       "throw_error_message": "Redis server side error"
     }
   },
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "xml",
@@ -14,7 +14,7 @@
       }
     ]
   },
-  "expectedLogEntries": [
+  "expected_log_entries": [
     {
       "message": "POST /cache Error while writing to the back-end: Redis server side error",
       "level": 2
@@ -24,7 +24,7 @@
       "level": 2
     }
   ],
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendSize",
@@ -32,8 +32,8 @@
     "RecordPutBackendError",
     "RecordPutError"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 500,
-    "expectedErrorMessage": "Redis server side error\n"
+    "expected_error_message": "Redis server side error\n"
   }
 }

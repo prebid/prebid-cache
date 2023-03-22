@@ -1,6 +1,6 @@
 {
   "description": "Prebid Cache allows the storage of XML type values. Store under a random UUID because the 'key' field missing and custom keys are not allowed anyways",
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "xml",
@@ -8,7 +8,7 @@
       }
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendSize",
@@ -16,9 +16,9 @@
     "RecordPutBackendDuration",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 200,
-    "putresponse": {
+    "put_response": {
       "responses": [
         {"uuid": "random"}
       ]

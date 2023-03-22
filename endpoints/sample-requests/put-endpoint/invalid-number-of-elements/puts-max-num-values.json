@@ -1,20 +1,20 @@
 {
   "description": "Put request wants to store more elements than allowed in the 'max_num_values' configuration. Don't store and return error",
-  "serverConfig": {
+  "config": {
       "max_num_values": 1
   },
-  "putRequest": {
+  "put_request": {
     "puts": [
       {"type":"xml","ttlseconds":5,"value":"<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"},
       {"type":"json","ttlseconds":5,"value":"{\"field\":100}"}
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBadRequest"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 400,
-    "expectedErrorMessage": "More keys than allowed: 1\n"
+    "expected_error_message": "More keys than allowed: 1\n"
   }
 }

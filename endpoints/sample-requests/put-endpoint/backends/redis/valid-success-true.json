@@ -1,13 +1,13 @@
 {
   "description": "Successful insertion of element in fake redis backend",
-  "serverConfig": {
+  "config": {
     "fake_backend": {
       "storage_type": "redis",
       "throw_bool": true,
       "throw_error_message": "redis: nil"
     }
   },
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "xml",
@@ -15,7 +15,7 @@
       }
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendSize",
@@ -23,9 +23,9 @@
     "RecordPutBackendDuration",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 200,
-    "putresponse": {
+    "put_response": {
       "responses": [
         {"uuid": "random"}
       ]

@@ -1,9 +1,9 @@
 {
   "description": "Put request wants to store an element with a size that exceeds the 'max_size_bytes' value. Don't store and return error",
-  "serverConfig": {
+  "config": {
     "max_size_bytes": 1
   },
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "xml",
@@ -11,7 +11,7 @@
       }
     ]
   },
-  "expectedLogEntries": [
+  "expected_log_entries": [
     {
       "message": "POST /cache Error while writing to the back-end: POST /cache element 0 exceeded max size: Payload size 73 exceeded max 1",
       "level": 2
@@ -21,7 +21,7 @@
       "level": 2
     }
   ],
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendSize",
@@ -29,8 +29,8 @@
     "RecordPutBackendError",
     "RecordPutBadRequest"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 400,
-    "expectedErrorMessage": "POST /cache element 0 exceeded max size: Payload size 73 exceeded max 1\n"
+    "expected_error_message": "POST /cache element 0 exceeded max size: Payload size 73 exceeded max 1\n"
   }
 }

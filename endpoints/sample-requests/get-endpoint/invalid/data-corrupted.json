@@ -1,6 +1,6 @@
 {
   "description": "Get request doesn't come with a UUID value in the URL query, expect MISSING_KEY error",
-  "serverConfig": {
+  "config": {
     "fake_backend": {
       "stored_data": [
         {
@@ -10,19 +10,19 @@
       ]
     }
   },
-  "getRequestQuery": "uuid=",
-  "expectedLogEntries": [
+  "get_request_query": "uuid=",
+  "expected_log_entries": [
     {
       "message": "GET /cache: Missing required parameter uuid",
       "level": 2
     }
   ],
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordGetTotal",
     "RecordGetBadRequest"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 400,
-    "expectedErrorMessage": "GET /cache: Missing required parameter uuid\n"
+    "expected_error_message": "GET /cache: Missing required parameter uuid\n"
   }
 }

@@ -1,9 +1,9 @@
 {
   "description": "Prebid Cache has been configured to allow to store elements under custom keys but element came with empty 'key' field. Store under random UUID",
-  "serverConfig": {
+  "config": {
     "allow_setting_keys": true
   },
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "xml",
@@ -11,7 +11,7 @@
       }
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendSize",
@@ -19,9 +19,9 @@
     "RecordPutBackendDuration",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 200,
-    "putresponse": {
+    "put_response": {
       "responses": [
         {"uuid": "random"}
       ]

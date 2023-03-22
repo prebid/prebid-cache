@@ -1,15 +1,15 @@
 {
   "description": "Put request with empty 'puts' array does not return an error, we simply respond with an emtpy 'responses' array.",
-  "putRequest": {
+  "put_request": {
     "puts": []
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 200,
-    "putresponse": {
+    "put_response": {
       "responses": [ ]
     }
   }

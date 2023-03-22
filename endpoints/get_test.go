@@ -46,20 +46,20 @@ func TestGetJsonTests(t *testing.T) {
 		router.ServeHTTP(rr, request)
 
 		// ASSERTIONS
-		assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile)
+		assert.Equal(t, tc.ExpectedOutput.Code, rr.Code, testFile)
 
 		// Assert this is a valid test that expects either an error or a GetResponse
-		if !assert.False(t, len(tc.ExpectedResponse.ErrorMsg) > 0 && len(tc.ExpectedResponse.GetOutput) > 0, "%s must come with either an expected error message or an expected response", testFile) {
+		if !assert.False(t, len(tc.ExpectedOutput.ErrorMsg) > 0 && len(tc.ExpectedOutput.GetOutput) > 0, "%s must come with either an expected error message or an expected response", testFile) {
 			hook.Reset()
 			assert.Nil(t, hook.LastEntry())
 			continue
 		}
 
 		// If error is expected, assert error message with the response body
-		if len(tc.ExpectedResponse.ErrorMsg) > 0 {
-			assert.Equal(t, tc.ExpectedResponse.ErrorMsg, rr.Body.String(), testFile)
+		if len(tc.ExpectedOutput.ErrorMsg) > 0 {
+			assert.Equal(t, tc.ExpectedOutput.ErrorMsg, rr.Body.String(), testFile)
 		} else {
-			assert.Equal(t, tc.ExpectedResponse.GetOutput, rr.Body.String(), testFile)
+			assert.Equal(t, tc.ExpectedOutput.GetOutput, rr.Body.String(), testFile)
 		}
 
 		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)

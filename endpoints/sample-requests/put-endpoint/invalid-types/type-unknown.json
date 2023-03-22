@@ -1,6 +1,6 @@
 {
   "description": "Prebid Cache only allows to store JSON or XML types and the type 'unknown' is not supported. Respond with error",
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "unknown",
@@ -8,7 +8,7 @@
       }
     ]
   },
-  "expectedLogEntries": [
+  "expected_log_entries": [
     {
       "message": "POST /cache Error while writing to the back-end: Type must be one of [\"json\", \"xml\"]. Found 'unknown'",
       "level": 2
@@ -18,12 +18,12 @@
       "level": 2
     }
   ],
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBadRequest"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 400,
-    "expectedErrorMessage": "Type must be one of [\"json\", \"xml\"]. Found 'unknown'\n"
+    "expected_error_message": "Type must be one of [\"json\", \"xml\"]. Found 'unknown'\n"
   }
 }

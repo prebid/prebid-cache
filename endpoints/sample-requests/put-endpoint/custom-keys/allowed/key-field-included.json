@@ -1,9 +1,9 @@
 {
   "description": "Prebid Cache has been configured to allow to store elements under custom keys. Store data under element-defined 'key' value.",
-  "serverConfig": {
+  "config": {
     "allow_setting_keys": true
   },
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "xml",
@@ -12,7 +12,7 @@
       }
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutKeyProvided",
     "RecordPutBackendXml",
@@ -21,9 +21,9 @@
     "RecordPutBackendDuration",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 200,
-    "putresponse": {
+    "put_response": {
       "responses": [
         {
           "uuid": "the-custom-thrity-six-character-uuid"

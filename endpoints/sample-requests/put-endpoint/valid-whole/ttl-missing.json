@@ -1,6 +1,6 @@
 {
   "description": "Object to store doesn't come with a time-to-live value. Prebid Cache allows for a zero time-to-live value and responds with a random UUID.",
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "xml",
@@ -8,7 +8,7 @@
       }
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendSize",
@@ -16,9 +16,9 @@
     "RecordPutBackendDuration",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 200,
-    "putresponse": {
+    "put_response": {
       "responses": [
         {
           "uuid": "random"

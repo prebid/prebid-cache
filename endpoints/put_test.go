@@ -62,18 +62,18 @@ func TestPutJsonTests(t *testing.T) {
 		router.ServeHTTP(rr, request)
 
 		// ASSERTIONS
-		assert.Equal(t, tc.ExpectedResponse.Code, rr.Code, testFile)
+		assert.Equal(t, tc.ExpectedOutput.Code, rr.Code, testFile)
 
 		// Assert this is a valid test that expects either an error or a PutResponse
-		if !assert.False(t, len(tc.ExpectedResponse.ErrorMsg) > 0 && tc.ExpectedResponse.PutOutput != nil, "%s must come with either an expected error message or an expected response", testFile) {
+		if !assert.False(t, len(tc.ExpectedOutput.ErrorMsg) > 0 && tc.ExpectedOutput.PutOutput != nil, "%s must come with either an expected error message or an expected response", testFile) {
 			hook.Reset()
 			assert.Nil(t, hook.LastEntry())
 			continue
 		}
 
 		// If error is expected, assert error message with the response body
-		if len(tc.ExpectedResponse.ErrorMsg) > 0 {
-			assert.Equal(t, tc.ExpectedResponse.ErrorMsg, rr.Body.String(), testFile)
+		if len(tc.ExpectedOutput.ErrorMsg) > 0 {
+			assert.Equal(t, tc.ExpectedOutput.ErrorMsg, rr.Body.String(), testFile)
 		} else {
 			// Assert we returned the exact same elements in the 'Responses' array than in the request 'Puts' array
 			var actualPutResponse PutResponse
@@ -83,7 +83,7 @@ func TestPutJsonTests(t *testing.T) {
 				assert.Nil(t, hook.LastEntry())
 				continue
 			}
-			assertResponseEntries(t, tc.ExpectedResponse.PutOutput.Responses, actualPutResponse.Responses, tc.HostConfig.AllowSettingKeys, testFile)
+			assertResponseEntries(t, tc.ExpectedOutput.PutOutput.Responses, actualPutResponse.Responses, tc.HostConfig.AllowSettingKeys, testFile)
 		}
 
 		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
@@ -96,20 +96,19 @@ func TestPutJsonTests(t *testing.T) {
 }
 
 type testData struct {
-	HostConfig         hostConfig           `json:"serverConfig"`
-	PutRequest         json.RawMessage      `json:"putRequest"`
-	ExpectedResponse   testExpectedResponse `json:"expectedResponse"`
-	ExpectedLogEntries []logEntry           `json:"expectedLogEntries"`
-	ExpectedMetrics    []string             `json:"expectedMetrics"`
-	ExpectedUUIDs      []string             `json:"expectedUuids"`
-	Query              string               `json:"getRequestQuery"`
+	HostConfig         hostConfig      `json:"config"`
+	PutRequest         json.RawMessage `json:"put_request"`
+	ExpectedOutput     expectedOut     `json:"expected_output"`
+	ExpectedLogEntries []logEntry      `json:"expected_log_entries"`
+	ExpectedMetrics    []string        `json:"expected_metrics"`
+	Query              string          `json:"get_request_query"`
 }
 
-type testExpectedResponse struct {
-	PutOutput *PutResponse `json:"putresponse"`
-	GetOutput string       `json:"getresponse"`
+type expectedOut struct {
+	PutOutput *PutResponse `json:"put_response"`
+	GetOutput string       `json:"get_response"`
 	Code      int          `json:"code"`
-	ErrorMsg  string       `json:"expectedErrorMessage"`
+	ErrorMsg  string       `json:"expected_error_message"`
 }
 
 type logEntry struct {
@@ -122,7 +121,7 @@ type hostConfig struct {
 	MaxSizeBytes     int         `json:"max_size_bytes"`
 	MaxNumValues     int         `json:"max_num_values"`
 	MaxTTLSeconds    int         `json:"max_ttl_seconds"`
-	FakeBackend      fakeBackend `json:"mock_backend"`
+	FakeBackend      fakeBackend `json:"fake_backend"`
 }
 
 type fakeBackend struct {

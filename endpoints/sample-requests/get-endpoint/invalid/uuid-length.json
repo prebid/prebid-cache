@@ -1,18 +1,18 @@
 {
   "description": "Gut request doesn't come with a UUID value in the URL query, expect MISSING_KEY error",
-  "getRequestQuery": "uuid=non-36-char-uuid",
-  "expectedLogEntries": [
+  "get_request_query": "uuid=non-36-char-uuid",
+  "expected_log_entries": [
     {
       "message": "GET /cache uuid=non-36-char-uuid: invalid uuid length",
       "level": 2
     }
   ],
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordGetTotal",
     "RecordGetBadRequest"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 404,
-    "expectedErrorMessage": "GET /cache uuid=non-36-char-uuid: invalid uuid length\n"
+    "expected_error_message": "GET /cache uuid=non-36-char-uuid: invalid uuid length\n"
   }
 }

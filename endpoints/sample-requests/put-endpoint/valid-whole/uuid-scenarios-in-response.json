@@ -1,6 +1,6 @@
 {
   "description": "Put request wants to store multiple elements but no more than the maximum allowed by the 'max_num_values' config. Store them under a random UUIDs",
-  "serverConfig": {
+  "config": {
     "max_num_values": 3,
     "max_num_values": 3,
     "max_size_bytes": 100,
@@ -16,7 +16,7 @@
     },
     "allow_setting_keys": true
   },
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "json",
@@ -37,7 +37,7 @@
       }
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendJson",
@@ -48,9 +48,9 @@
     "RecordPutBackendError",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 200,
-    "putresponse": {
+    "put_response": {
       "responses": [
         {"uuid": "random"},
         {"uuid": "the-custom-thrity-six-character-uuid"},

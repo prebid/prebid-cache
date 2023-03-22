@@ -1,13 +1,13 @@
 {
   "description": "Request is missing the 'type' field. Respond with error",
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
       }
     ]
   },
-  "expectedLogEntries": [
+  "expected_log_entries": [
     {
       "message": "POST /cache Error while writing to the back-end: Type must be one of [\"json\", \"xml\"]. Found ''",
       "level": 2
@@ -17,12 +17,12 @@
       "level": 2
     }
   ],
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBadRequest"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 400,
-    "expectedErrorMessage": "Type must be one of [\"json\", \"xml\"]. Found ''\n"
+    "expected_error_message": "Type must be one of [\"json\", \"xml\"]. Found ''\n"
   }
 }

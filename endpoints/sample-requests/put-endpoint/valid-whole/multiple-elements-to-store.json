@@ -1,9 +1,9 @@
 {
   "description": "Put request stores multiple elements without going over the 'max_num_values' cap of its config.",
-  "serverConfig": {
+  "config": {
     "max_num_values": 2
   },
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "xml",
@@ -17,7 +17,7 @@
       }
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendJson",
@@ -26,9 +26,9 @@
     "RecordPutBackendDuration",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
+  "expected_output": {
     "code": 200,
-    "putresponse": {
+    "put_response": {
       "responses": [
         {"uuid": "random"},
         {"uuid": "random"}
