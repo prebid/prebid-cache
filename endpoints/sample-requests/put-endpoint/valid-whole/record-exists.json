@@ -2,7 +2,7 @@
   "description": "Prebid Cache doesn't allow stored entries to be rewritten. Return a non-error response body with blank 'uuid' value",
   "serverConfig": {
     "allow_setting_keys": true,
-    "mock_backend": {
+    "fake_backend": {
       "stored_data": [
         {
           "key": "the-custom-thrity-six-character-uuid",

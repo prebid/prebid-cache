@@ -33,7 +33,7 @@ func TestGetJsonTests(t *testing.T) {
 		}
 
 		router := httprouter.New()
-		router.GET("/cache", NewGetHandler(backend, m, tc.ServerConfig.AllowSettingKeys))
+		router.GET("/cache", NewGetHandler(backend, m, tc.HostConfig.AllowSettingKeys))
 		request, err := http.NewRequest("GET", "/cache?"+tc.Query, nil)
 		if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
 			hook.Reset()

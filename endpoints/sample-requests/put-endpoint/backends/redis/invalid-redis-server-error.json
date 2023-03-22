@@ -1,7 +1,7 @@
 {
   "description": "Redis server side error. Expect 500, an both an error message and a log entry",
   "serverConfig": {
-    "mock_backend": {
+    "fake_backend": {
       "storage_type": "redis",
       "throw_error_message": "Redis server side error"
     }

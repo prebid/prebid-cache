@@ -4,7 +4,7 @@
     "max_num_values": 3,
     "max_num_values": 3,
     "max_size_bytes": 100,
-    "mock_backend": {
+    "fake_backend": {
       "stored_data": [
         {
           "key": "uuid-stored-value-we-want-overwriten",

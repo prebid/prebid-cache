@@ -50,7 +50,7 @@ func TestPutJsonTests(t *testing.T) {
 		}
 
 		router := httprouter.New()
-		router.POST("/cache", NewPutHandler(backend, m, tc.ServerConfig.MaxNumValues, tc.ServerConfig.AllowSettingKeys))
+		router.POST("/cache", NewPutHandler(backend, m, tc.HostConfig.MaxNumValues, tc.HostConfig.AllowSettingKeys))
 		request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(tc.PutRequest)))
 		if !assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err) {
 			hook.Reset()
@@ -83,7 +83,7 @@ func TestPutJsonTests(t *testing.T) {
 				assert.Nil(t, hook.LastEntry())
 				continue
 			}
-			assertResponseEntries(t, tc.ExpectedResponse.PutOutput.Responses, actualPutResponse.Responses, tc.ServerConfig.AllowSettingKeys, testFile)
+			assertResponseEntries(t, tc.ExpectedResponse.PutOutput.Responses, actualPutResponse.Responses, tc.HostConfig.AllowSettingKeys, testFile)
 		}
 
 		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
@@ -96,7 +96,7 @@ func TestPutJsonTests(t *testing.T) {
 }
 
 type testData struct {
-	ServerConfig       testConfig           `json:"serverConfig"`
+	HostConfig         hostConfig           `json:"serverConfig"`
 	PutRequest         json.RawMessage      `json:"putRequest"`
 	ExpectedResponse   testExpectedResponse `json:"expectedResponse"`
 	ExpectedLogEntries []logEntry           `json:"expectedLogEntries"`
@@ -117,7 +117,7 @@ type logEntry struct {
 	Level   uint32 `json:"level"`
 }
 
-type testConfig struct {
+type hostConfig struct {
 	AllowSettingKeys bool        `json:"allow_setting_keys"`
 	MaxSizeBytes     int         `json:"max_size_bytes"`
 	MaxNumValues     int         `json:"max_num_values"`
@@ -256,7 +256,7 @@ func setupJsonTest(mockMetrics *metricstest.MockMetrics, backend backends.Backen
 	}
 
 	m := &metrics.Metrics{MetricEngines: []metrics.CacheMetrics{mockMetrics}}
-	backend = newTestBackend(tc.ServerConfig.FakeBackend, tc.ServerConfig.MaxTTLSeconds)
+	backend = newTestBackend(tc.HostConfig.FakeBackend, tc.HostConfig.MaxTTLSeconds)
 
 	v := buildViperConfig(tc)
 	cfg := config.Configuration{}
@@ -288,17 +288,17 @@ func buildViperConfig(testInfo *testData) *viper.Viper {
 	v := viper.New()
 	v.SetDefault("backend.type", "memory")
 	v.SetDefault("compression.type", "none")
-	v.SetDefault("request_limits.allow_setting_keys", testInfo.ServerConfig.AllowSettingKeys)
-	if testInfo.ServerConfig.MaxSizeBytes == 0 {
-		testInfo.ServerConfig.MaxSizeBytes = 50
+	v.SetDefault("request_limits.allow_setting_keys", testInfo.HostConfig.AllowSettingKeys)
+	if testInfo.HostConfig.MaxSizeBytes == 0 {
+		testInfo.HostConfig.MaxSizeBytes = 50
 	}
-	v.SetDefault("request_limits.max_size_bytes", testInfo.ServerConfig.MaxSizeBytes)
+	v.SetDefault("request_limits.max_size_bytes", testInfo.HostConfig.MaxSizeBytes)
 
-	if testInfo.ServerConfig.MaxNumValues == 0 {
-		testInfo.ServerConfig.MaxNumValues = 1
+	if testInfo.HostConfig.MaxNumValues == 0 {
+		testInfo.HostConfig.MaxNumValues = 1
 	}
-	v.SetDefault("request_limits.max_num_values", testInfo.ServerConfig.MaxNumValues)
-	v.SetDefault("request_limits.max_ttl_seconds", testInfo.ServerConfig.MaxTTLSeconds)
+	v.SetDefault("request_limits.max_num_values", testInfo.HostConfig.MaxNumValues)
+	v.SetDefault("request_limits.max_ttl_seconds", testInfo.HostConfig.MaxTTLSeconds)
 	return v
 }
 

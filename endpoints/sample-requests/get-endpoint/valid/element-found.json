@@ -1,7 +1,7 @@
 {
   "description": "Get request sucessfully returns stored data",
   "serverConfig": {
-    "mock_backend": {
+    "fake_backend": {
       "stored_data": [
         {
           "key": "36-char-uid-maps-to-stored-xml-value",

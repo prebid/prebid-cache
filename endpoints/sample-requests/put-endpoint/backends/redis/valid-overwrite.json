@@ -3,7 +3,7 @@
   "serverConfig": {
     "allow_setting_keys": true,
       "storage_type": "redis",
-    "mock_backend": {
+    "fake_backend": {
       "stored_data": [
         {
           "key": "the-custom-thrity-six-character-uuid",
