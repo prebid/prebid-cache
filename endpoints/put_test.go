@@ -200,16 +200,10 @@ func newTestBackend(fb fakeBackend, ttl int) backends.Backend {
 	case config.BackendAerospike:
 		mb = backends.NewMockAerospikeBackend(&backends.GoodAerospikeClient{copyStoredData(fb.StoredData)})
 	case config.BackendRedis:
-		var serverErr error
-		if fb.ErrorMsg == "redis: nil" {
-			serverErr = redis.Nil
-		} else {
-			serverErr = errors.New(fb.ErrorMsg)
-		}
 		mb = backends.NewFakeRedisBackend(
 			backends.FakeRedisClient{
 				StoredData:  copyStoredData(fb.StoredData),
-				ServerError: serverErr,
+				ServerError: nil,
 				Success:     fb.ReturnBool,
 			},
 		)

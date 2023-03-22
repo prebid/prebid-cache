@@ -2,6 +2,7 @@
   "description": "Put request tries to overwrite data stored in Redis. Expect value to not be overwritten and a blank UUID in response",
   "serverConfig": {
     "allow_setting_keys": true,
+      "storage_type": "redis",
     "mock_backend": {
       "stored_data": [
         {
