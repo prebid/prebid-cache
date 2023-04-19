@@ -5,7 +5,7 @@
     "fake_backend": {
       "stored_data": [
         {
-          "key": "the-custom-thrity-six-character-uuid",
+          "key": "the-custom-thirty-six-character-uuid",
           "value": "<tag>original_XML</tag>"
         }
       ]
@@ -16,7 +16,7 @@
       {
         "type": "xml",
         "value": "<tag>updated_XML</tag>",
-        "key": "the-custom-thrity-six-character-uuid"
+        "key": "the-custom-thirty-six-character-uuid"
       }
     ]
   },

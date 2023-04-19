@@ -2,11 +2,11 @@
   "description": "Put request tries to overwrite data stored in Redis. Expect value to not be overwritten and a blank UUID in response",
   "config": {
     "allow_setting_keys": true,
-      "storage_type": "redis",
+    "storage_type": "redis",
     "fake_backend": {
       "stored_data": [
         {
-          "key": "the-custom-thrity-six-character-uuid",
+          "key": "the-custom-thirty-six-character-uuid",
           "value": "<tag>original_XML</tag>"
         }
       ]
@@ -15,7 +15,7 @@
   "put_request": {
     "puts": [
       {
-        "key": "the-custom-thrity-six-character-uuid",
+        "key": "the-custom-thirty-six-character-uuid",
         "type": "xml",
         "value": "<tag>NEW_XML</tag>"
       }

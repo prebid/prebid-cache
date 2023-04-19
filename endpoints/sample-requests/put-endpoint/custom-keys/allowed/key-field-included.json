@@ -8,7 +8,7 @@
       {
         "type": "xml",
         "value": "<tag>other_XML_content</tag>",
-        "key": "the-custom-thrity-six-character-uuid"
+        "key": "the-custom-thirty-six-character-uuid"
       }
     ]
   },
@@ -26,7 +26,7 @@
     "put_response": {
       "responses": [
         {
-          "uuid": "the-custom-thrity-six-character-uuid"
+          "uuid": "the-custom-thirty-six-character-uuid"
         }
       ]
     }

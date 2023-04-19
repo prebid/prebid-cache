@@ -24,7 +24,7 @@
         "value": "{\"description\": \"value will be stored under random UUID\"}"
       },
       {
-        "key": "the-custom-thrity-six-character-uuid",
+        "key": "the-custom-thirty-six-character-uuid",
         "type": "json",
         "ttlseconds": 60,
         "value": "{\"description\": \"value will be stored under custom UUID\"}"
@@ -53,7 +53,7 @@
     "put_response": {
       "responses": [
         {"uuid": "random"},
-        {"uuid": "the-custom-thrity-six-character-uuid"},
+        {"uuid": "the-custom-thirty-six-character-uuid"},
         {"uuid": ""}
       ]
     }

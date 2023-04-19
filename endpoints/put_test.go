@@ -193,11 +193,11 @@ func newTestBackend(fb fakeBackend, ttl int) backends.Backend {
 	case config.BackendMemcache:
 		mb = backends.NewMockMemcacheBackend(
 			&backends.GoodMemcache{
-				copyStoredData(fb.StoredData),
+				StoredData: copyStoredData(fb.StoredData),
 			},
 		)
 	case config.BackendAerospike:
-		mb = backends.NewMockAerospikeBackend(&backends.GoodAerospikeClient{copyStoredData(fb.StoredData)})
+		mb = backends.NewMockAerospikeBackend(&backends.GoodAerospikeClient{StoredData: copyStoredData(fb.StoredData)})
 	case config.BackendRedis:
 		mb = backends.NewFakeRedisBackend(
 			backends.FakeRedisClient{
