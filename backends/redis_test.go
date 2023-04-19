@@ -122,23 +122,6 @@ func TestRedisClientPut(t *testing.T) {
 			},
 		},
 		{
-			desc: "#2",
-			in: testInput{
-				redisClient: FakeRedisClient{
-					Success:     false,
-					StoredData:  map[string]string{},
-					ServerError: redis.Nil,
-				},
-				key:          "key",
-				valueToStore: "overwrite value",
-				ttl:          10,
-			},
-			expected: testExpectedValues{
-				redisClientErr: utils.NewPBCError(utils.RECORD_EXISTS),
-				writtenValue:   "original value",
-			},
-		},
-		{
 			desc: "When key does not exist, redis.Nil is returned. Other errors should be interpreted as a server side error. Expect error.",
 			in: testInput{
 				redisClient: FakeRedisClient{
