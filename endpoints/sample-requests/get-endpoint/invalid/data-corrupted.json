@@ -1,5 +1,5 @@
 {
-  "description": "Get request doesn't come with a UUID value in the URL query, expect MISSING_KEY error",
+  "description": "Stored data 'value' field is not prefixed with 'json' nor 'xml', which we don't support. Expect error",
   "config": {
     "fake_backend": {
       "stored_data": [
@@ -10,19 +10,21 @@
       ]
     }
   },
-  "get_request_query": "uuid=",
+  "get_request_query": "uuid=36-char-uid-maps-to-actual-xml-value",
   "expected_log_entries": [
     {
-      "message": "GET /cache: Missing required parameter uuid",
+      "message": "GET /cache uuid=36-char-uid-maps-to-actual-xml-value: Cache data was corrupted. Cannot determine type.",
       "level": 2
     }
   ],
   "expected_metrics": [
     "RecordGetTotal",
-    "RecordGetBadRequest"
+    "RecordGetError",
+    "RecordGetBackendDuration",
+    "RecordGetBackendTotal"
   ],
   "expected_output": {
-    "code": 400,
-    "expected_error_message": "GET /cache: Missing required parameter uuid\n"
+    "code": 500,
+    "expected_error_message": "GET /cache uuid=36-char-uid-maps-to-actual-xml-value: Cache data was corrupted. Cannot determine type.\n"
   }
 }
