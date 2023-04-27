@@ -1,0 +1,30 @@
+{
+  "description": "Stored data 'value' field is not prefixed with 'json' nor 'xml', which we don't support. Expect error",
+  "config": {
+    "fake_backend": {
+      "stored_data": [
+        {
+          "key": "36-char-uid-maps-to-actual-xml-value",
+          "value": "<HTML>Not prefixed with 'json' nor 'xml' keywords</HTML>"
+        }
+      ]
+    }
+  },
+  "get_request_query": "uuid=36-char-uid-maps-to-actual-xml-value",
+  "expected_log_entries": [
+    {
+      "message": "GET /cache uuid=36-char-uid-maps-to-actual-xml-value: Cache data was corrupted. Cannot determine type.",
+      "level": 2
+    }
+  ],
+  "expected_metrics": [
+    "RecordGetTotal",
+    "RecordGetError",
+    "RecordGetBackendDuration",
+    "RecordGetBackendTotal"
+  ],
+  "expected_output": {
+    "code": 500,
+    "expected_error_message": "GET /cache uuid=36-char-uid-maps-to-actual-xml-value: Cache data was corrupted. Cannot determine type.\n"
+  }
+}

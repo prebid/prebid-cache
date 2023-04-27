@@ -1,15 +1,14 @@
 {
   "description": "Put request wants to store a single element of valid type no larger than the maximum size allowed. Store under a random UUID",
-  "putRequest": {
+  "put_request": {
     "puts": [
       {
         "type": "xml",
-        "ttlseconds": 60,
         "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
       }
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendSize",
@@ -17,9 +16,12 @@
     "RecordPutBackendDuration",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
-    "responses": [
-      {"uuid": "random"}
-    ]
+  "expected_output": {
+    "code": 200,
+    "put_response": {
+      "responses": [
+        {"uuid": "random"}
+      ]
+    }
   }
 }

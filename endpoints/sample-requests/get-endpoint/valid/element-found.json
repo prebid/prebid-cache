@@ -1,0 +1,24 @@
+{
+  "description": "Get request sucessfully returns stored data",
+  "config": {
+    "fake_backend": {
+      "stored_data": [
+        {
+          "key": "36-char-uid-maps-to-stored-xml-value",
+          "value": "xml<description>stored xml value</description>"
+        }
+      ]
+    }
+  },
+  "get_request_query": "uuid=36-char-uid-maps-to-stored-xml-value",
+  "expected_metrics": [
+    "RecordGetBackendTotal",
+    "RecordGetDuration",
+    "RecordGetBackendDuration",
+    "RecordGetTotal"
+  ],
+  "expected_output": {
+    "code": 200,
+    "get_response": "<description>stored xml value</description>"
+  }
+}

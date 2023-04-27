@@ -1,20 +1,22 @@
 {
-  "description": "Prebid Cache has been configured to allow to store elements under custom keys. Store data under element-defined 'key' value.",
+  "description": "Successful insertion of element in fake redis backend",
   "config": {
-    "allow_setting_keys": true
+    "fake_backend": {
+      "storage_type": "redis",
+      "throw_bool": true,
+      "throw_error_message": "redis: nil"
+    }
   },
   "put_request": {
     "puts": [
       {
         "type": "xml",
-        "value": "<tag>other_XML_content</tag>",
-        "key": "the-custom-thirty-six-character-uuid"
+        "value": "<?xml version=\"1.0\">info<\\/VAST>\r\n"
       }
     ]
   },
   "expected_metrics": [
     "RecordPutTotal",
-    "RecordPutKeyProvided",
     "RecordPutBackendXml",
     "RecordPutBackendSize",
     "RecordPutBackendTTLSeconds",
@@ -25,9 +27,7 @@
     "code": 200,
     "put_response": {
       "responses": [
-        {
-          "uuid": "the-custom-thirty-six-character-uuid"
-        }
+        {"uuid": "random"}
       ]
     }
   }

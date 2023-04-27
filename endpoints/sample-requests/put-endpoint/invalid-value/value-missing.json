@@ -1,14 +1,13 @@
 {
-  "description": "Prebid Cache does not allow the storage of empty values. Respond with error",
-  "putRequest": {
+  "description": "Prebid Cache returns an error if a request doesn't come with a 'value' field.",
+  "put_request": {
     "puts": [
       {
-        "type": "xml",
-        "ttlseconds": 60
+        "type": "xml"
       }
     ]
   },
-  "expectedLogEntries": [
+  "expected_log_entries": [
     {
       "message": "POST /cache Error while writing to the back-end: Missing value.",
       "level": 2
@@ -18,9 +17,12 @@
       "level": 2
     }
   ],
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBadRequest"
   ],
-  "expectedErrorMessage": "Missing value.\n"
+  "expected_output": {
+    "code": 400,
+    "expected_error_message": "Missing value.\n"
+  }
 }

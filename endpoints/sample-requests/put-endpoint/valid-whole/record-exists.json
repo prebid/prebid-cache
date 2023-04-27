@@ -1,0 +1,42 @@
+{
+  "description": "Prebid Cache doesn't allow stored entries to be rewritten. Return a non-error response body with blank 'uuid' value",
+  "config": {
+    "allow_setting_keys": true,
+    "fake_backend": {
+      "stored_data": [
+        {
+          "key": "the-custom-thirty-six-character-uuid",
+          "value": "<tag>original_XML</tag>"
+        }
+      ]
+    }
+  },
+  "put_request": {
+    "puts": [
+      {
+        "type": "xml",
+        "value": "<tag>updated_XML</tag>",
+        "key": "the-custom-thirty-six-character-uuid"
+      }
+    ]
+  },
+  "expected_metrics": [
+    "RecordPutTotal",
+    "RecordPutKeyProvided",
+    "RecordPutBackendXml",
+    "RecordPutBackendTTLSeconds",
+    "RecordPutBackendError",
+    "RecordPutBackendSize",
+    "RecordPutDuration"
+  ],
+  "expected_output": {
+    "code": 200,
+    "put_response": {
+      "responses": [
+        {
+          "uuid": ""
+        }
+      ]
+    }
+  }
+}

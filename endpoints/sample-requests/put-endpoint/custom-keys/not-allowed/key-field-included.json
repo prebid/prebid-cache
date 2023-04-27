@@ -1,16 +1,15 @@
 {
   "description": "Put request wants to store element under a custom key but custom keys are not allowed in Prebid Cache's config. Store under a random UUID",
-  "putRequest": {
+  "put_request": {
     "puts":[
       {
         "type":"xml",
-        "ttlseconds":60,
         "value":"<tag>other_XML_content</tag>",
-        "key":"the-custom-thrity-six-character-uuid"
+        "key":"the-custom-thirty-six-character-uuid"
       }
     ]
   },
-  "expectedMetrics": [
+  "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendXml",
     "RecordPutBackendSize",
@@ -18,9 +17,12 @@
     "RecordPutBackendDuration",
     "RecordPutDuration"
   ],
-  "expectedResponse": {
-    "responses": [
-      {"uuid": "random"}
-    ]
+  "expected_output": {
+    "code": 200,
+    "put_response": {
+      "responses": [
+        {"uuid": "random"}
+      ]
+    }
   }
 }

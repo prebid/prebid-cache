@@ -1,17 +1,75 @@
 package endpoints
 
 import (
+	"bytes"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
+	testLogrus "github.com/sirupsen/logrus/hooks/test"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/prebid/prebid-cache/backends"
 	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
-	"github.com/stretchr/testify/assert"
 )
+
+func TestGetJsonTests(t *testing.T) {
+	hook := testLogrus.NewGlobal()
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
+	jsonTests := listJsonFiles("sample-requests/get-endpoint")
+	for _, testFile := range jsonTests {
+		var backend backends.Backend
+		mockMetrics := metricstest.CreateMockMetrics()
+		tc, backend, m, err := setupJsonTest(&mockMetrics, backend, testFile)
+		if !assert.NoError(t, err, "%s", testFile) {
+			hook.Reset()
+			continue
+		}
+
+		router := httprouter.New()
+		router.GET("/cache", NewGetHandler(backend, m, tc.HostConfig.AllowSettingKeys))
+		request, err := http.NewRequest("GET", "/cache?"+tc.Query, nil)
+		if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+			continue
+		}
+		rr := httptest.NewRecorder()
+
+		// RUN TEST
+		router.ServeHTTP(rr, request)
+
+		// ASSERTIONS
+		assert.Equal(t, tc.ExpectedOutput.Code, rr.Code, testFile)
+
+		// Assert this is a valid test that expects either an error or a GetResponse
+		if !assert.False(t, len(tc.ExpectedOutput.ErrorMsg) > 0 && len(tc.ExpectedOutput.GetOutput) > 0, "%s must come with either an expected error message or an expected response", testFile) {
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+			continue
+		}
+
+		// If error is expected, assert error message with the response body
+		if len(tc.ExpectedOutput.ErrorMsg) > 0 {
+			assert.Equal(t, tc.ExpectedOutput.ErrorMsg, rr.Body.String(), testFile)
+		} else {
+			assert.Equal(t, tc.ExpectedOutput.GetOutput, rr.Body.String(), testFile)
+		}
+
+		assertLogEntries(t, tc.ExpectedLogEntries, hook.Entries, testFile)
+		metricstest.AssertMetrics(t, tc.ExpectedMetrics, mockMetrics)
+
+		// Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
+	}
+}
 
 func TestGetInvalidUUIDs(t *testing.T) {
 	backend := backends.NewMemoryBackend()
@@ -40,6 +98,12 @@ func TestGetInvalidUUIDs(t *testing.T) {
 }
 
 func TestGetHandler(t *testing.T) {
+	preExistentDataInBackend := map[string]string{
+		"non-36-char-key-maps-to-json":         `json{"field":"value"}`,
+		"36-char-key-maps-to-non-xml-nor-json": `#@!*{"desc":"data got malformed and is not prefixed with 'xml' nor 'json' substring"}`,
+		"36-char-key-maps-to-actual-xml-value": "xml<tag>xml data here</tag>",
+	}
+
 	type logEntry struct {
 		msg string
 		lvl logrus.Level
@@ -184,7 +248,11 @@ func TestGetHandler(t *testing.T) {
 		fatal = false
 
 		// Set up test object
-		backend := newMockBackend()
+		backend, err := backends.NewMemoryBackendWithValues(preExistentDataInBackend)
+		if !assert.NoError(t, err, "%s. Mock backend could not be created", test.desc) {
+			hook.Reset()
+			continue
+		}
 		router := httprouter.New()
 		mockMetrics := metricstest.CreateMockMetrics()
 		m := &metrics.Metrics{
@@ -195,7 +263,15 @@ func TestGetHandler(t *testing.T) {
 		router.GET("/cache", NewGetHandler(backend, m, test.in.allowKeys))
 
 		// Run test
-		getResults := doMockGet(t, router, test.in.uuid)
+		getResults := httptest.NewRecorder()
+
+		body := new(bytes.Buffer)
+		getReq, err := http.NewRequest("GET", "/cache"+"?uuid="+test.in.uuid, body)
+		if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
+			hook.Reset()
+			continue
+		}
+		router.ServeHTTP(getResults, getReq)
 
 		// Assert server response and status code
 		assert.Equal(t, test.out.responseCode, getResults.Code, test.desc)
