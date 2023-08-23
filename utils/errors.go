@@ -18,6 +18,7 @@ const (
 	KEY_NOT_FOUND                    // GET http.StatusNotFound 404
 	KEY_LENGTH                       // GET http.StatusNotFound 404
 	UNKNOWN_STORED_DATA_TYPE         // GET http.StatusInternalServerError 500
+	GET_INTERNAL_SERVER              // PUT http.StatusInternalServerError 500
 	PUT_INTERNAL_SERVER              // PUT http.StatusInternalServerError 500
 	MARSHAL_RESPONSE                 // PUT http.StatusInternalServerError 500
 	PUT_DEADLINE_EXCEEDED            // PUT HttpDependencyTimeout 597
@@ -38,6 +39,7 @@ var errToStatusCodes map[int]int = map[int]int{
 	MISSING_VALUE:             http.StatusBadRequest,
 	BAD_PAYLOAD_SIZE:          http.StatusBadRequest,
 	UNKNOWN_STORED_DATA_TYPE:  http.StatusInternalServerError,
+	GET_INTERNAL_SERVER:       http.StatusInternalServerError,
 	PUT_INTERNAL_SERVER:       http.StatusInternalServerError,
 	MARSHAL_RESPONSE:          http.StatusInternalServerError,
 	KEY_NOT_FOUND:             http.StatusNotFound,

@@ -32,6 +32,11 @@ backend:
     tls:
       enabled: false
       insecure_skip_verify: false
+  ignite:
+    scheme: "http"
+    host: "127.0.0.1"
+    port: 8080
+    cachename: "myCache"
 compression:
   type: "snappy" # Can also be "none"
 metrics:

@@ -155,6 +155,13 @@ func TestNewBaseBackend(t *testing.T) {
 				{msg: "Error creating Redis backend: ", lvl: logrus.FatalLevel},
 			},
 		},
+		//{
+		//	desc:     "Ignite",
+		//	inConfig: config.Backend{Type: config.BackendIgnite},
+		//	expectedLogEntries: []logEntry{
+		//		{msg: "Error creating Ignite backend: ", lvl: logrus.FatalLevel},
+		//	},
+		//},
 	}
 
 	for _, tc := range testCases {
