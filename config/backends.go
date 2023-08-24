@@ -177,10 +177,15 @@ func (cfg *Redis) validateAndLog() error {
 }
 
 type Ignite struct {
-	Scheme    string `mapstructure:"scheme"`
-	Host      string `mapstructure:"host"`
-	Port      int    `mapstructure:"port"`
-	CacheName string `mapstructure:"cachename"`
+	Scheme string      `mapstructure:"scheme"`
+	Host   string      `mapstructure:"host"`
+	Port   int         `mapstructure:"port"`
+	Cache  IgniteCache `mapstructure:"cache"`
+}
+
+type IgniteCache struct {
+	Name          string `mapstructure:"name"`
+	CreateOnStart bool   `mapstructure:"create_on_start"`
 }
 
 func (cfg *Ignite) validateAndLog() error {
@@ -190,13 +195,13 @@ func (cfg *Ignite) validateAndLog() error {
 	if len(cfg.Host) == 0 {
 		return errors.New("Cannot connect to Ignite: empty config.ignite.host")
 	}
-	if len(cfg.CacheName) == 0 {
-		return errors.New("Cannot write nor read from Ignite storage: empty config.ignite.cachename")
+	if len(cfg.Cache.Name) == 0 {
+		return errors.New("Cannot write nor read from Ignite: empty config.ignite.cachename")
 	}
 	log.Infof("config.backend.ignite.scheme: %s", cfg.Scheme)
 	log.Infof("config.backend.ignite.host: %s", cfg.Host)
 	log.Infof("config.backend.ignite.port: %d", cfg.Port)
-	log.Infof("config.backend.ignite.cachename: %s", cfg.CacheName)
+	log.Infof("config.backend.ignite.cache.name: %s", cfg.Cache.Name)
 
 	return nil
 }

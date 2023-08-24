@@ -6,7 +6,7 @@ rate_limiter:
   enabled: true
   num_requests: 100
 request_limits:
-  allow_setting_keys: false
+  allow_setting_keys: true
   max_size_bytes: 10240 # 10K
   max_num_values: 10
   max_ttl_seconds: 3600
@@ -36,7 +36,9 @@ backend:
     scheme: "http"
     host: "127.0.0.1"
     port: 8080
-    cachename: "myCache"
+    cache:
+      name: "myCache"
+      create_on_start: false
 compression:
   type: "snappy" # Can also be "none"
 metrics:

@@ -17,7 +17,8 @@ import (
 // IgniteDB is an interface that helps us communicate with an Apache Ignite storage service
 type IgniteDB interface {
 	Get(req *http.Request) (string, bool, error)
-	Put(ctx context.Context, req *http.Request) (bool, error)
+	Put(req *http.Request) (bool, error)
+	CreateCache() error
 }
 
 // IgniteClient implements IgniteDB interface and communicates with the Apache Ignite storage
@@ -104,6 +105,38 @@ func (ig *IgniteClient) Put(req *http.Request) (bool, error) {
 	return igniteResponse.Response, nil
 }
 
+// createCache uses the Apache Ignite REST API "getorcreate" command to create a cache
+func createCache(igniteHost, cacheName string) error {
+	url, err := url.Parse(fmt.Sprintf("%s?cmd=getorcreate&cacheName=%s", igniteHost, cacheName))
+	if err != nil {
+		return err
+	}
+
+	httpResp, err := http.Get(url.String())
+	defer httpResp.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	if httpResp.StatusCode != http.StatusOK {
+		// Unmarshal and throw error
+		errMsg := fmt.Sprintf("Error creating cache. Http status %d.", httpResp.StatusCode)
+
+		requestBody, err := io.ReadAll(httpResp.Body)
+		if err != nil {
+			return fmt.Errorf("%s %s", errMsg, err.Error())
+		}
+
+		igniteResponse := getResponse{}
+		if err := json.Unmarshal(requestBody, &igniteResponse); err != nil {
+			return fmt.Errorf("%s %s", errMsg, err.Error())
+		}
+		return fmt.Errorf("%s %s", errMsg, igniteResponse.Error)
+	}
+
+	return nil
+}
+
 // IgniteBackend implements the Backend interface
 type IgniteBackend struct {
 	client    *IgniteClient
@@ -113,10 +146,20 @@ type IgniteBackend struct {
 // NewIgniteBackend expects a valid config.IgniteBackend object
 func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 
-	url, err := url.Parse(fmt.Sprintf("%s://%s:%d/ignite?cacheName=%s", cfg.Scheme, cfg.Host, cfg.Port, cfg.CacheName))
+	completeHost := fmt.Sprintf("%s://%s:%d/ignite", cfg.Scheme, cfg.Host, cfg.Port)
+
+	if cfg.Cache.CreateOnStart {
+		if err := createCache(completeHost, cfg.Cache.Name); err != nil {
+			log.Fatalf("Error creating Ignite backend: %s", err.Error())
+		}
+	}
+	log.Info("Prebid Cache will write to Ignite cache name: %s", cfg.Cache.Name)
+
+	url, err := url.Parse(fmt.Sprintf("%s://%s:%d/ignite?cacheName=%s", cfg.Scheme, cfg.Host, cfg.Port, cfg.Cache.Name))
 	if err != nil {
-		log.Fatalf("Error creating Ignite backend: %s", err.Error())
-		panic("IgniteBackend failure. This shouldn't happen.")
+		errMsg := fmt.Sprintf("Error creating Ignite backend: error parsing Ignite host URL %s", err.Error())
+		log.Fatalf(errMsg)
+		panic(errMsg)
 	}
 
 	return &IgniteBackend{
