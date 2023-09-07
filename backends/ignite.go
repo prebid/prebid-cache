@@ -2,8 +2,8 @@ package backends
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -39,24 +39,41 @@ type getResponse struct {
 // the 'Response' field is empty. Get can also return Ignite server-side errors
 func (ig *IgniteClient) Get(req *http.Request) (string, error) {
 	// Send request to Ignite storage service
-	httpResp, err := ig.client.Do(req)
-	if err != nil {
-		return "", err
+	httpResp, httpErr := ig.client.Do(req)
+	if httpErr != nil {
+		return "", httpErr
 	}
+
+	if httpResp.StatusCode != http.StatusOK {
+		httpErr = fmt.Errorf("Ignite error. Unexpected status code: %d", httpResp.StatusCode)
+	}
+
 	if httpResp.Body == nil {
-		return "", errors.New("Ignite error: weceived empty httpResp.Body")
+		errMsg := "Received empty httpResp.Body"
+		if httpErr == nil {
+			return "", fmt.Errorf("Ignite error. %s", errMsg)
+		}
+		return "", fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
 	}
 	defer httpResp.Body.Close()
 
-	requestBody, err := io.ReadAll(httpResp.Body)
-	if err != nil {
-		return "", err
+	responseBody, ioErr := io.ReadAll(httpResp.Body)
+	if ioErr != nil {
+		errMsg := fmt.Sprintf("IO reader error: %s", ioErr)
+		if httpErr == nil {
+			return "", fmt.Errorf("Ignite error. %s", errMsg)
+		}
+		return "", fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
 	}
 
 	// Unmarshall response
 	igniteResponse := getResponse{}
-	if err := json.Unmarshal(requestBody, &igniteResponse); err != nil {
-		return "", err
+	if unmarshalErr := json.Unmarshal(responseBody, &igniteResponse); unmarshalErr != nil {
+		errMsg := fmt.Sprintf("Unmarshal response error: %s; Response body: %s", unmarshalErr.Error(), string(responseBody))
+		if httpErr == nil {
+			return "", fmt.Errorf("Ignite error. %s", errMsg)
+		}
+		return "", fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
 	}
 
 	// Validate response
@@ -141,6 +158,7 @@ func createCache(igniteHost, cacheName string) error {
 type IgniteBackend struct {
 	client    *IgniteClient
 	serverURL *url.URL
+	cacheName string
 }
 
 // NewIgniteBackend expects a valid config.IgniteBackend object
@@ -162,11 +180,16 @@ func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 		panic(errMsg)
 	}
 
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
 	return &IgniteBackend{
 		client: &IgniteClient{
-			client: http.DefaultClient,
+			client: &http.Client{Transport: tr},
 		},
 		serverURL: url,
+		cacheName: "myCache",
 	}
 }
 
@@ -178,6 +201,7 @@ func (back *IgniteBackend) Get(ctx context.Context, key string) (string, error) 
 
 	q := urlCopy.Query()
 	q.Set("cmd", "get")
+	q.Set("cacheName", back.cacheName)
 	q.Set("key", key)
 
 	urlCopy.RawQuery = q.Encode()
@@ -186,6 +210,10 @@ func (back *IgniteBackend) Get(ctx context.Context, key string) (string, error) 
 	if err != nil {
 		return "", err
 	}
+
+	headers := http.Header{}
+	headers.Add("Host", "prebid.adnxs.com")
+	httpReq.Header = headers
 
 	return back.client.Get(httpReq)
 }
@@ -198,6 +226,7 @@ func (back *IgniteBackend) Put(ctx context.Context, key string, value string, tt
 	urlCopy := *(&back.serverURL)
 	q := urlCopy.Query()
 	q.Set("cmd", "putifabs")
+	q.Set("cacheName", back.cacheName)
 	q.Set("key", key)
 	q.Set("val", value)
 	q.Set("exp", fmt.Sprintf("%d", ttlSeconds*1000))
@@ -208,6 +237,10 @@ func (back *IgniteBackend) Put(ctx context.Context, key string, value string, tt
 	if err != nil {
 		return err
 	}
+
+	headers := http.Header{}
+	headers.Add("Host", "prebid.adnxs.com")
+	httpReq.Header = headers
 
 	applied, err := back.client.Put(httpReq)
 	if !applied {
