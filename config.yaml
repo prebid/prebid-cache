@@ -38,7 +38,7 @@ backend:
     port: 8080
     cache:
       name: "myCache"
-      create_on_start: false
+      create_on_start: true
 compression:
   type: "snappy" # Can also be "none"
 metrics:

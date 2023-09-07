@@ -130,25 +130,40 @@ func createCache(igniteHost, cacheName string) error {
 	}
 
 	httpResp, err := http.Get(url.String())
-	defer httpResp.Body.Close()
 	if err != nil {
 		return err
 	}
 
+	if httpResp.Body == nil {
+		return fmt.Errorf("Received empty httpResp.Body when trying to create cache %s", cacheName)
+	}
+	defer httpResp.Body.Close()
+
+	var statusCodeErrMsg string
 	if httpResp.StatusCode != http.StatusOK {
-		// Unmarshal and throw error
-		errMsg := fmt.Sprintf("Error creating cache. Http status %d.", httpResp.StatusCode)
+		statusCodeErrMsg = fmt.Sprintf("http status %d when creating cache %s", httpResp.StatusCode, cacheName)
+	}
 
-		requestBody, err := io.ReadAll(httpResp.Body)
-		if err != nil {
-			return fmt.Errorf("%s %s", errMsg, err.Error())
+	requestBody, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		if len(statusCodeErrMsg) > 0 {
+			return fmt.Errorf("%s %s", statusCodeErrMsg, err.Error())
 		}
+		return fmt.Errorf("%s", err.Error())
+	}
 
-		igniteResponse := getResponse{}
-		if err := json.Unmarshal(requestBody, &igniteResponse); err != nil {
-			return fmt.Errorf("%s %s", errMsg, err.Error())
+	igniteResponse := getResponse{}
+	if err := json.Unmarshal(requestBody, &igniteResponse); err != nil {
+		if len(statusCodeErrMsg) > 0 {
+			return fmt.Errorf("%s %s", statusCodeErrMsg, err.Error())
 		}
-		return fmt.Errorf("%s %s", errMsg, igniteResponse.Error)
+		return fmt.Errorf("%s", err.Error())
+	}
+	if igniteResponse.Status > 0 {
+		if len(igniteResponse.Error) > 0 {
+			return fmt.Errorf("%s", igniteResponse.Error)
+		}
+		return fmt.Errorf("successStatus does not equal 0 %v", igniteResponse)
 	}
 
 	return nil
@@ -171,7 +186,7 @@ func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 			log.Fatalf("Error creating Ignite backend: %s", err.Error())
 		}
 	}
-	log.Info("Prebid Cache will write to Ignite cache name: %s", cfg.Cache.Name)
+	log.Infof("Prebid Cache will write to Ignite cache name: %s", cfg.Cache.Name)
 
 	url, err := url.Parse(fmt.Sprintf("%s://%s:%d/ignite?cacheName=%s", cfg.Scheme, cfg.Host, cfg.Port, cfg.Cache.Name))
 	if err != nil {

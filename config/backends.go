@@ -202,6 +202,7 @@ func (cfg *Ignite) validateAndLog() error {
 	log.Infof("config.backend.ignite.host: %s", cfg.Host)
 	log.Infof("config.backend.ignite.port: %d", cfg.Port)
 	log.Infof("config.backend.ignite.cache.name: %s", cfg.Cache.Name)
+	log.Infof("config.backend.ignite.cache.create_on_start: %v", cfg.Cache.CreateOnStart)
 
 	return nil
 }
