@@ -212,7 +212,7 @@ Prebid Cache requires a backend data store which enforces TTL expiration. The fo
 
 There is also an option (enabled by default) for a basic in-memory data store intended only for development. This backend does not support TTL expiration and is not built for production use.
 
-To configure, select the storage service your Prebid Cache server by setting the `backend.type` property in the `config.yaml` file:
+To configure, select the storage service for your Prebid Cache server by setting the `backend.type` property in the `config.yaml` file:
 
 ```yaml
 backend:
