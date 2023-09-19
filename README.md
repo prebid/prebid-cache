@@ -6,7 +6,7 @@ This application stores short-term data for use in Prebid Server and Prebid.js, 
 
 First install Go version 1.18 or newer.
 
-Note that prebid-cache is using Go modules. We officially support the most recent two major versions of the Go runtime. However, if you'd like to use a version <1.13 and are inside `GOPATH` `GO111MODULE` needs to be set to `GO111MODULE=on`.
+Note that prebid-cache uses Go modules. We officially support the most recent two major versions of the Go runtime. However, if you'd like to use a version <1.13 and are inside `GOPATH` `GO111MODULE` needs to be set to `GO111MODULE=on`.
 
 Download and prepare Prebid Cache:
 
@@ -208,7 +208,11 @@ This section does not describe permanent API contracts; it just describes limita
 
 ## Backend Configuration
 
-In order to store its data a Prebid Cache instance can use either of the following storage services: Aerospike, Cassandra, Memcache, Redis, or local memory. Select the storage service your Prebid Cache server will use by setting the `backend.type` property in the `config.yaml` file:
+Prebid Cache requires a backend data store which enforces TTL expiration. The following storage options are supported: Aerospike, Cassandra, Memcache, and Redis. You're welcomed to contribute a new backend adapter if needed. 
+
+There is also an option (enabled by default) for a basic in-memory data store intended only for development. This backend does not support TTL expiration and is not built for production use.
+
+To configure, select the storage service for your Prebid Cache server by setting the `backend.type` property in the `config.yaml` file:
 
 ```yaml
 backend:
@@ -311,14 +315,14 @@ routes:
 
 ### Prerequisites
 
-[Golang](https://golang.org/doc/install) 1.9.1 or greater and [Dep](https://github.com/golang/dep#installation) must be installed on your system.
+[Golang](https://golang.org/doc/install) 1.18.x or newer.
 
-### Automated tests
+### Automated Tests
 
 `./validate.sh` runs the unit tests and reformats your code with [gofmt](https://golang.org/cmd/gofmt/).
 `./validate.sh --nofmt` runs the unit tests, but will _not_ reformat your code.
 
-### Manual testing
+### Manual Testing
 
 Run `prebid-cache` locally with:
 
@@ -327,7 +331,7 @@ go build .
 ./prebid-cache
 ```
 
-The service will respond to requests on `localhost:2424`, and the admin data will be available on `localhost:2525`
+The service will respond to requests on `localhost:2424`, and the admin data will be available on `localhost:2525`. The port numbers can be configured to different values in your production deployment.
 
 ### Configuration
 
@@ -377,4 +381,4 @@ docker run -p 8000:8000 -t prebid-cache
 
 ### Profiling
 
-[pprof stats](http://artem.krylysov.com/blog/2017/03/13/profiling-and-optimizing-go-web-applications/) can be accessed from a running app on `localhost:2525`
+[pprof stats](http://artem.krylysov.com/blog/2017/03/13/profiling-and-optimizing-go-web-applications/) can be accessed from a running app on the admin port `localhost:2525`.

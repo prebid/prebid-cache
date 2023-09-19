@@ -11,7 +11,7 @@ request_limits:
   max_num_values: 10
   max_ttl_seconds: 3600
 backend:
-  type: "memory" # Can also be "aerospike", "cassandra", "memcache" or "redis"
+  type: "memory" # Switch to be "aerospike", "cassandra", "memcache" or "redis" for production.
   aerospike:
     hosts: [ "aerospike.prebid.com" ]
     port: 3000
