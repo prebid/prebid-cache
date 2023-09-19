@@ -16,9 +16,9 @@ import (
 
 // IgniteDB is an interface that helps us communicate with an Apache Ignite storage service
 type IgniteDB interface {
-	Get(req *http.Request) (string, bool, error)
+	Get(req *http.Request) (string, error)
 	Put(req *http.Request) (bool, error)
-	CreateCache() error
+	CreateCache(url *url.URL, cacheName string) error
 }
 
 // IgniteClient implements IgniteDB interface and communicates with the Apache Ignite storage
@@ -122,14 +122,20 @@ func (ig *IgniteClient) Put(req *http.Request) (bool, error) {
 	return igniteResponse.Response, nil
 }
 
-// createCache uses the Apache Ignite REST API "getorcreate" command to create a cache
-func createCache(igniteHost, cacheName string) error {
-	url, err := url.Parse(fmt.Sprintf("%s?cmd=getorcreate&cacheName=%s", igniteHost, cacheName))
+// CreateCache uses the Apache Ignite REST API "getorcreate" command to create a cache
+func (ig *IgniteClient) CreateCache(url *url.URL, cacheName string) error {
+	urlCopy := *url
+	q := urlCopy.Query()
+	q.Set("cmd", "getorcreate")
+	q.Set("cacheName", cacheName)
+	urlCopy.RawQuery = q.Encode()
+
+	httpReq, err := http.NewRequestWithContext(context.Background(), "GET", urlCopy.String(), nil)
 	if err != nil {
 		return err
 	}
 
-	httpResp, err := http.Get(url.String())
+	httpResp, err := ig.client.Do(httpReq)
 	if err != nil {
 		return err
 	}
@@ -179,33 +185,46 @@ type IgniteBackend struct {
 // NewIgniteBackend expects a valid config.IgniteBackend object
 func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 
+	if len(cfg.Scheme) == 0 || len(cfg.Host) == 0 || cfg.Port == 0 || len(cfg.Cache.Name) == 0 {
+		errMsg := "Error creating Ignite backend: configuration is missing ignite.schema, ignite.host, ignite.port or ignite.cache.name"
+		log.Fatalf(errMsg)
+		panic(errMsg)
+	}
 	completeHost := fmt.Sprintf("%s://%s:%d/ignite", cfg.Scheme, cfg.Host, cfg.Port)
 
-	if cfg.Cache.CreateOnStart {
-		if err := createCache(completeHost, cfg.Cache.Name); err != nil {
-			log.Fatalf("Error creating Ignite backend: %s", err.Error())
-		}
-	}
-	log.Infof("Prebid Cache will write to Ignite cache name: %s", cfg.Cache.Name)
-
-	url, err := url.Parse(fmt.Sprintf("%s://%s:%d/ignite?cacheName=%s", cfg.Scheme, cfg.Host, cfg.Port, cfg.Cache.Name))
+	url, err := url.Parse(fmt.Sprintf("%s?cacheName=%s", completeHost, cfg.Cache.Name))
 	if err != nil {
 		errMsg := fmt.Sprintf("Error creating Ignite backend: error parsing Ignite host URL %s", err.Error())
 		log.Fatalf(errMsg)
 		panic(errMsg)
 	}
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	igb := &IgniteBackend{serverURL: url}
+	if cfg.Secure {
+		igb.client = &IgniteClient{
+			client: http.DefaultClient,
+		}
+	} else {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		igb.client = &IgniteClient{
+			client: &http.Client{Transport: tr},
+		}
 	}
 
-	return &IgniteBackend{
-		client: &IgniteClient{
-			client: &http.Client{Transport: tr},
-		},
-		serverURL: url,
-		cacheName: "myCache",
+	if cfg.Cache.CreateOnStart {
+		if err := igb.client.CreateCache(url, cfg.Cache.Name); err != nil {
+			errMsg := fmt.Sprintf("Error creating Ignite backend: %s", err.Error())
+			log.Fatalf(errMsg)
+			panic(errMsg)
+		}
 	}
+	log.Infof("Prebid Cache will write to Ignite cache name: %s", cfg.Cache.Name)
+
+	igb.cacheName = cfg.Cache.Name
+
+	return igb
 }
 
 // Get creates an Get http.Request with the URL query values needed to perform a "get" operation

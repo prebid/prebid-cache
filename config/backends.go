@@ -180,6 +180,7 @@ type Ignite struct {
 	Scheme string      `mapstructure:"scheme"`
 	Host   string      `mapstructure:"host"`
 	Port   int         `mapstructure:"port"`
+	Secure bool        `mapstructure:"secure"`
 	Cache  IgniteCache `mapstructure:"cache"`
 }
 
