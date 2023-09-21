@@ -14,10 +14,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// IgniteDB is an interface that helps us communicate with an Apache Ignite storage service
-type IgniteDB interface {
-	Get(req *http.Request) (string, error)
-	Put(req *http.Request) (bool, error)
+// requestDoer is an interface that sends the request to the server
+type requestDoer interface {
+	//DoRequest(*url.URL)
+
 	CreateCache(url *url.URL, cacheName string) error
 }
 
@@ -33,93 +33,10 @@ type getResponse struct {
 	Status   int    `json:"successStatus"`
 }
 
-// Get implements the IgniteDB interface Get method and makes the Ignite storage client retrieve
-// the value that has been previously stored under 'key' if its TTL is still current. We can tell
-// when a key is not faound when Ignite doesn't return an error, nor a 'Status' different than zero, but
-// the 'Response' field is empty. Get can also return Ignite server-side errors
-func (ig *IgniteClient) Get(req *http.Request) (string, error) {
-	// Send request to Ignite storage service
-	httpResp, httpErr := ig.client.Do(req)
-	if httpErr != nil {
-		return "", httpErr
-	}
-
-	if httpResp.StatusCode != http.StatusOK {
-		httpErr = fmt.Errorf("Ignite error. Unexpected status code: %d", httpResp.StatusCode)
-	}
-
-	if httpResp.Body == nil {
-		errMsg := "Received empty httpResp.Body"
-		if httpErr == nil {
-			return "", fmt.Errorf("Ignite error. %s", errMsg)
-		}
-		return "", fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
-	}
-	defer httpResp.Body.Close()
-
-	responseBody, ioErr := io.ReadAll(httpResp.Body)
-	if ioErr != nil {
-		errMsg := fmt.Sprintf("IO reader error: %s", ioErr)
-		if httpErr == nil {
-			return "", fmt.Errorf("Ignite error. %s", errMsg)
-		}
-		return "", fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
-	}
-
-	// Unmarshall response
-	igniteResponse := getResponse{}
-	if unmarshalErr := json.Unmarshal(responseBody, &igniteResponse); unmarshalErr != nil {
-		errMsg := fmt.Sprintf("Unmarshal response error: %s; Response body: %s", unmarshalErr.Error(), string(responseBody))
-		if httpErr == nil {
-			return "", fmt.Errorf("Ignite error. %s", errMsg)
-		}
-		return "", fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
-	}
-
-	// Validate response
-	if len(igniteResponse.Error) > 0 {
-		return "", utils.NewPBCError(utils.GET_INTERNAL_SERVER, igniteResponse.Error)
-	} else if igniteResponse.Status > 0 {
-		return "", utils.NewPBCError(utils.GET_INTERNAL_SERVER, "Ignite response.Status not zero")
-	} else if len(igniteResponse.Response) == 0 { // both igniteResponse.Status == 0 && len(igniteResponse.Error) == 0
-		return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
-	}
-
-	return igniteResponse.Response, nil
-}
-
 type putResponse struct {
 	Error    string `json:"error"`
 	Response bool   `json:"response"`
 	Status   int    `json:"successStatus"`
-}
-
-// Put implements the IgniteDB interface Put method and comunicates with the Ignite storage service
-// Returns an Ignite storage internal server error, if any.
-func (ig *IgniteClient) Put(req *http.Request) (bool, error) {
-	// Send request to Ignite storage service
-	httpResp, err := ig.client.Do(req)
-	defer httpResp.Body.Close()
-	if err != nil {
-		return false, err
-	}
-	requestBody, err := io.ReadAll(httpResp.Body)
-	if err != nil {
-		return false, err
-	}
-
-	// Unmarshall response
-	igniteResponse := putResponse{}
-	if err := json.Unmarshal(requestBody, &igniteResponse); err != nil {
-		return false, err
-	}
-
-	// Validate response
-	if igniteResponse.Status > 0 || len(igniteResponse.Error) > 0 {
-		return false, utils.NewPBCError(utils.PUT_INTERNAL_SERVER, igniteResponse.Error)
-	}
-
-	return igniteResponse.Response, nil
 }
 
 // CreateCache uses the Apache Ignite REST API "getorcreate" command to create a cache
@@ -227,8 +144,10 @@ func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 	return igb
 }
 
-// Get creates an Get http.Request with the URL query values needed to perform a "get" operation
-// on an Ignite storage instance using the REST API
+// Get implements the Backend interface. Makes the Ignite storage client retrieve the value that has
+// been previously stored under 'key' if its TTL is still current. We can tell when a key is not found
+// when Ignite doesn't return an error, nor a 'Status' different than zero, but the 'Response' field is
+// empty. Get can also return Ignite server-side errors
 func (back *IgniteBackend) Get(ctx context.Context, key string) (string, error) {
 
 	urlCopy := *back.serverURL
@@ -249,12 +168,60 @@ func (back *IgniteBackend) Get(ctx context.Context, key string) (string, error) 
 	headers.Add("Host", "prebid.adnxs.com")
 	httpReq.Header = headers
 
-	return back.client.Get(httpReq)
+	//return back.client.Get(httpReq)
+	httpResp, httpErr := back.client.client.Do(httpReq)
+	if httpErr != nil {
+		return "", httpErr
+	}
+
+	if httpResp.StatusCode != http.StatusOK {
+		httpErr = fmt.Errorf("Ignite error. Unexpected status code: %d", httpResp.StatusCode)
+	}
+
+	if httpResp.Body == nil {
+		errMsg := "Received empty httpResp.Body"
+		if httpErr == nil {
+			return "", fmt.Errorf("Ignite error. %s", errMsg)
+		}
+		return "", fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
+	}
+	defer httpResp.Body.Close()
+
+	responseBody, ioErr := io.ReadAll(httpResp.Body)
+	if ioErr != nil {
+		errMsg := fmt.Sprintf("IO reader error: %s", ioErr)
+		if httpErr == nil {
+			return "", fmt.Errorf("Ignite error. %s", errMsg)
+		}
+		return "", fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
+	}
+
+	// Unmarshall response
+	igniteResponse := getResponse{}
+	if unmarshalErr := json.Unmarshal(responseBody, &igniteResponse); unmarshalErr != nil {
+		errMsg := fmt.Sprintf("Unmarshal response error: %s; Response body: %s", unmarshalErr.Error(), string(responseBody))
+		if httpErr == nil {
+			return "", fmt.Errorf("Ignite error. %s", errMsg)
+		}
+		return "", fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
+	}
+
+	// Validate response
+	if len(igniteResponse.Error) > 0 {
+		return "", utils.NewPBCError(utils.GET_INTERNAL_SERVER, igniteResponse.Error)
+	} else if igniteResponse.Status > 0 {
+		return "", utils.NewPBCError(utils.GET_INTERNAL_SERVER, "Ignite response.Status not zero")
+	} else if len(igniteResponse.Response) == 0 { // both igniteResponse.Status == 0 && len(igniteResponse.Error) == 0
+		return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
+	}
+
+	return igniteResponse.Response, nil
 }
 
-// Put creates an Get http.Request with the URL query values needed to perform a "putifabs" command
-// in order to store `value` only if `key` doesn't exist in the storage already. Returns
-// RecordExistsError or whatever PUT_INTERNAL_SERVER error we might find on the storage side
+// Put implements the Backend interface to comunicates with the Ignite storage service to perform
+// a "putifabs" command in order to store the "value" parameter only if the "key" doesn't exist in
+// the storage already. Returns RecordExistsError or whatever PUT_INTERNAL_SERVER error we might
+// find in the storage side
 func (back *IgniteBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 
 	urlCopy := *(&back.serverURL)
@@ -276,9 +243,51 @@ func (back *IgniteBackend) Put(ctx context.Context, key string, value string, tt
 	headers.Add("Host", "prebid.adnxs.com")
 	httpReq.Header = headers
 
-	applied, err := back.client.Put(httpReq)
-	if !applied {
+	//applied, err := back.client.Put(httpReq)
+	//<---->
+	//func (ig *IgniteClient) Put(req *http.Request) (bool, error) {
+	// Send request to Ignite storage service
+	httpResp, httpErr := back.client.client.Do(httpReq)
+	if httpErr != nil {
+		return httpErr
+	}
+
+	if httpResp.StatusCode != http.StatusOK {
+		httpErr = fmt.Errorf("Ignite error. Unexpected status code: %d", httpResp.StatusCode)
+	}
+
+	if httpResp.Body == nil {
+		errMsg := "Received empty httpResp.Body"
+		if httpErr == nil {
+			return fmt.Errorf("Ignite error. %s", errMsg)
+		}
+		return fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
+	}
+	defer httpResp.Body.Close()
+
+	responseBody, ioErr := io.ReadAll(httpResp.Body)
+	if ioErr != nil {
+		errMsg := fmt.Sprintf("IO reader error: %s", ioErr)
+		if httpErr == nil {
+			return fmt.Errorf("Ignite error. %s", errMsg)
+		}
+		return fmt.Errorf("%s; %s", httpErr.Error(), errMsg)
+	}
+
+	// Unmarshall response
+	igniteResponse := putResponse{}
+	if err := json.Unmarshal(responseBody, &igniteResponse); err != nil {
+		return err
+	}
+
+	// Validate response
+	if igniteResponse.Status > 0 || len(igniteResponse.Error) > 0 {
+		return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, igniteResponse.Error)
+	}
+
+	if !igniteResponse.Response {
 		return utils.NewPBCError(utils.RECORD_EXISTS)
 	}
-	return err
+
+	return nil
 }

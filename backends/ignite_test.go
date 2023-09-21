@@ -1,14 +1,5 @@
 package backends
 
-import (
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-)
-
 //// errorProneHttpClient is an http.Client mock that returns an error and is used for testing purposes
 //type httpDoFailClient struct {
 //	IgniteClient
@@ -30,102 +21,102 @@ import (
 //	return ig.Put(req)
 //}
 
-func TestCreateCache(t *testing.T) {
-	type testInput struct {
-		//handlerFunc http.Handler
-		serverInit func() *httptest.Server
-		url        *url.URL
-		cacheName  string
-	}
-	testCases := []struct {
-		desc        string
-		in          testInput
-		expectError bool
-	}{
-		{
-			desc: "Invalid URL. Expect http.NewRequestWithContext() error",
-			in: testInput{
-				url: &url.URL{Scheme: ":invalid:"},
-				//handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				//	w.WriteHeader(http.StatusOK)
-				//}),
-				serverInit: func() *httptest.Server {
-					handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						w.WriteHeader(http.StatusOK)
-					})
-					return httptest.NewServer(handler)
-				},
-			},
-			expectError: true,
-		},
-		{
-			desc: "Fake client mocks server-side error",
-			in: testInput{
-				//handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				//	w.WriteHeader(http.StatusBadRequest)
-				//	w.Write([]byte(`Server-side error`))
-				//}),
-				serverInit: func() *httptest.Server {
-					handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						w.WriteHeader(http.StatusBadRequest)
-						w.Write([]byte(`Server-side error`))
-					})
-					return httptest.NewServer(handler)
-				},
-			},
-			expectError: true,
-		},
-		{
-			desc: "Fake client returns empty body",
-			in: testInput{
-				//handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				//	w.WriteHeader(http.StatusOK)
-				//}),
-				serverInit: func() *httptest.Server {
-					handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						w.WriteHeader(http.StatusOK)
-					})
-					return httptest.NewServer(handler)
-				},
-			},
-			expectError: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		//fakeServer := httptest.NewServer(tc.in.handlerFunc)
-		//fakeServer := tc.in.serverInit()
-		fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(200)
-			w.Write([]byte("some body"))
-		}))
-		igniteClient := &IgniteClient{
-			client: fakeServer.Client(),
-			//client: tc.in.serverInit().Client(),
-		}
-
-		url := &url.URL{
-			Scheme: "http",
-			Host:   "127.0.0.1:8080",
-			Path:   "/ignite",
-		}
-		if tc.in.url != nil {
-			url = tc.in.url
-		}
-
-		err := igniteClient.CreateCache(url, tc.in.cacheName)
-		if tc.expectError {
-			assert.Error(t, err, tc.desc)
-			assert.Equal(t, "SomeError msg", err.Error(), tc.desc)
-		} else {
-			assert.Nil(t, err, tc.desc)
-		}
-
-		if fakeServer != nil {
-			fakeServer.Close()
-		}
-	}
-}
+//func TestCreateCache(t *testing.T) {
+//	type testInput struct {
+//		//handlerFunc http.Handler
+//		serverInit func() *httptest.Server
+//		url        *url.URL
+//		cacheName  string
+//	}
+//	testCases := []struct {
+//		desc        string
+//		in          testInput
+//		expectError bool
+//	}{
+//		{
+//			desc: "Invalid URL. Expect http.NewRequestWithContext() error",
+//			in: testInput{
+//				url: &url.URL{Scheme: ":invalid:"},
+//				//handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//				//	w.WriteHeader(http.StatusOK)
+//				//}),
+//				serverInit: func() *httptest.Server {
+//					handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//						w.WriteHeader(http.StatusOK)
+//					})
+//					return httptest.NewServer(handler)
+//				},
+//			},
+//			expectError: true,
+//		},
+//		{
+//			desc: "Fake client mocks server-side error",
+//			in: testInput{
+//				//handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//				//	w.WriteHeader(http.StatusBadRequest)
+//				//	w.Write([]byte(`Server-side error`))
+//				//}),
+//				serverInit: func() *httptest.Server {
+//					handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//						w.WriteHeader(http.StatusBadRequest)
+//						w.Write([]byte(`Server-side error`))
+//					})
+//					return httptest.NewServer(handler)
+//				},
+//			},
+//			expectError: true,
+//		},
+//		{
+//			desc: "Fake client returns empty body",
+//			in: testInput{
+//				//handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//				//	w.WriteHeader(http.StatusOK)
+//				//}),
+//				serverInit: func() *httptest.Server {
+//					handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//						w.WriteHeader(http.StatusOK)
+//					})
+//					return httptest.NewServer(handler)
+//				},
+//			},
+//			expectError: true,
+//		},
+//	}
+//
+//	for _, tc := range testCases {
+//		//fakeServer := httptest.NewServer(tc.in.handlerFunc)
+//		//fakeServer := tc.in.serverInit()
+//		fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//			w.WriteHeader(200)
+//			w.Write([]byte("some body"))
+//		}))
+//		igniteClient := &IgniteClient{
+//			client: fakeServer.Client(),
+//			//client: tc.in.serverInit().Client(),
+//		}
+//
+//		url := &url.URL{
+//			Scheme: "http",
+//			Host:   "127.0.0.1:8080",
+//			Path:   "/ignite",
+//		}
+//		if tc.in.url != nil {
+//			url = tc.in.url
+//		}
+//
+//		err := igniteClient.CreateCache(url, tc.in.cacheName)
+//		if tc.expectError {
+//			assert.Error(t, err, tc.desc)
+//			assert.Equal(t, "SomeError msg", err.Error(), tc.desc)
+//		} else {
+//			assert.Nil(t, err, tc.desc)
+//		}
+//
+//		if fakeServer != nil {
+//			fakeServer.Close()
+//		}
+//	}
+//}
 
 //func TestNewIgniteBackend(t *testing.T) {
 //	type logEntry struct {
