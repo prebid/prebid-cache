@@ -1,25 +1,212 @@
 package backends
 
-//// errorProneHttpClient is an http.Client mock that returns an error and is used for testing purposes
-//type httpDoFailClient struct {
-//	IgniteClient
-//}
-//
-//func (ig *httpDoFailClient) HttpDo(req *http.Request) (*http.Response, error) {
-//	return nil, errors.New("Fake ignite client throws error in its HttpDo implementation")
-//}
-//
-//func (ig *httpDoFailClient) CreateCache(url *url.URL, cacheName string) error {
-//	return ig.IgniteClient.CreateCache(url, cacheName)
-//}
-//
-//func (ig *httpDoFailClient) Get(req *http.Request) (string, error) {
-//	return ig.IgniteClient.Get(req)
-//}
-//
-//func (ig *httpDoFailClient) Put(req *http.Request) (bool, error) {
-//	return ig.Put(req)
-//}
+import (
+	"context"
+	"errors"
+	"io"
+	"net/http"
+	"net/url"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// fakeClientDoError implements the clientWrapper interface and acts as a mock that returns an error when it's
+// Do(req *http.Request) method is called
+type fakeClientDoError struct{}
+
+func (c *fakeClientDoError) Do(req *http.Request) (*http.Response, error) {
+	return nil, &url.Error{
+		Op:  "GET",
+		Err: errors.New("fake http.Client error"),
+	}
+}
+
+// fakeClientBadStatusCode implements the clientWrapper interface and acts as a mock that returns a response with
+// a 400 status code
+type fakeClientBadStatusCode struct{}
+
+type fakeEOFReadCloser struct{}
+
+func (c fakeEOFReadCloser) Read(p []byte) (n int, err error) { return 1, io.EOF }
+func (c fakeEOFReadCloser) Close() error                     { return nil }
+
+func (c *fakeClientBadStatusCode) Do(req *http.Request) (*http.Response, error) {
+	resp := &http.Response{
+		StatusCode: http.StatusNotFound,
+		Body:       fakeEOFReadCloser{},
+	}
+	return resp, nil
+}
+
+// fakeClientNilBody implements the clientWrapper interface and acts as a mock that returns a response with a
+// valid status code but a nil Body field
+type fakeClientNilBody struct{}
+
+func (c *fakeClientNilBody) Do(req *http.Request) (*http.Response, error) {
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       nil,
+	}
+	return resp, nil
+}
+
+// fakeClientBodyReadError implements the clientWrapper interface and acts as a mock that returns a response with
+// a 400 status code
+type fakeClientBodyReadError struct{}
+
+type fakeErrorProneReadCloser struct{}
+
+func (c fakeErrorProneReadCloser) Read(p []byte) (n int, err error) { return 1, io.ErrShortBuffer }
+func (c fakeErrorProneReadCloser) Close() error                     { return nil }
+
+func (c *fakeClientBodyReadError) Do(req *http.Request) (*http.Response, error) {
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       fakeErrorProneReadCloser{},
+	}
+	return resp, nil
+}
+
+// fakeClientSuccess implements the clientWrapper interface and acts as a mock that returns a response with
+// a 400 status code
+type fakeClientSuccess struct{}
+
+type fakeSuccessfulReadCloser struct {
+	counter int
+	size    int
+	body    []byte
+}
+
+func (rc fakeSuccessfulReadCloser) Read(p []byte) (n int, err error) {
+	for i := range rc.body {
+		p[i] = rc.body[i]
+	}
+	return len(rc.body), io.EOF
+}
+
+func (c fakeSuccessfulReadCloser) Close() error { return nil }
+
+func (c *fakeClientSuccess) Do(req *http.Request) (*http.Response, error) {
+	responseBodyStr := `{"jsonObject":"value"}`
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body: fakeSuccessfulReadCloser{
+			counter: 0,
+			body:    []byte(responseBodyStr),
+			size:    len(responseBodyStr),
+		},
+	}
+	return resp, nil
+}
+
+func TestDoRequest(t *testing.T) {
+	type testInput struct {
+		ctx         context.Context
+		url         *url.URL
+		headers     http.Header
+		requestDoer igniteClient
+	}
+
+	type testOutput struct {
+		resp []byte
+		err  error
+	}
+
+	testCases := []struct {
+		desc     string
+		in       testInput
+		expected testOutput
+	}{
+		{
+			desc: "http.NewRequestWithContext returns error because nil Context",
+			in: testInput{
+				url:         &url.URL{},
+				requestDoer: &igClient{},
+			},
+			expected: testOutput{
+				resp: nil,
+				err:  errors.New("net/http: nil Context"),
+			},
+		},
+		{
+			desc: "clientWrapper returns an error",
+			in: testInput{
+				ctx: context.TODO(),
+				url: &url.URL{},
+				requestDoer: &igClient{
+					client: &fakeClientDoError{},
+				},
+			},
+			expected: testOutput{
+				resp: nil,
+				err:  &url.Error{Op: "GET", Err: errors.New("fake http.Client error")},
+			},
+		},
+		{
+			desc: "nil http.Response.Body is returned",
+			in: testInput{
+				ctx: context.TODO(),
+				url: &url.URL{},
+				requestDoer: &igClient{
+					client: &fakeClientNilBody{},
+				},
+			},
+			expected: testOutput{
+				resp: nil,
+				err:  errors.New("Ignite error. Received empty httpResp.Body"),
+			},
+		},
+		{
+			desc: "Non 200 status code is returned in the http.Response",
+			in: testInput{
+				ctx: context.TODO(),
+				url: &url.URL{},
+				requestDoer: &igClient{
+					client: &fakeClientBadStatusCode{},
+				},
+			},
+			expected: testOutput{
+				resp: []byte{0x0},
+				err:  errors.New("Ignite error. Unexpected status code: 404"),
+			},
+		},
+		{
+			desc: "Non-nil body couldn't be read",
+			in: testInput{
+				ctx: context.TODO(),
+				url: &url.URL{},
+				requestDoer: &igClient{
+					client: &fakeClientBodyReadError{},
+				},
+			},
+			expected: testOutput{
+				resp: nil,
+				err:  errors.New("Ignite error. IO reader error: short buffer"),
+			},
+		},
+		{
+			desc: "Success",
+			in: testInput{
+				ctx: context.TODO(),
+				url: &url.URL{},
+				requestDoer: &igClient{
+					client: &fakeClientSuccess{},
+				},
+			},
+			expected: testOutput{
+				resp: []byte(`{"jsonObject":"value"}`),
+				err:  nil,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		actualResp, actualErr := tc.in.requestDoer.DoRequest(tc.in.ctx, tc.in.url, tc.in.headers)
+
+		assert.Equal(t, tc.expected.resp, actualResp, tc.desc)
+		assert.Equal(t, tc.expected.err, actualErr, tc.desc)
+	}
+}
 
 //func TestCreateCache(t *testing.T) {
 //	type testInput struct {

@@ -177,11 +177,12 @@ func (cfg *Redis) validateAndLog() error {
 }
 
 type Ignite struct {
-	Scheme string      `mapstructure:"scheme"`
-	Host   string      `mapstructure:"host"`
-	Port   int         `mapstructure:"port"`
-	Secure bool        `mapstructure:"secure"`
-	Cache  IgniteCache `mapstructure:"cache"`
+	Scheme  string            `mapstructure:"scheme"`
+	Host    string            `mapstructure:"host"`
+	Port    int               `mapstructure:"port"`
+	Secure  bool              `mapstructure:"secure"`
+	Headers map[string]string `mapstructure:"headers"`
+	Cache   IgniteCache       `mapstructure:"cache"`
 }
 
 type IgniteCache struct {
