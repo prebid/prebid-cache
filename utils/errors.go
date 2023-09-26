@@ -18,7 +18,7 @@ const (
 	KEY_NOT_FOUND                    // GET http.StatusNotFound 404
 	KEY_LENGTH                       // GET http.StatusNotFound 404
 	UNKNOWN_STORED_DATA_TYPE         // GET http.StatusInternalServerError 500
-	GET_INTERNAL_SERVER              // PUT http.StatusInternalServerError 500
+	GET_INTERNAL_SERVER              // GET http.StatusInternalServerError 500
 	PUT_INTERNAL_SERVER              // PUT http.StatusInternalServerError 500
 	MARSHAL_RESPONSE                 // PUT http.StatusInternalServerError 500
 	PUT_DEADLINE_EXCEEDED            // PUT HttpDependencyTimeout 597

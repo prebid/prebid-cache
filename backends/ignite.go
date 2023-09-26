@@ -83,7 +83,6 @@ func (c *igniteSender) DoRequest(ctx context.Context, url *url.URL, headers http
 // NewIgniteBackend expects a valid config.IgniteBackend object and will create an Apache Ignite cache in the
 // Ignite server if the config.Ignite.Cache.CreateOnStart flag is set to true
 func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
-
 	if len(cfg.Scheme) == 0 || len(cfg.Host) == 0 || cfg.Port == 0 || len(cfg.Cache.Name) == 0 {
 		errMsg := "Error creating Ignite backend: configuration is missing ignite.schema, ignite.host, ignite.port or ignite.cache.name"
 		log.Fatalf(errMsg)
@@ -146,12 +145,7 @@ func createCache(igb *IgniteBackend) error {
 		return err
 	}
 
-	//igniteResponse := getResponse{}
-	igniteResponse := struct {
-		Error string `json:"error"`
-		//Response string `json:"response"`
-		Status int `json:"successStatus"`
-	}{}
+	igniteResponse := getResponse{}
 
 	if unmarshalErr := json.Unmarshal(responseBytes, &igniteResponse); unmarshalErr != nil {
 		return fmt.Errorf("Unmarshal response error: %s; Response body: %s", unmarshalErr.Error(), string(responseBytes))
@@ -167,39 +161,33 @@ func createCache(igb *IgniteBackend) error {
 	return nil
 }
 
-//// getResponse is used to unmarshal the Ignite server's response to a GET request with
-//// the "cmd" URL query field set to "get"
-//type getResponse struct {
-//	Error    string `json:"error"`
-//	Response string `json:"response"`
-//	Status   int    `json:"successStatus"`
-//}
+// getResponse is used to unmarshal the Ignite server's response to a GET request with
+// the "cmd" URL query field set to "get"
+type getResponse struct {
+	Error    string `json:"error"`
+	Response string `json:"response"`
+	Status   int    `json:"successStatus"`
+}
 
 // Get implements the Backend interface. Makes the Ignite storage client retrieve the value that has
 // been previously stored under 'key' if its TTL is still current. We can tell when a key is not found
 // when Ignite doesn't return an error, nor a 'Status' different than zero, but the 'Response' field is
 // empty. Get can also return Ignite server-side errors
-func (back *IgniteBackend) Get(ctx context.Context, key string) (string, error) {
-
-	urlCopy := *back.serverURL
+func (ig *IgniteBackend) Get(ctx context.Context, key string) (string, error) {
+	urlCopy := *ig.serverURL
 	q := urlCopy.Query()
 	q.Set("cmd", "get")
 	q.Set("key", key)
 
 	urlCopy.RawQuery = q.Encode()
 
-	responseBytes, err := back.sender.DoRequest(ctx, &urlCopy, back.headers)
+	responseBytes, err := ig.sender.DoRequest(ctx, &urlCopy, ig.headers)
 	if err != nil {
 		return "", err
 	}
 
-	// Unmarshall response
-	//igniteResponse := getResponse{}
-	igniteResponse := struct {
-		Error    string `json:"error"`
-		Response string `json:"response"`
-		Status   int    `json:"successStatus"`
-	}{}
+	// Unmarshal response
+	igniteResponse := getResponse{}
 
 	if unmarshalErr := json.Unmarshal(responseBytes, &igniteResponse); unmarshalErr != nil {
 		return "", fmt.Errorf("Unmarshal response error: %s; Response body: %s", unmarshalErr.Error(), string(responseBytes))
@@ -210,28 +198,28 @@ func (back *IgniteBackend) Get(ctx context.Context, key string) (string, error) 
 		return "", utils.NewPBCError(utils.GET_INTERNAL_SERVER, igniteResponse.Error)
 	} else if igniteResponse.Status > 0 {
 		return "", utils.NewPBCError(utils.GET_INTERNAL_SERVER, "Ignite response.Status not zero")
-	} else if len(igniteResponse.Response) == 0 { // both igniteResponse.Status == 0 && len(igniteResponse.Error) == 0
+	} else if len(igniteResponse.Response) == 0 {
 		return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
 	}
 
 	return igniteResponse.Response, nil
 }
 
-// // getResponse is used to unmarshal the Ignite server's response to a GET request with
-// // the "cmd" URL query field set to "putifabs"
-// type putResponse struct {
-// 	Error    string `json:"error"`
-// 	Response bool   `json:"response"`
-// 	Status   int    `json:"successStatus"`
-// }
+// putResponse is used to unmarshal the Ignite server's response to a PUT request with
+// the "cmd" URL query field set to "putifabs"
+type putResponse struct {
+	Error    string `json:"error"`
+	Response bool   `json:"response"`
+	Status   int    `json:"successStatus"`
+}
 
 // Put implements the Backend interface to comunicates with the Ignite storage service to perform
 // a "putifabs" command in order to store the "value" parameter only if the "key" doesn't exist in
 // the storage already. Returns RecordExistsError or whatever PUT_INTERNAL_SERVER error we might
 // find in the storage side
-func (back *IgniteBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
+func (ig *IgniteBackend) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
 
-	urlCopy := *back.serverURL
+	urlCopy := *ig.serverURL
 	q := urlCopy.Query()
 	q.Set("cmd", "putifabs")
 	q.Set("key", key)
@@ -240,18 +228,13 @@ func (back *IgniteBackend) Put(ctx context.Context, key string, value string, tt
 
 	urlCopy.RawQuery = q.Encode()
 
-	responseBytes, err := back.sender.DoRequest(ctx, &urlCopy, back.headers)
+	responseBytes, err := ig.sender.DoRequest(ctx, &urlCopy, ig.headers)
 	if err != nil {
 		return err
 	}
 
-	// Unmarshall response
-	//igniteResponse := putResponse{}
-	igniteResponse := struct {
-		Error    string `json:"error"`
-		Response bool   `json:"response"`
-		Status   int    `json:"successStatus"`
-	}{}
+	// Unmarshal response
+	igniteResponse := putResponse{}
 	if unmarshalErr := json.Unmarshal(responseBytes, &igniteResponse); unmarshalErr != nil {
 		return fmt.Errorf("Unmarshal response error: %s; Response body: %s", unmarshalErr.Error(), string(responseBytes))
 	}
