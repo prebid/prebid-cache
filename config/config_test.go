@@ -1204,6 +1204,9 @@ func getExpectedDefaultConfig() Configuration {
 			Redis: Redis{
 				ExpirationMinutes: utils.REDIS_DEFAULT_EXPIRATION_MINUTES,
 			},
+			Ignite: Ignite{
+				Headers: map[string]string{},
+			},
 		},
 		Compression: Compression{
 			Type: CompressionType("snappy"),
@@ -1272,6 +1275,18 @@ func getExpectedFullConfigForTestFile() Configuration {
 				TLS: RedisTLS{
 					Enabled:            false,
 					InsecureSkipVerify: false,
+				},
+			},
+			Ignite: Ignite{
+				Scheme: "http",
+				Host:   "127.0.0.1",
+				Port:   8080,
+				Headers: map[string]string{
+					"Content-Length": "0",
+				},
+				Cache: IgniteCache{
+					Name:          "whatever",
+					CreateOnStart: false,
 				},
 			},
 		},

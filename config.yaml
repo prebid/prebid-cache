@@ -1,4 +1,3 @@
----
 port: 2424
 admin_port: 2525
 log:
@@ -7,24 +6,23 @@ rate_limiter:
   enabled: true
   num_requests: 100
 request_limits:
-  allow_setting_keys: true
-  max_size_bytes: 10240
+  allow_setting_keys: false
+  max_size_bytes: 10240 # 10K
   max_num_values: 10
   max_ttl_seconds: 3600
 backend:
   type: "memory" # Switch to be "aerospike", "cassandra", "memcache" or "redis" for production.
   aerospike:
-    hosts: ["aerospike.prebid.com"]
+    hosts: [ "aerospike.prebid.com" ]
     port: 3000
     namespace: "whatever"
   cassandra:
     hosts: "127.0.0.1"
     keyspace: "prebid"
   memcache:
-    config_host: ""   # Auto discovery config endpoint. Docker build Replaced
-    poll_interval_seconds: 30   # Node change interval when in auto discovery
-    hosts: "10.0.0.1:11211"   # List of nodes when not in auto discovery. Can
-    # also use an array for multiple hosts.
+    config_host: "" # Configuration endpoint for auto discovery. Replaced at docker build.
+    poll_interval_seconds: 30 # Node change polling interval when auto discovery is used
+    hosts: "10.0.0.1:11211" # List of nodes when not using auto discovery. Can also use an array for multiple hosts. 
   redis:
     host: "127.0.0.1"
     port: 6379
@@ -40,10 +38,10 @@ backend:
     port: 8080
     secure: false
     headers: !!omap
-      - Host: prebid.adnxs.com
+      - Content-Length: 0
     cache:
-      name: "myCache"
-      create_on_start: true
+      name: "whatever"
+      create_on_start: false
 compression:
   type: "snappy"   # Can also be "none"
 metrics:

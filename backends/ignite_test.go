@@ -607,7 +607,7 @@ func TestCreateCache(t *testing.T) {
 				igniteError:    nil,
 			},
 			expected: testOutput{
-				err: errors.New(`Ignite error. successStatus does not equal 0 { 1}`),
+				err: errors.New(`Ignite error. successStatus does not equal 0 {  1}`),
 			},
 		},
 		{
