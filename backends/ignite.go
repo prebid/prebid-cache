@@ -14,34 +14,33 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// httpClientWrapper is an interface that will let us mock the Ignite server responses
+// IgniteBackend implements Backend interface and communicates with the Apache Ignite storage
+// via its REST API as documented in https://ignite.apache.org/docs/2.11.1/restapi#rest-api-reference
+type IgniteBackend struct {
+	sender    requestSender
+	serverURL *url.URL
+	headers   http.Header
+	cacheName string
+}
+
+// httpClientWrapper lets us mock the http.Client
 type httpClientWrapper interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// clientWrapper implements the httpClientWrapper interface
-type clientWrapper struct {
-	client *http.Client
-}
-
-// Do simply calls the underlying *http.Client's Do(req *http.Request) (*http.Response, error) implementation
-func (wrapper *clientWrapper) Do(req *http.Request) (*http.Response, error) {
-	return wrapper.client.Do(req)
-}
-
-// igniteClient is an interface who's DoRequest method will let us send the request to the Ignite
-// server and handle it's response and error. Other implementations of it will let us mock error scenarios.
-type igniteClient interface {
+// requestSender defines a DoRequest method that will let us send the request to the Ignite server
+// and handle it's response and error. Other implementations of it will let us mock errorscenarios.
+type requestSender interface {
 	DoRequest(ctx context.Context, url *url.URL, headers http.Header) ([]byte, error)
 }
 
-// igClient implements the igniteClient interface
-type igClient struct {
-	client httpClientWrapper
+// igniteSender implements the requestSender interface
+type igniteSender struct {
+	httpClient httpClientWrapper
 }
 
 // DoRequest will hit the Ignite server specified in the url parameter and handle error responses
-func (c *igClient) DoRequest(ctx context.Context, url *url.URL, headers http.Header) ([]byte, error) {
+func (c *igniteSender) DoRequest(ctx context.Context, url *url.URL, headers http.Header) ([]byte, error) {
 	httpReq, err := http.NewRequestWithContext(ctx, "GET", url.String(), nil)
 	if err != nil {
 		return nil, err
@@ -51,7 +50,7 @@ func (c *igClient) DoRequest(ctx context.Context, url *url.URL, headers http.Hea
 		httpReq.Header = headers
 	}
 
-	httpResp, httpErr := c.client.Do(httpReq)
+	httpResp, httpErr := c.httpClient.Do(httpReq)
 	if httpErr != nil {
 		return nil, httpErr
 	}
@@ -81,15 +80,6 @@ func (c *igClient) DoRequest(ctx context.Context, url *url.URL, headers http.Hea
 	return responseBody, httpErr
 }
 
-// IgniteBackend implements Backend interface and communicates with the Apache Ignite storage
-// via its REST API as documented in https://ignite.apache.org/docs/2.11.1/restapi#rest-api-reference
-type IgniteBackend struct {
-	client    igniteClient
-	serverURL *url.URL
-	headers   http.Header
-	cacheName string
-}
-
 // NewIgniteBackend expects a valid config.IgniteBackend object and will create an Apache Ignite cache in the
 // Ignite server if the config.Ignite.Cache.CreateOnStart flag is set to true
 func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
@@ -101,7 +91,7 @@ func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 	}
 	completeHost := fmt.Sprintf("%s://%s:%d/ignite", cfg.Scheme, cfg.Host, cfg.Port)
 
-	url, err := url.Parse(fmt.Sprintf("%s?cacheName=%s", completeHost, cfg.Cache.Name))
+	url, err := url.Parse(completeHost)
 	if err != nil {
 		errMsg := fmt.Sprintf("Error creating Ignite backend: error parsing Ignite host URL %s", err.Error())
 		log.Fatalf(errMsg)
@@ -110,15 +100,16 @@ func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 
 	igb := &IgniteBackend{serverURL: url}
 	if cfg.Secure {
-		igb.client = &igClient{
-			client: http.DefaultClient,
+		igb.sender = &igniteSender{
+			httpClient: http.DefaultClient,
 		}
 	} else {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		igb.client = &igClient{
-			client: &http.Client{Transport: tr},
+		igb.sender = &igniteSender{
+			httpClient: &http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				},
+			},
 		}
 	}
 
@@ -147,9 +138,10 @@ func createCache(igb *IgniteBackend) error {
 	urlCopy := *igb.serverURL
 	q := urlCopy.Query()
 	q.Set("cmd", "getorcreate")
+	q.Set("cacheName", igb.cacheName)
 	urlCopy.RawQuery = q.Encode()
 
-	responseBytes, err := igb.client.DoRequest(context.Background(), &urlCopy, nil)
+	responseBytes, err := igb.sender.DoRequest(context.Background(), &urlCopy, nil)
 	if err != nil {
 		return err
 	}
@@ -165,10 +157,10 @@ func createCache(igb *IgniteBackend) error {
 		return fmt.Errorf("Unmarshal response error: %s; Response body: %s", unmarshalErr.Error(), string(responseBytes))
 	}
 
+	if len(igniteResponse.Error) > 0 {
+		return fmt.Errorf("Ignite error. %s", igniteResponse.Error)
+	}
 	if igniteResponse.Status > 0 {
-		if len(igniteResponse.Error) > 0 {
-			return fmt.Errorf("Ignite error. %s", igniteResponse.Error)
-		}
 		return fmt.Errorf("Ignite error. successStatus does not equal 0 %v", igniteResponse)
 	}
 
@@ -196,7 +188,7 @@ func (back *IgniteBackend) Get(ctx context.Context, key string) (string, error) 
 
 	urlCopy.RawQuery = q.Encode()
 
-	responseBytes, err := back.client.DoRequest(ctx, &urlCopy, back.headers)
+	responseBytes, err := back.sender.DoRequest(ctx, &urlCopy, back.headers)
 	if err != nil {
 		return "", err
 	}
@@ -248,7 +240,7 @@ func (back *IgniteBackend) Put(ctx context.Context, key string, value string, tt
 
 	urlCopy.RawQuery = q.Encode()
 
-	responseBytes, err := back.client.DoRequest(ctx, &urlCopy, back.headers)
+	responseBytes, err := back.sender.DoRequest(ctx, &urlCopy, back.headers)
 	if err != nil {
 		return err
 	}
@@ -265,8 +257,12 @@ func (back *IgniteBackend) Put(ctx context.Context, key string, value string, tt
 	}
 
 	// Validate response
-	if igniteResponse.Status > 0 || len(igniteResponse.Error) > 0 {
+	if len(igniteResponse.Error) > 0 {
 		return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, igniteResponse.Error)
+	}
+
+	if igniteResponse.Status > 0 {
+		return utils.NewPBCError(utils.PUT_INTERNAL_SERVER, "Ignite responded with non-zero successStatus code")
 	}
 
 	if !igniteResponse.Response {

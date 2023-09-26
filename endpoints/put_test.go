@@ -125,10 +125,11 @@ type hostConfig struct {
 }
 
 type fakeBackend struct {
-	ErrorMsg   string       `json:"throw_error_message"`
-	ReturnBool bool         `json:"throw_bool"`
-	StoredData []storedData `json:"stored_data"`
-	Type       string       `json:"storage_type"`
+	ErrorMsg       string       `json:"throw_error_message"`
+	ReturnBool     bool         `json:"throw_bool"`
+	StoredData     []storedData `json:"stored_data"`
+	ServerResponse string       `json:"server_response"`
+	Type           string       `json:"storage_type"`
 }
 
 type storedData struct {
@@ -175,6 +176,8 @@ func newTestBackend(fb fakeBackend, ttl int) backends.Backend {
 					Success:     fb.ReturnBool,
 				},
 			)
+		case config.BackendIgnite:
+			mb = backends.NewFakeIgniteBackend([]byte(fb.ServerResponse), errors.New(fb.ErrorMsg))
 		default:
 			mb = backends.NewErrorResponseMemoryBackend()
 		}
@@ -206,6 +209,8 @@ func newTestBackend(fb fakeBackend, ttl int) backends.Backend {
 				Success:     fb.ReturnBool,
 			},
 		)
+	case config.BackendIgnite:
+		mb = backends.NewFakeIgniteBackend([]byte(fb.ServerResponse), nil)
 	default:
 		mb, _ = backends.NewMemoryBackendWithValues(copyStoredData(fb.StoredData))
 	}

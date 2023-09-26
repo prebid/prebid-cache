@@ -3,6 +3,9 @@ package backends
 import (
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"net/url"
 
 	as "github.com/aerospike/aerospike-client-go/v6"
 	as_types "github.com/aerospike/aerospike-client-go/v6/types"
@@ -216,11 +219,11 @@ func NewErrorResponseMemoryBackend() *ErrorProneMemoryClient {
 type ErrorProneMemoryClient struct{}
 
 func (ec *ErrorProneMemoryClient) Get(ctx context.Context, key string) (string, error) {
-	return "", errors.New("Bakend error")
+	return "", errors.New("Backend error")
 }
 
 func (ec *ErrorProneMemoryClient) Put(ctx context.Context, key string, value string, ttlSeconds int) error {
-	return errors.New("Bakend error")
+	return errors.New("Backend error")
 }
 
 // Good memory client does not throw errors
@@ -235,4 +238,51 @@ func NewMemoryBackendWithValues(customData map[string]string) (*MemoryBackend, e
 		}
 	}
 	return backend, nil
+}
+
+// ------------------------------------------
+// Ignite backend mocks
+// ------------------------------------------
+type fakeHttpClient struct {
+	mockFunction func() (*http.Response, error)
+}
+
+func (c *fakeHttpClient) Do(req *http.Request) (*http.Response, error) {
+	return c.mockFunction()
+}
+
+type fakeReadCloser struct {
+	body []byte
+	err  error
+}
+
+func (rc fakeReadCloser) Read(p []byte) (n int, err error) {
+	copy(p, rc.body)
+	return len(rc.body), rc.err
+}
+
+func (c fakeReadCloser) Close() error { return nil }
+
+func NewFakeIgniteBackend(fakeIgniteResponse []byte, fakeError error) *IgniteBackend {
+	return &IgniteBackend{
+		sender: &igniteSender{
+			httpClient: &fakeHttpClient{
+				mockFunction: func() (*http.Response, error) {
+					httpStatus := http.StatusOK
+					if fakeError != nil {
+						httpStatus = http.StatusInternalServerError
+					}
+					httpResp := &http.Response{
+						StatusCode: httpStatus,
+						Body: fakeReadCloser{
+							body: fakeIgniteResponse,
+							err:  io.EOF,
+						},
+					}
+					return httpResp, fakeError
+				},
+			},
+		},
+		serverURL: &url.URL{},
+	}
 }
