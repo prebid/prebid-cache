@@ -113,6 +113,7 @@ func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 	}
 
 	if len(cfg.Headers) > 0 {
+		igb.headers = http.Header{}
 		for k, v := range cfg.Headers {
 			igb.headers.Add(k, v)
 		}
