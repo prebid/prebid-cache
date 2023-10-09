@@ -40,7 +40,7 @@ backend:
     headers: !!omap
       - Content-Length: 0
     cache:
-      name: "whatever"
+      name: "cacheName"
       create_on_start: false
 compression:
   type: "snappy"   # Can also be "none"

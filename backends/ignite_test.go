@@ -269,13 +269,10 @@ func TestNewIgniteBackend(t *testing.T) {
 				{
 					desc: "Expect validation to pass and a default client with secure http transport",
 					in: config.Ignite{
-						Scheme: "http",
-						Host:   "127.0.0.1",
-						Port:   8080,
-						Secure: true,
-						//Headers: http.Header{
-						//	"HEADER": []string{"value"},
-						//},
+						Scheme:     "http",
+						Host:       "127.0.0.1",
+						Port:       8080,
+						VerifyCert: true,
 						Cache: config.IgniteCache{
 							Name:          "myCache",
 							CreateOnStart: false,
@@ -302,10 +299,10 @@ func TestNewIgniteBackend(t *testing.T) {
 				{
 					desc: "Expect validation to pass but with Secure is set to false. Expect client with insecure http transport",
 					in: config.Ignite{
-						Scheme: "http",
-						Host:   "127.0.0.1",
-						Port:   8080,
-						Secure: false,
+						Scheme:     "http",
+						Host:       "127.0.0.1",
+						Port:       8080,
+						VerifyCert: false,
 						Cache: config.IgniteCache{
 							Name:          "myCache",
 							CreateOnStart: false,

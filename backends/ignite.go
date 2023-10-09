@@ -88,9 +88,8 @@ func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 		log.Fatalf(errMsg)
 		panic(errMsg)
 	}
-	completeHost := fmt.Sprintf("%s://%s:%d/ignite", cfg.Scheme, cfg.Host, cfg.Port)
 
-	url, err := url.Parse(completeHost)
+	url, err := url.Parse(fmt.Sprintf("%s://%s:%d/ignite?cacheName=%s", cfg.Scheme, cfg.Host, cfg.Port, cfg.Cache.Name))
 	if err != nil {
 		errMsg := fmt.Sprintf("Error creating Ignite backend: error parsing Ignite host URL %s", err.Error())
 		log.Fatalf(errMsg)
@@ -98,7 +97,7 @@ func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 	}
 
 	igb := &IgniteBackend{serverURL: url}
-	if cfg.Secure {
+	if cfg.VerifyCert {
 		igb.sender = &igniteSender{
 			httpClient: http.DefaultClient,
 		}
