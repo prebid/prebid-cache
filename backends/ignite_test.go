@@ -255,7 +255,7 @@ func TestNewIgniteBackend(t *testing.T) {
 						panicHappens: true,
 						logEntries: []logEntry{
 							{
-								msg: "Error creating Ignite backend: error parsing Ignite host URL parse \":invalid:://127.0.0.1:8080/ignite\": missing protocol scheme",
+								msg: "Error creating Ignite backend: error parsing Ignite host URL parse \":invalid:://127.0.0.1:8080/ignite?cacheName=myCache\": missing protocol scheme",
 								lvl: logrus.FatalLevel,
 							},
 						},
@@ -281,9 +281,10 @@ func TestNewIgniteBackend(t *testing.T) {
 					expected: testOut{
 						backend: &IgniteBackend{
 							serverURL: &url.URL{
-								Scheme: "http",
-								Host:   "127.0.0.1:8080",
-								Path:   "/ignite",
+								Scheme:   "http",
+								Host:     "127.0.0.1:8080",
+								Path:     "/ignite",
+								RawQuery: "cacheName=myCache",
 							},
 							sender: &igniteSender{httpClient: http.DefaultClient},
 						},
@@ -311,9 +312,10 @@ func TestNewIgniteBackend(t *testing.T) {
 					expected: testOut{
 						backend: &IgniteBackend{
 							serverURL: &url.URL{
-								Scheme: "http",
-								Host:   "127.0.0.1:8080",
-								Path:   "/ignite",
+								Scheme:   "http",
+								Host:     "127.0.0.1:8080",
+								Path:     "/ignite",
+								RawQuery: "cacheName=myCache",
 							},
 							sender: &igniteSender{
 								httpClient: &http.Client{
