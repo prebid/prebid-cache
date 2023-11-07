@@ -180,7 +180,7 @@ type Ignite struct {
 	Scheme string `mapstructure:"scheme"`
 	Host   string `mapstructure:"host"`
 	Port   int    `mapstructure:"port"`
-	// If VerifyCert is set to true, PRebid Cache verifies the SSL certificate on the Ignite server
+	// If VerifyCert is set to true, Prebid Cache verifies the SSL certificate on the Ignite server
 	VerifyCert bool              `mapstructure:"secure"`
 	Headers    map[string]string `mapstructure:"headers"`
 	Cache      IgniteCache       `mapstructure:"cache"`
@@ -204,8 +204,10 @@ func (cfg *Ignite) validateAndLog() error {
 	log.Infof("config.backend.ignite.scheme: %s", cfg.Scheme)
 	log.Infof("config.backend.ignite.host: %s", cfg.Host)
 	log.Infof("config.backend.ignite.port: %d", cfg.Port)
+	log.Infof("config.backend.ignite.cache.create_on_start: %t", cfg.VerifyCert)
+	log.Infof("config.backend.ignite.cache.create_on_start: %v", cfg.Headers)
 	log.Infof("config.backend.ignite.cache.name: %s", cfg.Cache.Name)
-	log.Infof("config.backend.ignite.cache.create_on_start: %v", cfg.Cache.CreateOnStart)
+	log.Infof("config.backend.ignite.cache.create_on_start: %t", cfg.Cache.CreateOnStart)
 
 	return nil
 }

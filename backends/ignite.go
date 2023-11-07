@@ -197,7 +197,7 @@ func (ig *IgniteBackend) Get(ctx context.Context, key string) (string, error) {
 	if len(igniteResponse.Error) > 0 {
 		return "", utils.NewPBCError(utils.GET_INTERNAL_SERVER, igniteResponse.Error)
 	} else if igniteResponse.Status > 0 {
-		return "", utils.NewPBCError(utils.GET_INTERNAL_SERVER, "Ignite response.Status not zero")
+		return "", utils.NewPBCError(utils.GET_INTERNAL_SERVER, "Ignite response. Status not zero")
 	} else if len(igniteResponse.Response) == 0 {
 		return "", utils.NewPBCError(utils.KEY_NOT_FOUND)
 	}

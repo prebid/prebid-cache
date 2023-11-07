@@ -170,7 +170,17 @@ func TestNewIgniteBackend(t *testing.T) {
 			testCases: []testCase{
 				{
 					desc: "empty scheme",
-					in:   config.Ignite{},
+					in: config.Ignite{
+						Scheme:     "",
+						Host:       "127.0.0.1",
+						Port:       8080,
+						VerifyCert: true,
+						Headers:    map[string]string{"Header": "Value"},
+						Cache: config.IgniteCache{
+							Name:          "myCache",
+							CreateOnStart: false,
+						},
+					},
 					expected: testOut{
 						backend:      nil,
 						panicHappens: true,
@@ -185,7 +195,15 @@ func TestNewIgniteBackend(t *testing.T) {
 				{
 					desc: "empty host",
 					in: config.Ignite{
-						Scheme: "http",
+						Scheme:     "http",
+						Host:       "",
+						Port:       8080,
+						VerifyCert: true,
+						Headers:    map[string]string{"Header": "Value"},
+						Cache: config.IgniteCache{
+							Name:          "myCache",
+							CreateOnStart: false,
+						},
 					},
 					expected: testOut{
 						backend:      nil,
@@ -201,9 +219,15 @@ func TestNewIgniteBackend(t *testing.T) {
 				{
 					desc: "empty port",
 					in: config.Ignite{
-						Scheme: "http",
-						Host:   "127.0.0.1",
-						Port:   0,
+						Scheme:     "http",
+						Host:       "127.0.0.1",
+						Port:       0,
+						VerifyCert: true,
+						Headers:    map[string]string{"Header": "Value"},
+						Cache: config.IgniteCache{
+							Name:          "myCache",
+							CreateOnStart: false,
+						},
 					},
 					expected: testOut{
 						backend:      nil,
@@ -219,10 +243,12 @@ func TestNewIgniteBackend(t *testing.T) {
 				{
 					desc: "No cache name",
 					in: config.Ignite{
-						Scheme: "http",
-						Host:   "127.0.0.1",
-						Port:   8080,
-						Cache:  config.IgniteCache{},
+						Scheme:     "http",
+						Host:       "127.0.0.1",
+						Port:       8080,
+						VerifyCert: true,
+						Headers:    map[string]string{"Header": "Value"},
+						Cache:      config.IgniteCache{},
 					},
 					expected: testOut{
 						backend:      nil,
@@ -243,9 +269,11 @@ func TestNewIgniteBackend(t *testing.T) {
 				{
 					desc: "Non-empty scheme holds an invalid value",
 					in: config.Ignite{
-						Scheme: ":invalid:",
-						Host:   "127.0.0.1",
-						Port:   8080,
+						Scheme:     ":invalid:",
+						Host:       "127.0.0.1",
+						Port:       8080,
+						VerifyCert: true,
+						Headers:    map[string]string{"Header": "Value"},
 						Cache: config.IgniteCache{
 							Name: "myCache",
 						},
@@ -273,6 +301,7 @@ func TestNewIgniteBackend(t *testing.T) {
 						Host:       "127.0.0.1",
 						Port:       8080,
 						VerifyCert: true,
+						Headers:    map[string]string{"Header": "Value"},
 						Cache: config.IgniteCache{
 							Name:          "myCache",
 							CreateOnStart: false,
@@ -286,7 +315,8 @@ func TestNewIgniteBackend(t *testing.T) {
 								Path:     "/ignite",
 								RawQuery: "cacheName=myCache",
 							},
-							sender: &igniteSender{httpClient: http.DefaultClient},
+							sender:  &igniteSender{httpClient: http.DefaultClient},
+							headers: http.Header{"Header": []string{"Value"}},
 						},
 						panicHappens: false,
 						logEntries: []logEntry{
@@ -304,6 +334,7 @@ func TestNewIgniteBackend(t *testing.T) {
 						Host:       "127.0.0.1",
 						Port:       8080,
 						VerifyCert: false,
+						Headers:    map[string]string{"Header": "Value"},
 						Cache: config.IgniteCache{
 							Name:          "myCache",
 							CreateOnStart: false,
@@ -322,6 +353,7 @@ func TestNewIgniteBackend(t *testing.T) {
 									Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 								},
 							},
+							headers: http.Header{"Header": []string{"Value"}},
 						},
 						panicHappens: false,
 						logEntries: []logEntry{
