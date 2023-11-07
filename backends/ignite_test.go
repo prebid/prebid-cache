@@ -461,7 +461,7 @@ func TestIgniteGet(t *testing.T) {
 				igniteError:    nil,
 			},
 			expected: testOutput{
-				err: utils.NewPBCError(utils.GET_INTERNAL_SERVER, "Ignite response.Status not zero"),
+				err: utils.NewPBCError(utils.GET_INTERNAL_SERVER, "Ignite response. Status not zero"),
 			},
 		},
 		{
