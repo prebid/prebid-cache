@@ -441,7 +441,7 @@ func TestIgniteGet(t *testing.T) {
 				igniteError:    nil,
 			},
 			expected: testOutput{
-				err: errors.New("Unmarshal response error: invalid character 'm' looking for beginning of value; Response body: malformed"),
+				err: utils.NewPBCError(utils.GET_INTERNAL_SERVER, "Ignite response unmarshal error: invalid character 'm' looking for beginning of value; Response body: malformed"),
 			},
 		},
 		{

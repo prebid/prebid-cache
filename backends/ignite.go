@@ -190,7 +190,7 @@ func (ig *IgniteBackend) Get(ctx context.Context, key string) (string, error) {
 	igniteResponse := getResponse{}
 
 	if unmarshalErr := json.Unmarshal(responseBytes, &igniteResponse); unmarshalErr != nil {
-		return "", fmt.Errorf("Unmarshal response error: %s; Response body: %s", unmarshalErr.Error(), string(responseBytes))
+		return "", utils.NewPBCError(utils.GET_INTERNAL_SERVER, fmt.Sprintf("Ignite response unmarshal error: %s; Response body: %s", unmarshalErr.Error(), string(responseBytes)))
 	}
 
 	// Validate response
