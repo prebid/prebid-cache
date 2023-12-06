@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
@@ -12,6 +13,7 @@ type Backend struct {
 	Cassandra Cassandra   `mapstructure:"cassandra"`
 	Memcache  Memcache    `mapstructure:"memcache"`
 	Redis     Redis       `mapstructure:"redis"`
+	Ignite    Ignite      `mapstructure:"ignite"`
 }
 
 func (cfg *Backend) validateAndLog() error {
@@ -26,10 +28,12 @@ func (cfg *Backend) validateAndLog() error {
 		return cfg.Memcache.validateAndLog()
 	case BackendRedis:
 		return cfg.Redis.validateAndLog()
+	case BackendIgnite:
+		return cfg.Ignite.validateAndLog()
 	case BackendMemory:
 		return nil
 	default:
-		return fmt.Errorf(`invalid config.backend.type: %s. It must be "aerospike", "cassandra", "memcache", "redis", or "memory".`, cfg.Type)
+		return fmt.Errorf(`invalid config.backend.type: %s. It must be "aerospike", "cassandra", "memcache", "redis",  "ignite", or "memory".`, cfg.Type)
 	}
 	return nil
 }
@@ -42,6 +46,7 @@ const (
 	BackendMemcache  BackendType = "memcache"
 	BackendMemory    BackendType = "memory"
 	BackendRedis     BackendType = "redis"
+	BackendIgnite    BackendType = "ignite"
 )
 
 type Aerospike struct {
@@ -168,5 +173,41 @@ func (cfg *Redis) validateAndLog() error {
 	}
 	log.Infof("config.backend.redis.tls.enabled: %t", cfg.TLS.Enabled)
 	log.Infof("config.backend.redis.tls.insecure_skip_verify: %t", cfg.TLS.InsecureSkipVerify)
+	return nil
+}
+
+type Ignite struct {
+	Scheme string `mapstructure:"scheme"`
+	Host   string `mapstructure:"host"`
+	Port   int    `mapstructure:"port"`
+	// If VerifyCert is set to true, Prebid Cache verifies the SSL certificate on the Ignite server
+	VerifyCert bool              `mapstructure:"secure"`
+	Headers    map[string]string `mapstructure:"headers"`
+	Cache      IgniteCache       `mapstructure:"cache"`
+}
+
+type IgniteCache struct {
+	Name          string `mapstructure:"name"`
+	CreateOnStart bool   `mapstructure:"create_on_start"`
+}
+
+func (cfg *Ignite) validateAndLog() error {
+	if len(cfg.Scheme) == 0 {
+		return errors.New("Cannot connect to Ignite: empty config.ignite.scheme")
+	}
+	if len(cfg.Host) == 0 {
+		return errors.New("Cannot connect to Ignite: empty config.ignite.host")
+	}
+	if len(cfg.Cache.Name) == 0 {
+		return errors.New("Cannot write nor read from Ignite: empty config.ignite.cachename")
+	}
+	log.Infof("config.backend.ignite.scheme: %s", cfg.Scheme)
+	log.Infof("config.backend.ignite.host: %s", cfg.Host)
+	log.Infof("config.backend.ignite.port: %d", cfg.Port)
+	log.Infof("config.backend.ignite.cache.create_on_start: %t", cfg.VerifyCert)
+	log.Infof("config.backend.ignite.cache.create_on_start: %v", cfg.Headers)
+	log.Infof("config.backend.ignite.cache.name: %s", cfg.Cache.Name)
+	log.Infof("config.backend.ignite.cache.create_on_start: %t", cfg.Cache.CreateOnStart)
+
 	return nil
 }

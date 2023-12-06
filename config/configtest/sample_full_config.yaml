@@ -37,6 +37,16 @@ backend:
     tls:
       enabled: false
       insecure_skip_verify: false
+  ignite:
+    scheme: "http"
+    host: "127.0.0.1"
+    port: 8080
+    secure: false
+    headers: !!omap
+      - Content-Length: 0
+    cache:
+      name: "whatever"
+      create_on_start: false
 compression:
   type: "snappy"
 metrics:

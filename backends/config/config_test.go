@@ -135,10 +135,7 @@ func TestNewBaseBackend(t *testing.T) {
 			desc:     "Cassandra",
 			inConfig: config.Backend{Type: config.BackendCassandra},
 			expectedLogEntries: []logEntry{
-				{
-					msg: "Error creating Cassandra backend: ",
-					lvl: logrus.FatalLevel,
-				},
+				{msg: "Error creating Cassandra backend: ", lvl: logrus.FatalLevel},
 			},
 		},
 		{
@@ -155,14 +152,22 @@ func TestNewBaseBackend(t *testing.T) {
 				{msg: "Error creating Redis backend: ", lvl: logrus.FatalLevel},
 			},
 		},
+		{
+			desc:     "Ignite",
+			inConfig: config.Backend{Type: config.BackendIgnite},
+			expectedLogEntries: []logEntry{
+				{
+					msg: "Error creating Ignite backend: configuration is missing ignite.schema, ignite.host, ignite.port or ignite.cache.name",
+					lvl: logrus.FatalLevel,
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		mockMetrics := metricstest.CreateMockMetrics()
 		m := &metrics.Metrics{
-			MetricEngines: []metrics.CacheMetrics{
-				&mockMetrics,
-			},
+			MetricEngines: []metrics.CacheMetrics{&mockMetrics},
 		}
 
 		// run and assert it panics

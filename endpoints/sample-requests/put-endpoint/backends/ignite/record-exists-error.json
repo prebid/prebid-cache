@@ -1,0 +1,29 @@
+{
+  "description": "Ignite's way of telling us there a key already exists is to return a response field with a value of false. Expect a RECORD_EXISTS error",
+  "config": {
+    "fake_backend": {
+      "storage_type": "ignite",
+      "server_response": "{\"successStatus\":0,\"error\":\"\",\"response\":false}"
+    }
+  },
+  "put_request": {
+    "puts": [
+      {
+        "type": "xml",
+        "value": "xml<description>another_XML</description>"
+      }
+    ]
+  },
+  "expected_metrics": [
+    "RecordPutTotal",
+    "RecordPutBackendXml",
+    "RecordPutBackendSize",
+    "RecordPutBackendTTLSeconds",
+    "RecordPutBackendError",
+    "RecordPutDuration"
+  ],
+  "expected_output": {
+    "code": 200,
+    "expected_error_message": "{\"responses\":[{\"uuid\":\"\"}]}"
+  }
+}

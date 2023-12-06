@@ -11,7 +11,7 @@ request_limits:
   max_num_values: 10
   max_ttl_seconds: 3600
 backend:
-  type: "memory" # Switch to be "aerospike", "cassandra", "memcache" or "redis" for production.
+  type: "memory" # Switch to be "aerospike", "cassandra", "memcache", "ignite" or "redis" for production.
   aerospike:
     hosts: [ "aerospike.prebid.com" ]
     port: 3000
@@ -28,14 +28,24 @@ backend:
     port: 6379
     password: ""
     db: 1
-    expiration: 10 # in Minutes
+    expiration: 10   # in Minutes
     tls:
       enabled: false
       insecure_skip_verify: false
+  ignite:
+    scheme: "http"
+    host: "127.0.0.1"
+    port: 8080
+    secure: false
+    headers: !!omap
+      - Content-Length: 0
+    cache:
+      name: "cacheName"
+      create_on_start: false
 compression:
-  type: "snappy" # Can also be "none"
+  type: "snappy"   # Can also be "none"
 metrics:
-  type: "none" # Can also be "influx"
+  type: "none"   # Can also be "influx"
   influx:
     host: "http://influx.prebid.com"
     database: "some-database"
