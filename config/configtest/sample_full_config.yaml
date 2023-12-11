@@ -27,8 +27,12 @@ backend:
     keyspace: "prebid"
     default_ttl_seconds: 60
   memcache:
-    hosts: ["10.0.0.1:11211","127.0.0.1"]
+    hosts: ["10.0.0.1:11211", "127.0.0.1"]
   redis:
+    hosts:
+      - "10.0.0.1:26379"
+      - "127.0.0.1"
+    mastername: "mymaster"
     host: "127.0.0.1"
     port: 6379
     password: "redis-password"

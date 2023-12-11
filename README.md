@@ -208,7 +208,7 @@ This section does not describe permanent API contracts; it just describes limita
 
 ## Backend Configuration
 
-Prebid Cache requires a backend data store which enforces TTL expiration. The following storage options are supported: Aerospike, Cassandra, Memcache, and Redis. You're welcomed to contribute a new backend adapter if needed. 
+Prebid Cache requires a backend data store which enforces TTL expiration. The following storage options are supported: Aerospike, Cassandra, Memcache, and Redis/Redis sentinel. You're welcomed to contribute a new backend adapter if needed.
 
 There is also an option (enabled by default) for a basic in-memory data store intended only for development. This backend does not support TTL expiration and is not built for production use.
 
@@ -245,8 +245,10 @@ Prebid Cache makes use of a Cassandra client that supports latest 3 major releas
 Prebid Cache makes use of a Redis Go client compatible with Redis 6. Full documentation of the Redis Go client Prebid Cache uses can be found [here](https://github.com/go-redis/redis).
 | Configuration field | Type | Description |
 | --- | --- | --- |
-| host | string | Redis server URI |
-| port | integer | Redis server port |
+| host | string | Redis server URI (redis standalone mode) |
+| port | integer | Redis server port (redis standalone mode) |
+| hosts |string array | Redis server sentinel URI (redis sentinel mode)|
+| mastername | string | Redis master sentinel name (redis sentinel mode)|
 | password | string | Redis password |
 | db | integer | Database to be selected after connecting to the server |
 | expiration | integer | Availability in the Redis system in Minutes |
@@ -281,7 +283,7 @@ backend:
     hosts: "127.0.0.1"
     keyspace: "prebid"
   memcache:
-    hosts: ["10.0.0.1:11211","127.0.0.1"]
+    hosts: ["10.0.0.1:11211", "127.0.0.1"]
   redis:
     host: "127.0.0.1"
     port: 6379

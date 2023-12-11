@@ -149,6 +149,8 @@ func TestNewBaseBackend(t *testing.T) {
 			desc:     "Redis",
 			inConfig: config.Backend{Type: config.BackendRedis},
 			expectedLogEntries: []logEntry{
+				{msg: "Error creating Redis backend: At least one Host[s] is required.", lvl: logrus.FatalLevel},
+				{msg: "Creating Redis backend", lvl: logrus.InfoLevel},
 				{msg: "Error creating Redis backend: ", lvl: logrus.FatalLevel},
 			},
 		},

@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/utils"
+	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -47,26 +47,49 @@ type RedisBackend struct {
 
 // NewRedisBackend initializes the redis client and pings to make sure connection was successful
 func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
-	constr := cfg.Host + ":" + strconv.Itoa(cfg.Port)
 
-	options := &redis.Options{
-		Addr:     constr,
-		Password: cfg.Password,
-		DB:       cfg.Db,
+	if len(cfg.Hosts) < 1 || cfg.Host == "" {
+		log.Fatalf("Error creating Redis backend: At least one Host[s] is required.")
 	}
 
-	if cfg.TLS.Enabled {
-		options = &redis.Options{
+	var redisClient RedisDBClient
+
+	sentinel := false
+
+	if cfg.MasterName != "" {
+		sentinel = true
+		// Mode failover (sentinel)
+		log.Info("Creating Redis sentinel backend")
+		options := &redis.FailoverOptions{
+			MasterName:       cfg.MasterName,
+			SentinelAddrs:    cfg.Hosts,
+			DB:               cfg.Db,
+			Password:         cfg.Password,
+			SentinelPassword: cfg.Password,
+		}
+
+		if cfg.TLS.Enabled {
+			options.TLSConfig = &tls.Config{InsecureSkipVerify: cfg.TLS.InsecureSkipVerify}
+		}
+
+		redisClient = RedisDBClient{client: redis.NewFailoverClient(options)}
+	} else {
+		// Mode single
+		log.Info("Creating Redis backend")
+		constr := cfg.Host + ":" + strconv.Itoa(cfg.Port)
+		options := &redis.Options{
 			Addr:     constr,
 			Password: cfg.Password,
 			DB:       cfg.Db,
-			TLSConfig: &tls.Config{
-				InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
-			},
 		}
-	}
 
-	redisClient := RedisDBClient{client: redis.NewClient(options)}
+		if cfg.TLS.Enabled {
+			options.TLSConfig = &tls.Config{InsecureSkipVerify: cfg.TLS.InsecureSkipVerify}
+		}
+
+		redisClient = RedisDBClient{client: redis.NewClient(options)}
+
+	}
 
 	_, err := redisClient.client.Ping(ctx).Result()
 
@@ -75,7 +98,11 @@ func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
 		panic("RedisBackend failure. This shouldn't happen.")
 	}
 
-	log.Infof("Connected to Redis at %s:%d", cfg.Host, cfg.Port)
+	if sentinel {
+		log.Infof("Connected to Redis: %v", cfg.Hosts)
+	} else {
+		log.Infof("Connected to Redis: %s:%v", cfg.Host, cfg.Port)
+	}
 
 	return &RedisBackend{
 		cfg:    cfg,

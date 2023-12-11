@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-cache/backends"
@@ -26,6 +25,7 @@ import (
 	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/metrics/metricstest"
 	"github.com/prebid/prebid-cache/utils"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	testLogrus "github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"

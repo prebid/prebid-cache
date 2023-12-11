@@ -157,6 +157,8 @@ type Redis struct {
 	Db                int      `mapstructure:"db"`
 	ExpirationMinutes int      `mapstructure:"expiration"`
 	TLS               RedisTLS `mapstructure:"tls"`
+	Hosts             []string `mapstructure:"hosts"`
+	MasterName        string   `mapstructure:"mastername"`
 }
 
 type RedisTLS struct {
@@ -165,8 +167,13 @@ type RedisTLS struct {
 }
 
 func (cfg *Redis) validateAndLog() error {
-	log.Infof("config.backend.redis.host: %s", cfg.Host)
-	log.Infof("config.backend.redis.port: %d", cfg.Port)
+	if cfg.Host != "" && len(cfg.Hosts) > 0 {
+		log.Infof("config.backend.redis.hosts: %s. Note that redis host will be ignore if 'hosts' is define", cfg.Hosts)
+		log.Infof("config.backend.redis.mastername: %s.", cfg.MasterName)
+	} else {
+		log.Infof("config.backend.redis.host: %s", cfg.Host)
+		log.Infof("config.backend.redis.port: %d", cfg.Port)
+	}
 	log.Infof("config.backend.redis.db: %d", cfg.Db)
 	if cfg.ExpirationMinutes > 0 {
 		log.Infof("config.backend.redis.expiration: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.ExpirationMinutes)

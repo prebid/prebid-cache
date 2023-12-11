@@ -63,6 +63,8 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("backend.cassandra.default_ttl_seconds", utils.CASSANDRA_DEFAULT_TTL_SECONDS)
 	v.SetDefault("backend.memcache.hosts", []string{})
 	v.SetDefault("backend.redis.host", "")
+	v.SetDefault("backend.redis.hosts", []string{})
+	v.SetDefault("backend.redis.mastername", "")
 	v.SetDefault("backend.redis.port", 0)
 	v.SetDefault("backend.redis.password", "")
 	v.SetDefault("backend.redis.db", 0)
