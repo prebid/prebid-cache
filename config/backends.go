@@ -151,14 +151,14 @@ func (cfg *Memcache) validateAndLog() error {
 }
 
 type Redis struct {
-	Host              string   `mapstructure:"host"`
-	Port              int      `mapstructure:"port"`
-	Password          string   `mapstructure:"password"`
-	Db                int      `mapstructure:"db"`
-	ExpirationMinutes int      `mapstructure:"expiration"`
-	TLS               RedisTLS `mapstructure:"tls"`
-	Hosts             []string `mapstructure:"hosts"`
-	MasterName        string   `mapstructure:"mastername"`
+	Host               string   `mapstructure:"host"`
+	Port               int      `mapstructure:"port"`
+	Password           string   `mapstructure:"password"`
+	Db                 int      `mapstructure:"db"`
+	ExpirationMinutes  int      `mapstructure:"expiration"`
+	TLS                RedisTLS `mapstructure:"tls"`
+	SentinelHostsPorts []string `mapstructure:"sentinel_hosts_ports"`
+	SentinelMasterName string   `mapstructure:"sentinel_mastername"`
 }
 
 type RedisTLS struct {
@@ -167,9 +167,9 @@ type RedisTLS struct {
 }
 
 func (cfg *Redis) validateAndLog() error {
-	if cfg.Host != "" && len(cfg.Hosts) > 0 {
-		log.Infof("config.backend.redis.hosts: %s. Note that redis host will be ignore if 'hosts' is define", cfg.Hosts)
-		log.Infof("config.backend.redis.mastername: %s.", cfg.MasterName)
+	if cfg.Host != "" && len(cfg.SentinelHostsPorts) > 0 {
+		log.Infof("config.backend.redis.sentinel_hosts_ports: %s. Note that redis 'host' will be ignore if 'sentinel_hosts_ports' is define", cfg.SentinelHostsPorts)
+		log.Infof("config.backend.redis.sentinel_mastername: %s.", cfg.SentinelMasterName)
 	} else {
 		log.Infof("config.backend.redis.host: %s", cfg.Host)
 		log.Infof("config.backend.redis.port: %d", cfg.Port)

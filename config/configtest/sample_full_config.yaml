@@ -29,10 +29,10 @@ backend:
   memcache:
     hosts: ["10.0.0.1:11211", "127.0.0.1"]
   redis:
-    hosts:
+    sentinel_hosts_ports:
       - "10.0.0.1:26379"
       - "127.0.0.1"
-    mastername: "mymaster"
+    sentinel_mastername: "mymaster"
     host: "127.0.0.1"
     port: 6379
     password: "redis-password"

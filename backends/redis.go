@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prebid/prebid-cache/config"
@@ -48,7 +49,7 @@ type RedisBackend struct {
 // NewRedisBackend initializes the redis client and pings to make sure connection was successful
 func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
 
-	if len(cfg.Hosts) < 1 || cfg.Host == "" {
+	if len(cfg.SentinelHostsPorts) < 1 || cfg.Host == "" {
 		log.Fatalf("Error creating Redis backend: At least one Host[s] is required.")
 	}
 
@@ -56,13 +57,13 @@ func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
 
 	sentinel := false
 
-	if cfg.MasterName != "" {
+	if cfg.SentinelMasterName != "" {
 		sentinel = true
 		// Mode failover (sentinel)
 		log.Info("Creating Redis sentinel backend")
 		options := &redis.FailoverOptions{
-			MasterName:       cfg.MasterName,
-			SentinelAddrs:    cfg.Hosts,
+			MasterName:       cfg.SentinelMasterName,
+			SentinelAddrs:    cfg.SentinelHostsPorts,
 			DB:               cfg.Db,
 			Password:         cfg.Password,
 			SentinelPassword: cfg.Password,
@@ -99,7 +100,7 @@ func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
 	}
 
 	if sentinel {
-		log.Infof("Connected to Redis: %v", cfg.Hosts)
+		log.Infof("Connected to Redis: %s", strings.Join(cfg.SentinelHostsPorts, ","))
 	} else {
 		log.Infof("Connected to Redis: %s:%v", cfg.Host, cfg.Port)
 	}

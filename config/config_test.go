@@ -1202,8 +1202,8 @@ func getExpectedDefaultConfig() Configuration {
 				DefaultTTL: utils.CASSANDRA_DEFAULT_TTL_SECONDS,
 			},
 			Redis: Redis{
-				Hosts:             []string{},
-				ExpirationMinutes: utils.REDIS_DEFAULT_EXPIRATION_MINUTES,
+				SentinelHostsPorts: []string{},
+				ExpirationMinutes:  utils.REDIS_DEFAULT_EXPIRATION_MINUTES,
 			},
 			Ignite: Ignite{
 				Headers: map[string]string{},
@@ -1270,13 +1270,13 @@ func getExpectedFullConfigForTestFile() Configuration {
 			Redis: Redis{
 				Host: "127.0.0.1",
 				Port: 6379,
-				Hosts: []string{
+				SentinelHostsPorts: []string{
 					"10.0.0.1:26379", "127.0.0.1",
 				},
-				MasterName:        "mymaster",
-				Password:          "redis-password",
-				Db:                1,
-				ExpirationMinutes: 1,
+				SentinelMasterName: "mymaster",
+				Password:           "redis-password",
+				Db:                 1,
+				ExpirationMinutes:  1,
 				TLS: RedisTLS{
 					Enabled:            false,
 					InsecureSkipVerify: false,
