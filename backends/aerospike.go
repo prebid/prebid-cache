@@ -53,34 +53,9 @@ type AerospikeBackend struct {
 
 // NewAerospikeBackend validates config.Aerospike and returns an AerospikeBackend
 func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *AerospikeBackend {
-	var hosts []*as.Host
 
-	clientPolicy := as.NewClientPolicy()
-	// cfg.User and cfg.Password are optional parameters
-	// if left blank in the config, they will default to the empty
-	// string and be ignored
-	clientPolicy.User = cfg.User
-	clientPolicy.Password = cfg.Password
-
-	// Aerospike's connection idle deadline default is 55 seconds. If greater than zero, this
-	// value will override
-	if cfg.ConnIdleTimeoutSecs > 0 {
-		clientPolicy.IdleTimeout = time.Duration(cfg.ConnIdleTimeoutSecs) * time.Second
-	}
-
-	// Aerospike's default connection queue size per node is 256.
-	// If cfg.ConnQueueSize is greater than zero, it will override the default.
-	if cfg.ConnQueueSize > 0 {
-		clientPolicy.ConnectionQueueSize = cfg.ConnQueueSize
-	}
-
-	if len(cfg.Host) > 1 {
-		hosts = append(hosts, as.NewHost(cfg.Host, cfg.Port))
-		log.Info("config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts")
-	}
-	for _, host := range cfg.Hosts {
-		hosts = append(hosts, as.NewHost(host, cfg.Port))
-	}
+	clientPolicy := generateAerospikeClientPolicy(cfg)
+	hosts := generateHostsList(cfg)
 
 	client, err := as.NewClientWithPolicyAndHost(clientPolicy, hosts...)
 	if err != nil {
@@ -108,6 +83,45 @@ func NewAerospikeBackend(cfg config.Aerospike, metrics *metrics.Metrics) *Aerosp
 		client:    &AerospikeDBClient{client},
 		metrics:   metrics,
 	}
+}
+
+// generateAerospikeClientPolicy returns an Aerospike ClientPolicy object configured according to values
+// in config.Aerospike fields
+func generateAerospikeClientPolicy(cfg config.Aerospike) *as.ClientPolicy {
+	clientPolicy := as.NewClientPolicy()
+	// cfg.User and cfg.Password are optional parameters
+	// if left blank in the config, they will default to the empty
+	// string and be ignored
+	clientPolicy.User = cfg.User
+	clientPolicy.Password = cfg.Password
+
+	// Aerospike's connection idle deadline default is 55 seconds. If greater than zero, this
+	// value will override
+	if cfg.ConnIdleTimeoutSecs > 0 {
+		clientPolicy.IdleTimeout = time.Duration(cfg.ConnIdleTimeoutSecs) * time.Second
+	}
+
+	// Aerospike's default connection queue size per node is 256.
+	// If cfg.ConnQueueSize is greater than zero, it will override the default.
+	if cfg.ConnQueueSize > 0 {
+		clientPolicy.ConnectionQueueSize = cfg.ConnQueueSize
+	}
+
+	return clientPolicy
+}
+
+func generateHostsList(cfg config.Aerospike) []*as.Host {
+	var hosts []*as.Host
+
+	if len(cfg.Host) > 1 {
+		hosts = append(hosts, as.NewHost(cfg.Host, cfg.Port))
+		log.Info("config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts")
+	}
+	for _, host := range cfg.Hosts {
+		hosts = append(hosts, as.NewHost(host, cfg.Port))
+	}
+
+	return hosts
 }
 
 // Get creates an aerospike key based on the UUID key parameter, perfomrs the client's Get call
