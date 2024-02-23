@@ -221,7 +221,8 @@ func TestNewAerospikeBackend(t *testing.T) {
 		expectedLogEntryLevels []logrus.Level
 	}{
 		{
-			desc: "Unable to connect to URLs in Hosts list.",
+			// Unable to connect to host in Hosts list. Expect fatal level log entry
+			desc: "Hosts_slice_and_port",
 			inCfg: config.Aerospike{
 				Hosts: []string{"fakeUrl"},
 				Port:  8888,
@@ -229,7 +230,9 @@ func TestNewAerospikeBackend(t *testing.T) {
 			expectedLogEntryLevels: []logrus.Level{logrus.FatalLevel},
 		},
 		{
-			desc: "Unable to connect to URL in Host field",
+			// Unable to connect to URL in Host field. Expect fatal level log entry and
+			// an info level log entry because the Host string is deprecated
+			desc: "Host_string_and_port",
 			inCfg: config.Aerospike{
 				Host: "fakeUrl",
 				Port: 8888,
