@@ -95,14 +95,12 @@ func generateAerospikeClientPolicy(cfg config.Aerospike) *as.ClientPolicy {
 	clientPolicy.User = cfg.User
 	clientPolicy.Password = cfg.Password
 
-	// Aerospike's connection idle deadline default is 55 seconds. If greater than zero, this
-	// value will override
+	// Connection idle timeout default is 55 seconds
 	if cfg.ConnIdleTimeoutSecs > 0 {
 		clientPolicy.IdleTimeout = time.Duration(cfg.ConnIdleTimeoutSecs) * time.Second
 	}
 
-	// Aerospike's default connection queue size per node is 256.
-	// If cfg.ConnQueueSize is greater than zero, it will override the default.
+	// Default connection queue size per node is 256
 	if cfg.ConnQueueSize > 0 {
 		clientPolicy.ConnectionQueueSize = cfg.ConnQueueSize
 	}
