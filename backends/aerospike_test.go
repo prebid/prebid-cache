@@ -2,6 +2,7 @@ package backends
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -102,6 +103,10 @@ func TestGenerateAerospikeClientPolicy(t *testing.T) {
 }
 
 func TestGenerateHostsList(t *testing.T) {
+	type testOutput struct {
+		hosts []*as.Host
+		err   error
+	}
 	type logEntry struct {
 		msg string
 		lvl logrus.Level
@@ -109,76 +114,45 @@ func TestGenerateHostsList(t *testing.T) {
 	testCases := []struct {
 		desc               string
 		inCfg              config.Aerospike
-		expectedOutput     []*as.Host
+		expectedOut        testOutput
 		expectedLogEntries []logEntry
 	}{
 		{
-			desc:           "No host, hosts nor port",
-			inCfg:          config.Aerospike{},
-			expectedOutput: []*as.Host{},
-		},
-		{
-			desc: "Hosts list but no host nor port",
-			inCfg: config.Aerospike{
-				Hosts: []string{"foo.com", "bar.com"},
-			},
-			expectedOutput: []*as.Host{
-				as.NewHost("foo.com", 0),
-				as.NewHost("bar.com", 0),
+			desc:  "no_port",
+			inCfg: config.Aerospike{},
+			expectedOut: testOutput{
+				err: errors.New("Cannot connect to Aerospike host at port 0"),
 			},
 		},
 		{
-			desc:           "Host no port nor hosts list",
-			inCfg:          config.Aerospike{Host: "foo.com"},
-			expectedOutput: []*as.Host{as.NewHost("foo.com", 0)},
-			expectedLogEntries: []logEntry{
-				{
-					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
-					lvl: logrus.InfoLevel,
-				},
+			desc:  "port_no_host_nor_hosts",
+			inCfg: config.Aerospike{Port: 8888},
+			expectedOut: testOutput{
+				err: errors.New("Cannot connect to empty Aerospike host(s)"),
 			},
 		},
 		{
-			desc: "Host and hosts list, no port",
-			inCfg: config.Aerospike{
-				Host:  "foo.com",
-				Hosts: []string{"foo.com", "bar.com"},
-			},
-			expectedOutput: []*as.Host{
-				as.NewHost("foo.com", 0),
-				as.NewHost("foo.com", 0),
-				as.NewHost("bar.com", 0),
-			},
-			expectedLogEntries: []logEntry{
-				{
-					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
-					lvl: logrus.InfoLevel,
-				},
-			},
-		},
-		{
-			desc:           "Port but no host nor hosts list",
-			inCfg:          config.Aerospike{Port: 8888},
-			expectedOutput: []*as.Host{},
-		},
-		{
-			desc: "Port, hosts list, no host",
+			desc: "port_and_hosts_no_host",
 			inCfg: config.Aerospike{
 				Port:  8888,
 				Hosts: []string{"foo.com", "bar.com"},
 			},
-			expectedOutput: []*as.Host{
-				as.NewHost("foo.com", 8888),
-				as.NewHost("bar.com", 8888),
+			expectedOut: testOutput{
+				hosts: []*as.Host{
+					as.NewHost("foo.com", 8888),
+					as.NewHost("bar.com", 8888),
+				},
 			},
 		},
 		{
-			desc: "Port and host but no hosts list",
+			desc: "port_and_host",
 			inCfg: config.Aerospike{
-				Port: 8888,
 				Host: "foo.com",
+				Port: 8888,
 			},
-			expectedOutput: []*as.Host{as.NewHost("foo.com", 8888)},
+			expectedOut: testOutput{
+				hosts: []*as.Host{as.NewHost("foo.com", 8888)},
+			},
 			expectedLogEntries: []logEntry{
 				{
 					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
@@ -187,16 +161,18 @@ func TestGenerateHostsList(t *testing.T) {
 			},
 		},
 		{
-			desc: "Port, host and hosts list",
+			desc: "Port_host_and_hosts",
 			inCfg: config.Aerospike{
 				Port:  8888,
 				Host:  "foo.com",
 				Hosts: []string{"foo.com", "bar.com"},
 			},
-			expectedOutput: []*as.Host{
-				as.NewHost("foo.com", 8888),
-				as.NewHost("foo.com", 8888),
-				as.NewHost("bar.com", 8888),
+			expectedOut: testOutput{
+				hosts: []*as.Host{
+					as.NewHost("foo.com", 8888),
+					as.NewHost("foo.com", 8888),
+					as.NewHost("bar.com", 8888),
+				},
 			},
 			expectedLogEntries: []logEntry{
 				{
@@ -206,38 +182,120 @@ func TestGenerateHostsList(t *testing.T) {
 			},
 		},
 	}
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			asHosts := generateHostsList(tc.inCfg)
-			assert.ElementsMatch(t, tc.expectedOutput, asHosts)
+			asHosts, err := generateHostsList(tc.inCfg)
+			assert.Equal(t, tc.expectedOut.err, err)
+			if assert.Len(t, asHosts, len(tc.expectedOut.hosts)) {
+				assert.ElementsMatch(t, tc.expectedOut.hosts, asHosts)
+			}
+			if assert.Len(t, hook.Entries, len(tc.expectedLogEntries)) {
+				for i := 0; i < len(tc.expectedLogEntries); i++ {
+					assert.Equal(t, tc.expectedLogEntries[i].lvl, hook.Entries[i].Level)
+					assert.Equal(t, tc.expectedLogEntries[i].msg, hook.Entries[i].Message)
+				}
+			}
+			//Reset log after every test and assert successful reset
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
 		})
 	}
 }
 
 func TestNewAerospikeBackend(t *testing.T) {
+	type logEntry struct {
+		msg string
+		lvl logrus.Level
+	}
+
+	errorProneNewClientFunc := func(*as.ClientPolicy, ...*as.Host) (*as.Client, as.Error) {
+		return nil, &as.AerospikeError{}
+	}
+	successfulNewClientFunc := func(*as.ClientPolicy, ...*as.Host) (*as.Client, as.Error) {
+		return nil, nil
+	}
+
 	testCases := []struct {
-		desc                   string
-		inCfg                  config.Aerospike
-		expectedLogEntryLevels []logrus.Level
+		desc               string
+		inCfg              config.Aerospike
+		newClientFunc      NewAerospikeClientFunc
+		expectedLogEntries []logEntry
+		expectedPanic      bool
 	}{
 		{
-			// Unable to connect to host in Hosts list. Expect fatal level log entry
-			desc: "Hosts_slice_and_port",
+			desc:  "no_port_error",
+			inCfg: config.Aerospike{},
+			expectedLogEntries: []logEntry{
+				{
+					msg: "Error creating Aerospike backend: Cannot connect to Aerospike host at port 0",
+					lvl: logrus.FatalLevel,
+				},
+			},
+		},
+		{
+			desc:  "no_host_nor_hosts_error",
+			inCfg: config.Aerospike{Port: 8888},
+			expectedLogEntries: []logEntry{
+				{
+					msg: "Error creating Aerospike backend: Cannot connect to empty Aerospike host(s)",
+					lvl: logrus.FatalLevel,
+				},
+			},
+		},
+		{
+			desc: "newAerospikeClient_error",
 			inCfg: config.Aerospike{
 				Hosts: []string{"fakeUrl"},
 				Port:  8888,
 			},
-			expectedLogEntryLevels: []logrus.Level{logrus.FatalLevel},
+			newClientFunc: errorProneNewClientFunc,
+			expectedLogEntries: []logEntry{
+				{
+					msg: "Error creating Aerospike backend: ResultCode: OK, Iteration: 0, InDoubt: false, Node: <nil>: ",
+					lvl: logrus.FatalLevel,
+				},
+			},
+			expectedPanic: true,
 		},
 		{
-			// Unable to connect to URL in Host field. Expect fatal level log entry and
-			// an info level log entry because the Host string is deprecated
-			desc: "Host_string_and_port",
+			desc: "success_with_deprecated_host",
 			inCfg: config.Aerospike{
 				Host: "fakeUrl",
 				Port: 8888,
 			},
-			expectedLogEntryLevels: []logrus.Level{logrus.InfoLevel, logrus.FatalLevel},
+			newClientFunc: successfulNewClientFunc,
+			expectedLogEntries: []logEntry{
+				{
+					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
+					lvl: logrus.InfoLevel,
+				},
+				{
+					msg: "Connected to Aerospike host(s) [fakeUrl] on port 8888",
+					lvl: logrus.InfoLevel,
+				},
+			},
+		},
+		{
+			desc: "success_with_hosts_list",
+			inCfg: config.Aerospike{
+				Hosts: []string{"fakeUrl"},
+				Port:  8888,
+			},
+			newClientFunc: successfulNewClientFunc,
+			expectedLogEntries: []logEntry{
+				{
+					msg: "Connected to Aerospike host(s) [fakeUrl ] on port 8888",
+					lvl: logrus.InfoLevel,
+				},
+			},
 		},
 	}
 
@@ -249,17 +307,29 @@ func TestNewAerospikeBackend(t *testing.T) {
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	for _, test := range testCases {
-		// Run test
-		assert.Panics(t, func() { NewAerospikeBackend(test.inCfg, nil) }, "Aerospike library's NewClientWithPolicyAndHost() should have thrown an error and didn't, hence the panic didn't happen")
-		if assert.Len(t, hook.Entries, len(test.expectedLogEntryLevels), test.desc) {
-			for i := 0; i < len(test.expectedLogEntryLevels); i++ {
-				assert.Equal(t, test.expectedLogEntryLevels[i], hook.Entries[i].Level, test.desc)
+		t.Run(test.desc, func(t *testing.T) {
+			if test.expectedPanic {
+				if !assert.Panics(t, func() { newAerospikeBackend(test.newClientFunc, test.inCfg, nil) }, "Aerospike library's NewClientWithPolicyAndHost() should have thrown an error and didn't, hence the panic didn't happen") {
+					return
+				}
+			} else {
+				if !assert.NotPanics(t, func() { newAerospikeBackend(test.newClientFunc, test.inCfg, nil) }, "Aerospike library's NewClientWithPolicyAndHost() should have thrown an error and didn't, hence the panic didn't happen") {
+					return
+				}
 			}
-		}
 
-		//Reset log after every test and assert successful reset
-		hook.Reset()
-		assert.Nil(t, hook.LastEntry())
+			if assert.Len(t, hook.Entries, len(test.expectedLogEntries), test.desc) {
+				for i := 0; i < len(test.expectedLogEntries); i++ {
+					assert.Equal(t, test.expectedLogEntries[i].lvl, hook.Entries[i].Level, test.desc)
+					assert.Equal(t, test.expectedLogEntries[i].msg, hook.Entries[i].Message, test.desc)
+				}
+			}
+
+			//Reset log after every test and assert successful reset
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+		})
+
 	}
 }
 
