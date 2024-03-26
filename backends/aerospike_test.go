@@ -2,8 +2,10 @@ package backends
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	as "github.com/aerospike/aerospike-client-go/v6"
 	as_types "github.com/aerospike/aerospike-client-go/v6/types"
@@ -17,66 +19,281 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestGenerateAerospikeClientPolicy(t *testing.T) {
+	testCases := []struct {
+		desc     string
+		inCfg    config.Aerospike
+		expected *as.ClientPolicy
+	}{
+		{
+			desc:     "Blank configuration",
+			inCfg:    config.Aerospike{},
+			expected: as.NewClientPolicy(),
+		},
+		{
+			desc: "Config with credentials",
+			inCfg: config.Aerospike{
+				User:     "foobar",
+				Password: "password",
+			},
+			expected: &as.ClientPolicy{
+				User:                        "foobar",
+				Password:                    "password",
+				AuthMode:                    as.AuthModeInternal,
+				Timeout:                     30 * time.Second,
+				IdleTimeout:                 0 * time.Second,
+				LoginTimeout:                10 * time.Second,
+				ConnectionQueueSize:         100,
+				OpeningConnectionThreshold:  0,
+				FailIfNotConnected:          true,
+				TendInterval:                time.Second,
+				LimitConnectionsToQueueSize: true,
+				IgnoreOtherSubnetAliases:    false,
+				MaxErrorRate:                100,
+				ErrorRateWindow:             1,
+			},
+		},
+		{
+			desc: "Config with ConnIdleTimeoutSecs",
+			inCfg: config.Aerospike{
+				ConnIdleTimeoutSecs: 3600,
+			},
+			expected: &as.ClientPolicy{
+				AuthMode:                    as.AuthModeInternal,
+				Timeout:                     30 * time.Second,
+				IdleTimeout:                 3600 * time.Second,
+				LoginTimeout:                10 * time.Second,
+				ConnectionQueueSize:         100,
+				OpeningConnectionThreshold:  0,
+				FailIfNotConnected:          true,
+				TendInterval:                time.Second,
+				LimitConnectionsToQueueSize: true,
+				IgnoreOtherSubnetAliases:    false,
+				MaxErrorRate:                100,
+				ErrorRateWindow:             1,
+			},
+		},
+		{
+			desc: "Config with ConnIdleTimeoutSecs",
+			inCfg: config.Aerospike{
+				ConnQueueSize: 31416,
+			},
+			expected: &as.ClientPolicy{
+				AuthMode:                    as.AuthModeInternal,
+				Timeout:                     30 * time.Second,
+				IdleTimeout:                 0 * time.Second,
+				LoginTimeout:                10 * time.Second,
+				ConnectionQueueSize:         31416,
+				OpeningConnectionThreshold:  0,
+				FailIfNotConnected:          true,
+				TendInterval:                time.Second,
+				LimitConnectionsToQueueSize: true,
+				IgnoreOtherSubnetAliases:    false,
+				MaxErrorRate:                100,
+				ErrorRateWindow:             1,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			asPolicy := generateAerospikeClientPolicy(tc.inCfg)
+			assert.Equal(t, tc.expected, asPolicy)
+		})
+	}
+}
+
+func TestGenerateHostsList(t *testing.T) {
+	type testOutput struct {
+		hosts []*as.Host
+		err   error
+	}
+	type logEntry struct {
+		msg string
+		lvl logrus.Level
+	}
+	testCases := []struct {
+		desc               string
+		inCfg              config.Aerospike
+		expectedOut        testOutput
+		expectedLogEntries []logEntry
+	}{
+		{
+			desc:  "no_port",
+			inCfg: config.Aerospike{},
+			expectedOut: testOutput{
+				err: errors.New("Cannot connect to Aerospike host at port 0"),
+			},
+		},
+		{
+			desc:  "port_no_host_nor_hosts",
+			inCfg: config.Aerospike{Port: 8888},
+			expectedOut: testOutput{
+				err: errors.New("Cannot connect to empty Aerospike host(s)"),
+			},
+		},
+		{
+			desc: "port_and_hosts_no_host",
+			inCfg: config.Aerospike{
+				Port:  8888,
+				Hosts: []string{"foo.com", "bar.com"},
+			},
+			expectedOut: testOutput{
+				hosts: []*as.Host{
+					as.NewHost("foo.com", 8888),
+					as.NewHost("bar.com", 8888),
+				},
+			},
+		},
+		{
+			desc: "port_and_host",
+			inCfg: config.Aerospike{
+				Host: "foo.com",
+				Port: 8888,
+			},
+			expectedOut: testOutput{
+				hosts: []*as.Host{as.NewHost("foo.com", 8888)},
+			},
+			expectedLogEntries: []logEntry{
+				{
+					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
+					lvl: logrus.InfoLevel,
+				},
+			},
+		},
+		{
+			desc: "Port_host_and_hosts",
+			inCfg: config.Aerospike{
+				Port:  8888,
+				Host:  "foo.com",
+				Hosts: []string{"foo.com", "bar.com"},
+			},
+			expectedOut: testOutput{
+				hosts: []*as.Host{
+					as.NewHost("foo.com", 8888),
+					as.NewHost("foo.com", 8888),
+					as.NewHost("bar.com", 8888),
+				},
+			},
+			expectedLogEntries: []logEntry{
+				{
+					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
+					lvl: logrus.InfoLevel,
+				},
+			},
+		},
+	}
+
+	// logrus entries will be recorded to this `hook` object so we can compare and assert them
+	hook := test.NewGlobal()
+
+	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			asHosts, err := generateHostsList(tc.inCfg)
+			assert.Equal(t, tc.expectedOut.err, err)
+			if assert.Len(t, asHosts, len(tc.expectedOut.hosts)) {
+				assert.ElementsMatch(t, tc.expectedOut.hosts, asHosts)
+			}
+			if assert.Len(t, hook.Entries, len(tc.expectedLogEntries)) {
+				for i := 0; i < len(tc.expectedLogEntries); i++ {
+					assert.Equal(t, tc.expectedLogEntries[i].lvl, hook.Entries[i].Level)
+					assert.Equal(t, tc.expectedLogEntries[i].msg, hook.Entries[i].Message)
+				}
+			}
+			//Reset log after every test and assert successful reset
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+		})
+	}
+}
+
 func TestNewAerospikeBackend(t *testing.T) {
 	type logEntry struct {
 		msg string
 		lvl logrus.Level
 	}
 
+	errorProneNewClientFunc := func(*as.ClientPolicy, ...*as.Host) (*as.Client, as.Error) {
+		return nil, &as.AerospikeError{}
+	}
+	successfulNewClientFunc := func(*as.ClientPolicy, ...*as.Host) (*as.Client, as.Error) {
+		return nil, nil
+	}
+
 	testCases := []struct {
 		desc               string
 		inCfg              config.Aerospike
-		expectPanic        bool
+		newClientFunc      NewAerospikeClientFunc
 		expectedLogEntries []logEntry
+		expectedPanic      bool
 	}{
 		{
-			desc: "Unable to connect hosts fakeTestUrl panic and log fatal error when passed additional hosts",
-			inCfg: config.Aerospike{
-				Hosts: []string{"foo.com", "bat.com"},
-				Port:  8888,
-			},
-			expectPanic: true,
+			desc:  "no_port_error",
+			inCfg: config.Aerospike{},
 			expectedLogEntries: []logEntry{
 				{
-					msg: "Error creating Aerospike backend: ResultCode: TIMEOUT, Iteration: 0, InDoubt: false, Node: <nil>: command execution timed out on client: See `Policy.Timeout`",
+					msg: "Error creating Aerospike backend: Cannot connect to Aerospike host at port 0",
 					lvl: logrus.FatalLevel,
 				},
 			},
 		},
 		{
-			desc: "Unable to connect host and hosts panic and log fatal error when passed additional hosts",
-			inCfg: config.Aerospike{
-				Host:  "fakeTestUrl.foo",
-				Hosts: []string{"foo.com", "bat.com"},
-				Port:  8888,
-			},
-			expectPanic: true,
+			desc:  "no_host_nor_hosts_error",
+			inCfg: config.Aerospike{Port: 8888},
 			expectedLogEntries: []logEntry{
 				{
-					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
-					lvl: logrus.InfoLevel,
-				},
-				{
-					msg: "Error creating Aerospike backend: ResultCode: TIMEOUT, Iteration: 0, InDoubt: false, Node: <nil>: command execution timed out on client: See `Policy.Timeout`",
+					msg: "Error creating Aerospike backend: Cannot connect to empty Aerospike host(s)",
 					lvl: logrus.FatalLevel,
 				},
 			},
 		},
 		{
-			desc: "Unable to connect host panic and log fatal error",
+			desc: "newAerospikeClient_error",
 			inCfg: config.Aerospike{
-				Host: "fakeTestUrl.foo",
+				Hosts: []string{"fakeUrl"},
+				Port:  8888,
+			},
+			newClientFunc: errorProneNewClientFunc,
+			expectedLogEntries: []logEntry{
+				{
+					msg: "Error creating Aerospike backend: ResultCode: OK, Iteration: 0, InDoubt: false, Node: <nil>: ",
+					lvl: logrus.FatalLevel,
+				},
+			},
+			expectedPanic: true,
+		},
+		{
+			desc: "success_with_deprecated_host",
+			inCfg: config.Aerospike{
+				Host: "fakeUrl",
 				Port: 8888,
 			},
-			expectPanic: true,
+			newClientFunc: successfulNewClientFunc,
 			expectedLogEntries: []logEntry{
 				{
 					msg: "config.backend.aerospike.host is being deprecated in favor of config.backend.aerospike.hosts",
 					lvl: logrus.InfoLevel,
 				},
 				{
-					msg: "Error creating Aerospike backend: ResultCode: TIMEOUT, Iteration: 0, InDoubt: false, Node: <nil>: command execution timed out on client: See `Policy.Timeout`",
-					lvl: logrus.FatalLevel,
+					msg: "Connected to Aerospike host(s) [fakeUrl] on port 8888",
+					lvl: logrus.InfoLevel,
+				},
+			},
+		},
+		{
+			desc: "success_with_hosts_list",
+			inCfg: config.Aerospike{
+				Hosts: []string{"fakeUrl"},
+				Port:  8888,
+			},
+			newClientFunc: successfulNewClientFunc,
+			expectedLogEntries: []logEntry{
+				{
+					msg: "Connected to Aerospike host(s) [fakeUrl ] on port 8888",
+					lvl: logrus.InfoLevel,
 				},
 			},
 		},
@@ -90,18 +307,29 @@ func TestNewAerospikeBackend(t *testing.T) {
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	for _, test := range testCases {
-		// Run test
-		assert.Panics(t, func() { NewAerospikeBackend(test.inCfg, nil) }, "Aerospike library's NewClientWithPolicyAndHost() should have thrown an error and didn't, hence the panic didn't happen")
-		if assert.Len(t, hook.Entries, len(test.expectedLogEntries), test.desc) {
-			for i := 0; i < len(test.expectedLogEntries); i++ {
-				assert.Equal(t, test.expectedLogEntries[i].msg, hook.Entries[i].Message, test.desc)
-				assert.Equal(t, test.expectedLogEntries[i].lvl, hook.Entries[i].Level, test.desc)
+		t.Run(test.desc, func(t *testing.T) {
+			if test.expectedPanic {
+				if !assert.Panics(t, func() { newAerospikeBackend(test.newClientFunc, test.inCfg, nil) }, "Aerospike library's NewClientWithPolicyAndHost() should have thrown an error and didn't, hence the panic didn't happen") {
+					return
+				}
+			} else {
+				if !assert.NotPanics(t, func() { newAerospikeBackend(test.newClientFunc, test.inCfg, nil) }, "Aerospike library's NewClientWithPolicyAndHost() should have thrown an error and didn't, hence the panic didn't happen") {
+					return
+				}
 			}
-		}
 
-		//Reset log after every test and assert successful reset
-		hook.Reset()
-		assert.Nil(t, hook.LastEntry())
+			if assert.Len(t, hook.Entries, len(test.expectedLogEntries), test.desc) {
+				for i := 0; i < len(test.expectedLogEntries); i++ {
+					assert.Equal(t, test.expectedLogEntries[i].lvl, hook.Entries[i].Level, test.desc)
+					assert.Equal(t, test.expectedLogEntries[i].msg, hook.Entries[i].Message, test.desc)
+				}
+			}
+
+			//Reset log after every test and assert successful reset
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+		})
+
 	}
 }
 

@@ -121,19 +121,22 @@ func TestNewBaseBackend(t *testing.T) {
 	testCases := []struct {
 		desc                string
 		inConfig            config.Backend
+		inExpectPanic       bool
 		expectedBackendType backends.Backend
 		expectedLogEntries  []logEntry
 	}{
 		{
-			desc:     "unknown",
-			inConfig: config.Backend{Type: "unknown"},
+			desc:          "unknown",
+			inConfig:      config.Backend{Type: "unknown"},
+			inExpectPanic: true,
 			expectedLogEntries: []logEntry{
 				{msg: "Unknown backend type: unknown", lvl: logrus.FatalLevel},
 			},
 		},
 		{
-			desc:     "Cassandra",
-			inConfig: config.Backend{Type: config.BackendCassandra},
+			desc:          "Cassandra",
+			inConfig:      config.Backend{Type: config.BackendCassandra},
+			inExpectPanic: true,
 			expectedLogEntries: []logEntry{
 				{msg: "Error creating Cassandra backend: ", lvl: logrus.FatalLevel},
 			},
@@ -146,15 +149,17 @@ func TestNewBaseBackend(t *testing.T) {
 			},
 		},
 		{
-			desc:     "Redis",
-			inConfig: config.Backend{Type: config.BackendRedis},
+			desc:          "Redis",
+			inConfig:      config.Backend{Type: config.BackendRedis},
+			inExpectPanic: true,
 			expectedLogEntries: []logEntry{
 				{msg: "Error creating Redis backend: ", lvl: logrus.FatalLevel},
 			},
 		},
 		{
-			desc:     "Ignite",
-			inConfig: config.Backend{Type: config.BackendIgnite},
+			desc:          "Ignite",
+			inConfig:      config.Backend{Type: config.BackendIgnite},
+			inExpectPanic: true,
 			expectedLogEntries: []logEntry{
 				{
 					msg: "Error creating Ignite backend: configuration is missing ignite.schema, ignite.host, ignite.port or ignite.cache.name",
@@ -170,11 +175,20 @@ func TestNewBaseBackend(t *testing.T) {
 			MetricEngines: []metrics.CacheMetrics{&mockMetrics},
 		}
 
-		// run and assert it panics
+		// run
 		panicTestFunction := func() {
 			newBaseBackend(tc.inConfig, m)
 		}
-		assert.Panics(t, panicTestFunction, "%s backend initialized in this test should error and panic.", tc.desc)
+
+		if tc.inExpectPanic {
+			if !assert.Panics(t, panicTestFunction, "%s backend initialized in this test should error and panic.", tc.desc) {
+				continue
+			}
+		} else {
+			if !assert.NotPanics(t, panicTestFunction, "%s backend initialized in this test should not panic.", tc.desc) {
+				continue
+			}
+		}
 
 		// assertions
 		assert.Len(t, hook.Entries, len(tc.expectedLogEntries), tc.desc)
