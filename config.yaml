@@ -45,7 +45,7 @@ backend:
 compression:
   type: "snappy" # Can also be "none"
 metrics:
-  type: "none" # Can also be "influx"
+  type: "none"   # Can also be "influx"
   influx:
     host: "http://influx.prebid.com"
     database: "some-database"
