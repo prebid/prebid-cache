@@ -12,40 +12,40 @@ request_limits:
   max_ttl_seconds: 3600
 backend:
   type: "memory" # Switch to be "aerospike", "cassandra", "memcache", "ignite" or "redis" for production.
-  aerospike:
-    hosts: [ "aerospike.prebid.com" ]
-    port: 3000
-    namespace: "whatever"
-  cassandra:
-    hosts: "127.0.0.1"
-    keyspace: "prebid"
-  memcache:
-    config_host: "" # Configuration endpoint for auto discovery. Replaced at docker build.
-    poll_interval_seconds: 30 # Node change polling interval when auto discovery is used
-    hosts: "10.0.0.1:11211" # List of nodes when not using auto discovery. Can also use an array for multiple hosts. 
-  redis:
-    host: "127.0.0.1"
-    port: 6379
-    password: ""
-    db: 1
-    expiration: 10   # in Minutes
-    tls:
-      enabled: false
-      insecure_skip_verify: false
-  ignite:
-    scheme: "http"
-    host: "127.0.0.1"
-    port: 8080
-    secure: false
-    headers: !!omap
-      - Content-Length: 0
-    cache:
-      name: "cacheName"
-      create_on_start: false
+# aerospike:
+#   hosts: [ "aerospike.prebid.com" ]
+#   port: 3000
+#   namespace: "anynamespace"
+# cassandra:
+#   hosts: "127.0.0.1"
+#   keyspace: "prebid"
+# memcache:
+#   config_host: "" # Configuration endpoint for auto discovery. Replaced at docker build.
+#   poll_interval_seconds: 30 # Node change polling interval when auto discovery is used
+#   hosts: "10.0.0.1:11211" # List of nodes when not using auto discovery. Can also use an array for multiple hosts. 
+# redis:
+#   host: "127.0.0.1"
+#   port: 6379
+#   password: ""
+#   db: 1
+#   expiration: 10   # in Minutes
+#   tls:
+#     enabled: false
+#     insecure_skip_verify: false
+# ignite:
+#   scheme: "http"
+#   host: "127.0.0.1"
+#   port: 8080
+#   secure: false
+#   headers: !!omap
+#     - Content-Length: 0
+#   cache:
+#     name: "cacheName"
+#     create_on_start: false
 compression:
-  type: "snappy"   # Can also be "none"
+  type: "snappy" # Can also be "none"
 metrics:
-  type: "none"   # Can also be "influx"
+  type: "none" # Can also be "influx"
   influx:
     host: "http://influx.prebid.com"
     database: "some-database"
