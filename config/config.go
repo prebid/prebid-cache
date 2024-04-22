@@ -95,6 +95,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("request_limits.max_size_bytes", utils.REQUEST_MAX_SIZE_BYTES)
 	v.SetDefault("request_limits.max_num_values", utils.REQUEST_MAX_NUM_VALUES)
 	v.SetDefault("request_limits.max_ttl_seconds", utils.REQUEST_MAX_TTL_SECONDS)
+	v.SetDefault("request_limits.max_header_size_bytes", 0)
 	v.SetDefault("routes.allow_public_write", true)
 }
 
@@ -179,6 +180,7 @@ type RequestLimits struct {
 	MaxNumValues     int  `mapstructure:"max_num_values"`
 	MaxTTLSeconds    int  `mapstructure:"max_ttl_seconds"`
 	AllowSettingKeys bool `mapstructure:"allow_setting_keys"`
+	MaxHeaderSize    int  `mapstructure:"max_header_size_bytes"`
 }
 
 func (cfg *RequestLimits) validateAndLog() {
@@ -200,6 +202,12 @@ func (cfg *RequestLimits) validateAndLog() {
 		log.Infof("config.request_limits.max_num_values: %d", cfg.MaxNumValues)
 	} else {
 		log.Fatalf("invalid config.request_limits.max_num_values: %d. Value cannot be negative.", cfg.MaxNumValues)
+	}
+
+	if cfg.MaxHeaderSize >= 0 {
+		log.Infof("config.request_limits.max_header_size_bytes: %d", cfg.MaxHeaderSize)
+	} else {
+		log.Fatalf("invalid config.request_limits.max_header_size_bytes: %d. Value cannot be negative.", cfg.MaxHeaderSize)
 	}
 }
 

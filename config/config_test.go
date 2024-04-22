@@ -1078,6 +1078,7 @@ func TestConfigurationValidateAndLog(t *testing.T) {
 		{msg: fmt.Sprintf("config.request_limits.max_ttl_seconds: %d", expectedConfig.RequestLimits.MaxTTLSeconds), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.request_limits.max_size_bytes: %d", expectedConfig.RequestLimits.MaxSize), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.request_limits.max_num_values: %d", expectedConfig.RequestLimits.MaxNumValues), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_limits.max_header_size_bytes: %d", expectedConfig.RequestLimits.MaxHeaderSize), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.backend.type: %s", expectedConfig.Backend.Type), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.compression.type: %s", expectedConfig.Compression.Type), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("Prebid Cache will run without metrics"), lvl: logrus.InfoLevel},
@@ -1244,6 +1245,7 @@ func getExpectedFullConfigForTestFile() Configuration {
 			MaxNumValues:     10,
 			MaxTTLSeconds:    5000,
 			AllowSettingKeys: true,
+			MaxHeaderSize:    16384, //16KiB
 		},
 		Backend: Backend{
 			Type: BackendMemory,
