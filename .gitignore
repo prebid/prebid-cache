@@ -1,2 +1,8 @@
+# dep directory
 vendor
+
+# build artifacts
 prebid-cache
+
+# ide
+.vscode/
