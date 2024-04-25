@@ -867,6 +867,18 @@ func TestRequestLimitsValidateAndLog(t *testing.T) {
 			},
 			expectFatal: true,
 		},
+		{
+			description:        "Negative max_num_values, expect fatal level log and early exit",
+			inRequestLimitsCfg: &RequestLimits{MaxHeaderSize: -1},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_num_values: 0`, lvl: logrus.InfoLevel},
+				{msg: `invalid config.request_limits.max_header_size_bytes: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
+			},
+			expectFatal: true,
+		},
 	}
 
 	//substitute logger exit function so execution doesn't get interrupted
