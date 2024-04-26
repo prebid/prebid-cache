@@ -42,7 +42,6 @@ backend:
     master_name: "mymaster"
     password: ""
     db: 1
-    expiration: 10   # in Minutes
     tls:
       enabled: false
       insecure_skip_verify: false
