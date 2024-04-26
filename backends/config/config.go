@@ -63,6 +63,8 @@ func newBaseBackend(cfg config.Backend, appMetrics *metrics.Metrics) backends.Ba
 		return backends.NewAerospikeBackend(cfg.Aerospike, appMetrics)
 	case config.BackendRedis:
 		return backends.NewRedisBackend(cfg.Redis, ctx)
+	case config.BackendRedisSentinel:
+		return backends.NewRedisSentinelBackend(cfg.RedisSentinel, ctx)
 	case config.BackendIgnite:
 		return backends.NewIgniteBackend(cfg.Ignite)
 	default:
