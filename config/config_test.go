@@ -875,7 +875,7 @@ func TestRequestLimitsValidateAndLog(t *testing.T) {
 				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
 				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
 				{msg: `config.request_limits.max_num_values: 0`, lvl: logrus.InfoLevel},
-				{msg: `invalid config.request_limits.max_header_size_bytes: -1. Value out of range.`, lvl: logrus.FatalLevel},
+				{msg: `invalid config.request_limits.max_header_size_bytes: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
 			},
 			expectFatal: true,
 		},

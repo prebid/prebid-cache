@@ -83,7 +83,7 @@ func newAdminServer(cfg config.Configuration, handler http.Handler) *http.Server
 		Addr:    ":" + strconv.Itoa(cfg.AdminPort),
 		Handler: handler,
 	}
-	if cfg.RequestLimits.MaxHeaderSize > 0 && cfg.RequestLimits.MaxHeaderSize < http.DefaultMaxHeaderBytes {
+	if cfg.RequestLimits.MaxHeaderSize > 0 {
 		server.MaxHeaderBytes = cfg.RequestLimits.MaxHeaderSize
 	}
 	return server
