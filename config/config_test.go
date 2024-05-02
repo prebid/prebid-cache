@@ -868,14 +868,14 @@ func TestRequestLimitsValidateAndLog(t *testing.T) {
 			expectFatal: true,
 		},
 		{
-			description:        "Negative max_num_values, expect fatal level log and early exit",
+			description:        "Negative max_header_size_bytes, expect fatal level log and early exit",
 			inRequestLimitsCfg: &RequestLimits{MaxHeaderSize: -1},
 			expectedLogInfo: []logComponents{
 				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
 				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
 				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
 				{msg: `config.request_limits.max_num_values: 0`, lvl: logrus.InfoLevel},
-				{msg: `invalid config.request_limits.max_header_size_bytes: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
+				{msg: `invalid config.request_limits.max_header_size_bytes: -1. Value out of range.`, lvl: logrus.FatalLevel},
 			},
 			expectFatal: true,
 		},
@@ -1232,6 +1232,7 @@ func getExpectedDefaultConfig() Configuration {
 			MaxSize:       10240,
 			MaxNumValues:  10,
 			MaxTTLSeconds: 3600,
+			MaxHeaderSize: 1048576,
 		},
 		Routes: Routes{
 			AllowPublicWrite: true,

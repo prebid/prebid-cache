@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/http"
 	"strings"
 	"time"
 
@@ -95,7 +96,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("request_limits.max_size_bytes", utils.REQUEST_MAX_SIZE_BYTES)
 	v.SetDefault("request_limits.max_num_values", utils.REQUEST_MAX_NUM_VALUES)
 	v.SetDefault("request_limits.max_ttl_seconds", utils.REQUEST_MAX_TTL_SECONDS)
-	v.SetDefault("request_limits.max_header_size_bytes", 0)
+	v.SetDefault("request_limits.max_header_size_bytes", http.DefaultMaxHeaderBytes)
 	v.SetDefault("routes.allow_public_write", true)
 }
 
@@ -204,10 +205,10 @@ func (cfg *RequestLimits) validateAndLog() {
 		log.Fatalf("invalid config.request_limits.max_num_values: %d. Value cannot be negative.", cfg.MaxNumValues)
 	}
 
-	if cfg.MaxHeaderSize >= 0 {
+	if cfg.MaxHeaderSize >= 0 && cfg.MaxHeaderSize <= http.DefaultMaxHeaderBytes {
 		log.Infof("config.request_limits.max_header_size_bytes: %d", cfg.MaxHeaderSize)
 	} else {
-		log.Fatalf("invalid config.request_limits.max_header_size_bytes: %d. Value cannot be negative.", cfg.MaxHeaderSize)
+		log.Fatalf("invalid config.request_limits.max_header_size_bytes: %d. Value out of range.", cfg.MaxHeaderSize)
 	}
 }
 
