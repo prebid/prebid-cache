@@ -867,6 +867,18 @@ func TestRequestLimitsValidateAndLog(t *testing.T) {
 			},
 			expectFatal: true,
 		},
+		{
+			description:        "Negative max_header_size_bytes, expect fatal level log and early exit",
+			inRequestLimitsCfg: &RequestLimits{MaxHeaderSize: -1},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_num_values: 0`, lvl: logrus.InfoLevel},
+				{msg: `invalid config.request_limits.max_header_size_bytes: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
+			},
+			expectFatal: true,
+		},
 	}
 
 	//substitute logger exit function so execution doesn't get interrupted
@@ -1078,6 +1090,7 @@ func TestConfigurationValidateAndLog(t *testing.T) {
 		{msg: fmt.Sprintf("config.request_limits.max_ttl_seconds: %d", expectedConfig.RequestLimits.MaxTTLSeconds), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.request_limits.max_size_bytes: %d", expectedConfig.RequestLimits.MaxSize), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.request_limits.max_num_values: %d", expectedConfig.RequestLimits.MaxNumValues), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_limits.max_header_size_bytes: %d", expectedConfig.RequestLimits.MaxHeaderSize), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.backend.type: %s", expectedConfig.Backend.Type), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.compression.type: %s", expectedConfig.Compression.Type), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("Prebid Cache will run without metrics"), lvl: logrus.InfoLevel},
@@ -1219,6 +1232,7 @@ func getExpectedDefaultConfig() Configuration {
 			MaxSize:       10240,
 			MaxNumValues:  10,
 			MaxTTLSeconds: 3600,
+			MaxHeaderSize: 1048576,
 		},
 		Routes: Routes{
 			AllowPublicWrite: true,
@@ -1244,6 +1258,7 @@ func getExpectedFullConfigForTestFile() Configuration {
 			MaxNumValues:     10,
 			MaxTTLSeconds:    5000,
 			AllowSettingKeys: true,
+			MaxHeaderSize:    16384, //16KiB
 		},
 		Backend: Backend{
 			Type: BackendMemory,

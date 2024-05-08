@@ -74,20 +74,37 @@ func Listen(cfg config.Configuration, publicHandler http.Handler, adminHandler h
 	return
 }
 
+// newAdminServer returns an http.Server with the AdminPort and RequestLimits.MaxHeaderBytes
+// from Prebid Cache's config files or environment variables. If RequestLimits.MaxHeaderBytes
+// is zero or was not specified, the http library's DefaultMaxHeaderBytes value of 1 MB
+// is set instead.
 func newAdminServer(cfg config.Configuration, handler http.Handler) *http.Server {
-	return &http.Server{
+	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(cfg.AdminPort),
 		Handler: handler,
 	}
+	if cfg.RequestLimits.MaxHeaderSize > 0 {
+		server.MaxHeaderBytes = cfg.RequestLimits.MaxHeaderSize
+	}
+	return server
 }
 
+// newMainServer returns an http.Server with the configured Port and
+// RequestLimits.MaxHeaderBytes values specified in Prebid Cache's config files
+// or environment variables. If RequestLimits.MaxHeaderBytes is zero or was not
+// specified, 1 MB, which is the value of the http library's DefaultMaxHeaderBytes,
+// is set instead.
 func newMainServer(cfg config.Configuration, handler http.Handler) *http.Server {
-	return &http.Server{
+	server := &http.Server{
 		Addr:         ":" + strconv.Itoa(cfg.Port),
 		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 	}
+	if cfg.RequestLimits.MaxHeaderSize > 0 {
+		server.MaxHeaderBytes = cfg.RequestLimits.MaxHeaderSize
+	}
+	return server
 }
 
 func runServer(server *http.Server, name string, listener net.Listener) {
