@@ -8,12 +8,13 @@ import (
 )
 
 type Backend struct {
-	Type      BackendType `mapstructure:"type"`
-	Aerospike Aerospike   `mapstructure:"aerospike"`
-	Cassandra Cassandra   `mapstructure:"cassandra"`
-	Memcache  Memcache    `mapstructure:"memcache"`
-	Redis     Redis       `mapstructure:"redis"`
-	Ignite    Ignite      `mapstructure:"ignite"`
+	Type          BackendType   `mapstructure:"type"`
+	Aerospike     Aerospike     `mapstructure:"aerospike"`
+	Cassandra     Cassandra     `mapstructure:"cassandra"`
+	Memcache      Memcache      `mapstructure:"memcache"`
+	Redis         Redis         `mapstructure:"redis"`
+	RedisSentinel RedisSentinel `mapstructure:"redis_sentinel"`
+	Ignite        Ignite        `mapstructure:"ignite"`
 }
 
 func (cfg *Backend) validateAndLog() error {
@@ -28,25 +29,27 @@ func (cfg *Backend) validateAndLog() error {
 		return cfg.Memcache.validateAndLog()
 	case BackendRedis:
 		return cfg.Redis.validateAndLog()
+	case BackendRedisSentinel:
+		return cfg.RedisSentinel.validateAndLog()
 	case BackendIgnite:
 		return cfg.Ignite.validateAndLog()
 	case BackendMemory:
 		return nil
 	default:
-		return fmt.Errorf(`invalid config.backend.type: %s. It must be "aerospike", "cassandra", "memcache", "redis",  "ignite", or "memory".`, cfg.Type)
+		return fmt.Errorf(`invalid config.backend.type: %s. It must be "%s", "%s", "%s", "%s", "%s", "%s", or "%s"`, cfg.Type, BackendAerospike, BackendCassandra, BackendMemcache, BackendRedis, BackendRedisSentinel, BackendIgnite, BackendMemory)
 	}
-	return nil
 }
 
 type BackendType string
 
 const (
-	BackendAerospike BackendType = "aerospike"
-	BackendCassandra BackendType = "cassandra"
-	BackendMemcache  BackendType = "memcache"
-	BackendMemory    BackendType = "memory"
-	BackendRedis     BackendType = "redis"
-	BackendIgnite    BackendType = "ignite"
+	BackendAerospike     BackendType = "aerospike"
+	BackendCassandra     BackendType = "cassandra"
+	BackendMemcache      BackendType = "memcache"
+	BackendMemory        BackendType = "memory"
+	BackendRedis         BackendType = "redis"
+	BackendRedisSentinel BackendType = "redis_sentinel"
+	BackendIgnite        BackendType = "ignite"
 )
 
 type Aerospike struct {
@@ -173,6 +176,23 @@ func (cfg *Redis) validateAndLog() error {
 	}
 	log.Infof("config.backend.redis.tls.enabled: %t", cfg.TLS.Enabled)
 	log.Infof("config.backend.redis.tls.insecure_skip_verify: %t", cfg.TLS.InsecureSkipVerify)
+	return nil
+}
+
+type RedisSentinel struct {
+	SentinelAddrs []string `mapstructure:"sentinel_addrs"`
+	MasterName    string   `mapstructure:"master_name"`
+	Password      string   `mapstructure:"password"`
+	Db            int      `mapstructure:"db"`
+	TLS           RedisTLS `mapstructure:"tls"`
+}
+
+func (cfg *RedisSentinel) validateAndLog() error {
+	log.Infof("config.backend.redis-sentinel.sentinel_addrs: %s", cfg.SentinelAddrs)
+	log.Infof("config.backend.redis-sentinel.master_name: %s", cfg.MasterName)
+	log.Infof("config.backend.redis-sentinel.db: %d", cfg.Db)
+	log.Infof("config.backend.redis-sentinel.tls.enabled: %t", cfg.TLS.Enabled)
+	log.Infof("config.backend.redis-sentinel.tls.insecure_skip_verify: %t", cfg.TLS.InsecureSkipVerify)
 	return nil
 }
 

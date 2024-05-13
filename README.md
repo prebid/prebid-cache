@@ -221,6 +221,7 @@ backend:
 
 ### Aerospike
 Prebid Cache makes use of an Aerospike Go client that requires Aerospike server version 4.9+ and will not work properly with older versions. Full documentation of the Aerospike Go client can be found [here](https://github.com/aerospike/aerospike-client-go/tree/v6).
+
 | Configuration field | Type | Description |
 | --- | --- | --- |
 | host | string | aerospike server URI |
@@ -229,6 +230,7 @@ Prebid Cache makes use of an Aerospike Go client that requires Aerospike server 
 
 ### Cassandra
 Prebid Cache makes use of a Cassandra client that supports latest 3 major releases of Cassandra (2.1.x, 2.2.x, and 3.x.x). Full documentation of the Cassandra Go client can be found [here](https://github.com/gocql/gocql).
+
 | Configuration field | Type | Description |
 | --- | --- | --- |
 | hosts | string | Cassandra server URI |
@@ -243,6 +245,7 @@ Prebid Cache makes use of a Cassandra client that supports latest 3 major releas
 
 ### Redis:
 Prebid Cache makes use of a Redis Go client compatible with Redis 6. Full documentation of the Redis Go client Prebid Cache uses can be found [here](https://github.com/go-redis/redis).
+
 | Configuration field | Type | Description |
 | --- | --- | --- |
 | host | string | Redis server URI |
@@ -251,6 +254,18 @@ Prebid Cache makes use of a Redis Go client compatible with Redis 6. Full docume
 | db | integer | Database to be selected after connecting to the server |
 | expiration | integer | Availability in the Redis system in Minutes |
 | tls | field | Subfields: <br> `enabled`: whether or not pass the InsecureSkipVerify value to the Redis client's TLS config <br> `insecure_skip_verify`: In Redis, InsecureSkipVerify controls whether a client verifies the server's certificate chain and host name. If InsecureSkipVerify is true, crypto/t |
+
+### Redis Sentinel:
+Prebid Cache makes use of a Redis Go client compatible with Redis Sentinel. Full documentation of the Redis Go client can be found [here](https://github.com/go-redis/redis).
+
+| Configuration field | Type         | Description                                                                                                                                                                                                                                                                                     |
+|---------------------|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| sentinel_addrs      | string array | List of Sentinel nodes (host:port) managing the same master                                                                                                                                                                                                                                     |
+| master_name         | string       | Name of the Sentinel master (as declared in the `sentinel monitor` line of your Sentinel configurations)                                                                                                                                                                                        |
+| password            | string       | Redis password                                                                                                                                                                                                                                                                                  |
+| db                  | integer      | Database to be selected after connecting to the server                                                                                                                                                                                                                                          |
+| tls                 | field        | Subfields: <br> `enabled`: whether or not pass the InsecureSkipVerify value to the Redis client's TLS config <br> `insecure_skip_verify`: In Redis, InsecureSkipVerify controls whether a client verifies the server's certificate chain and host name. If InsecureSkipVerify is true, crypto/t |
+
 
 Sample configuration file `config/configtest/sample_full_config.yaml` shown below:
 ```yaml
@@ -288,6 +303,15 @@ backend:
     password: "redis-password"
     db: 1
     expiration: 1
+    tls:
+      enabled: false
+      insecure_skip_verify: false
+  redis_sentinel:
+    sentinel_addrs: [ "127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381" ]
+    master_name: "mymaster"
+    password: ""
+    db: 1
+    expiration: 10   # in Minutes
     tls:
       enabled: false
       insecure_skip_verify: false
