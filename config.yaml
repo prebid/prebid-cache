@@ -22,13 +22,21 @@ backend:
 # memcache:
 #   config_host: "" # Configuration endpoint for auto discovery. Replaced at docker build.
 #   poll_interval_seconds: 30 # Node change polling interval when auto discovery is used
-#   hosts: "10.0.0.1:11211" # List of nodes when not using auto discovery. Can also use an array for multiple hosts. 
+#   hosts: "10.0.0.1:11211" # List of nodes when not using auto discovery. Can also use an array for multiple hosts.
 # redis:
 #   host: "127.0.0.1"
 #   port: 6379
 #   password: ""
 #   db: 1
 #   expiration: 10   # in Minutes
+#   tls:
+#     enabled: false
+#     insecure_skip_verify: false
+# redis_sentinel:
+#   sentinel_addrs: [ "127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381" ]
+#   master_name: "mymaster"
+#   password: ""
+#   db: 1
 #   tls:
 #     enabled: false
 #     insecure_skip_verify: false
