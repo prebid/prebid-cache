@@ -1297,7 +1297,7 @@ func getExpectedFullConfigForTestFile() Configuration {
 				Host:   "127.0.0.1",
 				Port:   8080,
 				Headers: map[string]string{
-					"Content-Length": "0",
+					"content-length": "0",
 				},
 				Cache: IgniteCache{
 					Name:          "whatever",

@@ -21,6 +21,6 @@ build: test
 	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo  .
 
 # Build a docker image which runs the binary
-image: build
+image:
 	docker build -t prebid-cache .
 
