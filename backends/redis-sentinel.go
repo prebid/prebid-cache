@@ -46,10 +46,11 @@ type RedisSentinelBackend struct {
 // NewRedisSentinelBackend initializes the Redis Sentinel client and pings to make sure connection was successful
 func NewRedisSentinelBackend(cfg config.RedisSentinel, ctx context.Context) *RedisSentinelBackend {
 	options := &redis.FailoverOptions{
-		MasterName:    cfg.MasterName,
-		SentinelAddrs: cfg.SentinelAddrs,
-		Password:      cfg.Password,
-		DB:            cfg.Db,
+		MasterName:       cfg.MasterName,
+		SentinelAddrs:    cfg.SentinelAddrs,
+		SentinelPassword: cfg.Password,
+		Password:         cfg.Password,
+		DB:               cfg.Db,
 	}
 
 	if cfg.TLS.Enabled {
