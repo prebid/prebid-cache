@@ -290,7 +290,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		},
 	}
 
-	//Standard elements of the config.Metrics object are set so test cases only modify what's relevant to them
+	// Standard elements of the config.Metrics object are set so test cases only modify what's relevant to them
 	cfg := &Metrics{
 		Influx: InfluxMetrics{
 			Host:        "http://fakeurl.com",
@@ -307,7 +307,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := testLogrus.NewGlobal()
 
-	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
+	// substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
@@ -321,7 +321,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		cfg.Influx.Enabled = tc.influxEnabled
 		cfg.Prometheus.Enabled = tc.prometheusEnabled
 
-		//run test
+		// run test
 		cfg.validateAndLog()
 
 		// Assert logrus expected entries
@@ -337,7 +337,7 @@ func TestCheckMetricsEnabled(t *testing.T) {
 		// Assert log.Fatalf() was called or not
 		assert.Equal(t, tc.expectedError, fatal, "Test case %d failed.", i+1)
 
-		//Reset log after every test and assert successful reset
+		// Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
 	}
@@ -447,7 +447,7 @@ func TestEnabledFlagGetsModified(t *testing.T) {
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := testLogrus.NewGlobal()
 
-	//substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
+	// substitute logger exit function so execution doesn't get interrupted when log.Fatalf() call comes
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
@@ -468,14 +468,14 @@ func TestEnabledFlagGetsModified(t *testing.T) {
 			},
 		}
 
-		//run test
+		// run test
 		metricsCfg.validateAndLog()
 
 		// Assert `Enabled` flags value
 		assert.Equal(t, tc.out.expectedInfluxEnabled, metricsCfg.Influx.Enabled, "Test case %d failed. `cfg.Influx.Enabled` carries wrong value.", i+1)
 		assert.Equal(t, tc.out.expectedprometheusEnabled, metricsCfg.Prometheus.Enabled, "Test case %d failed. `cfg.Prometheus.Enabled` carries wrong value.", i+1)
 
-		//Reset log after every test
+		// Reset log after every test
 		hook.Reset()
 	}
 }
@@ -493,7 +493,7 @@ func TestInfluxValidateAndLog(t *testing.T) {
 		description string
 		// In
 		influxConfig *InfluxMetrics
-		//out
+		// out
 		expectError     bool
 		expectedLogInfo []logComponents
 	}
@@ -598,7 +598,7 @@ func TestInfluxValidateAndLog(t *testing.T) {
 		},
 	}
 
-	//substitute logger exit function so execution doesn't get interrupted
+	// substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
@@ -607,7 +607,7 @@ func TestInfluxValidateAndLog(t *testing.T) {
 		// Reset the fatal flag to false every test
 		fatal = false
 
-		//run test
+		// run test
 		tc.influxConfig.validateAndLog()
 
 		// Assert logrus expected entries
@@ -623,7 +623,7 @@ func TestInfluxValidateAndLog(t *testing.T) {
 		// Assert log.Fatalf() was called or not
 		assert.Equal(t, tc.expectError, fatal)
 
-		//Reset log after every test and assert successful reset
+		// Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
 	}
@@ -639,7 +639,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 		description string
 		// In
 		prometheusConfig *PrometheusMetrics
-		//out
+		// out
 		expectError     bool
 		expectedLogInfo []logComponents
 	}
@@ -768,7 +768,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := testLogrus.NewGlobal()
 
-	//substitute logger exit function so execution doesn't get interrupted
+	// substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
@@ -777,7 +777,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 		// Reset the fatal flag to false every test
 		fatal = false
 
-		//run test
+		// run test
 		tc.prometheusConfig.validateAndLog()
 
 		// Assert logrus expected entries
@@ -793,7 +793,7 @@ func TestPrometheusValidateAndLog(t *testing.T) {
 		// Assert log.Fatalf() was called or not
 		assert.Equal(t, tc.expectError, fatal)
 
-		//Reset log after every test and assert successful reset
+		// Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
 	}
@@ -881,7 +881,7 @@ func TestRequestLimitsValidateAndLog(t *testing.T) {
 		},
 	}
 
-	//substitute logger exit function so execution doesn't get interrupted
+	// substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	var fatal bool
 	logrus.StandardLogger().ExitFunc = func(int) { fatal = true }
@@ -909,7 +909,7 @@ func TestRequestLimitsValidateAndLog(t *testing.T) {
 		}
 		assert.Len(t, tc.expectedLogInfo, logEntryCount, tc.description)
 
-		//Reset log after every test and assert successful reset
+		// Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
 	}
@@ -965,7 +965,7 @@ func TestCompressionValidateAndLog(t *testing.T) {
 		},
 	}
 
-	//substitute logger exit function so execution doesn't get interrupted
+	// substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
@@ -981,7 +981,7 @@ func TestCompressionValidateAndLog(t *testing.T) {
 			}
 		}
 
-		//Reset log after every test and assert successful reset
+		// Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
 	}
@@ -1041,12 +1041,12 @@ func TestNewConfigFromFile(t *testing.T) {
 		},
 	}
 
-	//substitute logger exit function so execution doesn't get interrupted
+	// substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	for _, tc := range testCases {
-		//run test
+		// run test
 		actualCfg := NewConfig(tc.inConfigFileName)
 
 		// Assert logrus expected entries
@@ -1059,7 +1059,7 @@ func TestNewConfigFromFile(t *testing.T) {
 
 		assert.Equal(t, tc.expectedConfig, actualCfg, "Expected Configuration instance does not match. Test desc:%s", tc.description)
 
-		//Reset log after every test and assert successful reset
+		// Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
 	}
@@ -1068,7 +1068,7 @@ func TestNewConfigFromFile(t *testing.T) {
 func TestConfigurationValidateAndLog(t *testing.T) {
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
 	hook := testLogrus.NewGlobal()
-	//substitute logger exit function so execution doesn't get interrupted
+	// substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
@@ -1107,7 +1107,7 @@ func TestConfigurationValidateAndLog(t *testing.T) {
 		}
 	}
 
-	//Reset log
+	// Reset log
 	hook.Reset()
 	assert.Nil(t, hook.LastEntry())
 }
@@ -1150,7 +1150,7 @@ func TestRoutesValidateAndLog(t *testing.T) {
 		},
 	}
 
-	//substitute logger exit function so execution doesn't get interrupted
+	// substitute logger exit function so execution doesn't get interrupted
 	defer func() { logrus.StandardLogger().ExitFunc = nil }()
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
@@ -1166,7 +1166,7 @@ func TestRoutesValidateAndLog(t *testing.T) {
 			}
 		}
 
-		//Reset log after every test and assert successful reset
+		// Reset log after every test and assert successful reset
 		hook.Reset()
 		assert.Nil(t, hook.LastEntry())
 	}
@@ -1216,6 +1216,9 @@ func getExpectedDefaultConfig() Configuration {
 			},
 			Redis: Redis{
 				ExpirationMinutes: utils.REDIS_DEFAULT_EXPIRATION_MINUTES,
+			},
+			RedisSentinel: RedisSentinel{
+				SentinelAddrs: []string{},
 			},
 			Ignite: Ignite{
 				Headers: map[string]string{},
@@ -1287,6 +1290,16 @@ func getExpectedFullConfigForTestFile() Configuration {
 				Password:          "redis-password",
 				Db:                1,
 				ExpirationMinutes: 1,
+				TLS: RedisTLS{
+					Enabled:            false,
+					InsecureSkipVerify: false,
+				},
+			},
+			RedisSentinel: RedisSentinel{
+				SentinelAddrs: []string{"127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381"},
+				MasterName:    "mymaster",
+				Password:      "",
+				Db:            1,
 				TLS: RedisTLS{
 					Enabled:            false,
 					InsecureSkipVerify: false,
