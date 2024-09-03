@@ -188,11 +188,11 @@ type RedisSentinel struct {
 }
 
 func (cfg *RedisSentinel) validateAndLog() error {
-	log.Infof("config.backend.redis-sentinel.sentinel_addrs: %s", cfg.SentinelAddrs)
-	log.Infof("config.backend.redis-sentinel.master_name: %s", cfg.MasterName)
-	log.Infof("config.backend.redis-sentinel.db: %d", cfg.Db)
-	log.Infof("config.backend.redis-sentinel.tls.enabled: %t", cfg.TLS.Enabled)
-	log.Infof("config.backend.redis-sentinel.tls.insecure_skip_verify: %t", cfg.TLS.InsecureSkipVerify)
+	log.Infof("config.backend.redis_sentinel.sentinel_addrs: %s", cfg.SentinelAddrs)
+	log.Infof("config.backend.redis_sentinel.master_name: %s", cfg.MasterName)
+	log.Infof("config.backend.redis_sentinel.db: %d", cfg.Db)
+	log.Infof("config.backend.redis_sentinel.tls.enabled: %t", cfg.TLS.Enabled)
+	log.Infof("config.backend.redis_sentinel.tls.insecure_skip_verify: %t", cfg.TLS.InsecureSkipVerify)
 	return nil
 }
 
