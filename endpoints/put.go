@@ -15,6 +15,7 @@ import (
 	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/utils"
 	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // PutHandler serves "POST /cache" requests.
@@ -26,8 +27,9 @@ type PutHandler struct {
 }
 
 type putHandlerConfig struct {
-	maxNumValues int
-	allowKeys    bool
+	maxNumValues      int
+	allowKeys         bool
+	refererLogginRate float64
 }
 
 type syncPools struct {
@@ -47,8 +49,9 @@ func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumVal
 
 	// Pass configuration values
 	putHandler.cfg = putHandlerConfig{
-		maxNumValues: maxNumValues,
-		allowKeys:    allowKeys,
+		maxNumValues:      maxNumValues,
+		allowKeys:         allowKeys,
+		refererLogginRate: 1.00,
 	}
 
 	// Instantiate thread-safe memory pools
@@ -183,6 +186,12 @@ func logBackendError(err error) {
 // handle is the handler function that gets assigned to the POST method of the `/cache` endpoint
 func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	e.metrics.RecordPutTotal()
+
+	if utils.RandomPick(e.cfg.refererLogginRate) == true {
+		if refererHeaderValue := r.Header.Get(utils.REFERER_HEADER_KEY); refererHeaderValue != "" {
+			log.Info(refererHeaderValue)
+		}
+	}
 
 	start := time.Now()
 
