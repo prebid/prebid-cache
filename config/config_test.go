@@ -915,6 +915,88 @@ func TestRequestLimitsValidateAndLog(t *testing.T) {
 	}
 }
 
+func TestRequestLogging(t *testing.T) {
+	hook := testLogrus.NewGlobal()
+
+	type logComponents struct {
+		msg string
+		lvl logrus.Level
+	}
+
+	testCases := []struct {
+		desc                string
+		inRequestLoggingCfg *RequestLogging
+		expectedLogInfo     []logComponents
+	}{
+		{
+			desc: "negative sampling rate, expect fatal log",
+			inRequestLoggingCfg: &RequestLogging{
+				RefererSamplingRate: -0.1,
+			},
+			expectedLogInfo: []logComponents{
+				{msg: `invalid config.request_logging.referer_sampling_rate: value must be positive and not greater than 1.0. Got -0.10`, lvl: logrus.FatalLevel},
+			},
+		},
+		{
+			desc: "Sampling rate greater than 1.0, expect fatal log",
+			inRequestLoggingCfg: &RequestLogging{
+				RefererSamplingRate: 1.1,
+			},
+			expectedLogInfo: []logComponents{
+				{msg: `invalid config.request_logging.referer_sampling_rate: value must be positive and not greater than 1.0. Got 1.10`, lvl: logrus.FatalLevel},
+			},
+		},
+		{
+			desc: "Sampling rate of 1.0 is between the acceptable threshold. Expect info log",
+			inRequestLoggingCfg: &RequestLogging{
+				RefererSamplingRate: 1.0,
+			},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_logging.referer_sampling_rate: 1.00`, lvl: logrus.InfoLevel},
+			},
+		},
+		{
+			desc: "Sampling rate of 0.0 is between the acceptable threshold. Expect info log",
+			inRequestLoggingCfg: &RequestLogging{
+				RefererSamplingRate: 0.0,
+			},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_logging.referer_sampling_rate: 0.00`, lvl: logrus.InfoLevel},
+			},
+		},
+		{
+			desc: "Sampling rate of 0.6814 is between the acceptable threshold. Expect info log",
+			inRequestLoggingCfg: &RequestLogging{
+				RefererSamplingRate: 0.6814,
+			},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_logging.referer_sampling_rate: 0.68`, lvl: logrus.InfoLevel},
+			},
+		},
+	}
+
+	//substitute logger exit function so execution doesn't get interrupted
+	defer func() { logrus.StandardLogger().ExitFunc = nil }()
+	logrus.StandardLogger().ExitFunc = func(int) {}
+
+	for _, tc := range testCases {
+		//Run
+		tc.inRequestLoggingCfg.validateAndLog()
+
+		//Assert
+		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.desc+":different number of entries") {
+			for i := 0; i < len(tc.expectedLogInfo); i++ {
+				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message, tc.desc+":message")
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.desc+":log level")
+			}
+		}
+
+		//Reset log after every test and assert successful reset
+		hook.Reset()
+		assert.Nil(t, hook.LastEntry())
+	}
+}
+
 func TestCompressionValidateAndLog(t *testing.T) {
 
 	// logrus entries will be recorded to this `hook` object so we can compare and assert them
@@ -1091,6 +1173,7 @@ func TestConfigurationValidateAndLog(t *testing.T) {
 		{msg: fmt.Sprintf("config.request_limits.max_size_bytes: %d", expectedConfig.RequestLimits.MaxSize), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.request_limits.max_num_values: %d", expectedConfig.RequestLimits.MaxNumValues), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.request_limits.max_header_size_bytes: %d", expectedConfig.RequestLimits.MaxHeaderSize), lvl: logrus.InfoLevel},
+		{msg: fmt.Sprintf("config.request_logging.referer_sampling_rate: %.2f", expectedConfig.RequestLogging.RefererSamplingRate), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.backend.type: %s", expectedConfig.Backend.Type), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("config.compression.type: %s", expectedConfig.Compression.Type), lvl: logrus.InfoLevel},
 		{msg: fmt.Sprintf("Prebid Cache will run without metrics"), lvl: logrus.InfoLevel},
@@ -1227,6 +1310,9 @@ func getExpectedDefaultConfig() Configuration {
 		RateLimiting: RateLimiting{
 			Enabled:              true,
 			MaxRequestsPerSecond: 100,
+		},
+		RequestLogging: RequestLogging{
+			RefererSamplingRate: 0.00,
 		},
 		RequestLimits: RequestLimits{
 			MaxSize:       10240,
