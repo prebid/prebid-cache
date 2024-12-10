@@ -16,10 +16,9 @@ import (
 
 // GetHandler serves "GET /cache" requests.
 type GetHandler struct {
-	backend         backends.Backend
-	metrics         *metrics.Metrics
-	allowCustomKeys bool
-	cfg             getHandlerConfig
+	backend backends.Backend
+	metrics *metrics.Metrics
+	cfg     getHandlerConfig
 }
 
 type getHandlerConfig struct {

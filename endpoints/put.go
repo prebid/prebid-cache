@@ -15,7 +15,6 @@ import (
 	"github.com/prebid/prebid-cache/metrics"
 	"github.com/prebid/prebid-cache/utils"
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 )
 
 // PutHandler serves "POST /cache" requests.
@@ -27,9 +26,9 @@ type PutHandler struct {
 }
 
 type putHandlerConfig struct {
-	maxNumValues      int
-	allowKeys         bool
-	refererLogginRate float32
+	maxNumValues   int
+	allowKeys      bool
+	refererLogRate float32
 }
 
 type syncPools struct {
@@ -38,7 +37,7 @@ type syncPools struct {
 }
 
 // NewPutHandler returns the handle function for the "/cache" endpoint when it receives a POST request
-func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool, refererLogSamplingRate float32) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool, refererLogRate float32) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	putHandler := &PutHandler{}
 
 	// Assign storage client to put endpoint
@@ -49,9 +48,9 @@ func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumVal
 
 	// Pass configuration values
 	putHandler.cfg = putHandlerConfig{
-		maxNumValues:      maxNumValues,
-		allowKeys:         allowKeys,
-		refererLogginRate: 1.00,
+		maxNumValues:   maxNumValues,
+		allowKeys:      allowKeys,
+		refererLogRate: refererLogRate,
 	}
 
 	// Instantiate thread-safe memory pools
@@ -187,9 +186,9 @@ func logBackendError(err error) {
 func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	e.metrics.RecordPutTotal()
 
-	if utils.RandomPick(e.cfg.refererLogginRate) == true {
+	if utils.RandomPick(e.cfg.refererLogRate) == true {
 		if refererHeaderValue := r.Header.Get(utils.REFERER_HEADER_KEY); refererHeaderValue != "" {
-			log.Info("Incoming request Referer header: " + refererHeaderValue)
+			logrus.Info("Incoming request Referer header: " + refererHeaderValue)
 		}
 	}
 
