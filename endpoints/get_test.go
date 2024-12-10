@@ -33,7 +33,7 @@ func TestGetJsonTests(t *testing.T) {
 		}
 
 		router := httprouter.New()
-		router.GET("/cache", NewGetHandler(backend, m, tc.HostConfig.AllowSettingKeys))
+		router.GET("/cache", NewGetHandler(backend, m, tc.HostConfig.AllowSettingKeys, tc.HostConfig.RefererLogRate))
 		request, err := http.NewRequest("GET", "/cache?"+tc.Query, nil)
 		if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
 			hook.Reset()
@@ -82,7 +82,7 @@ func TestGetInvalidUUIDs(t *testing.T) {
 		},
 	}
 
-	router.GET("/cache", NewGetHandler(backend, m, false))
+	router.GET("/cache", NewGetHandler(backend, m, false, 0.0))
 
 	getResults := doMockGet(t, router, "fdd9405b-ef2b-46da-a55a-2f526d338e16")
 	if getResults.Code != http.StatusNotFound {
@@ -108,9 +108,13 @@ func TestGetHandler(t *testing.T) {
 		msg string
 		lvl logrus.Level
 	}
+	type testConfig struct {
+		allowKeys           bool
+		refererSamplingRate float32
+	}
 	type testInput struct {
-		uuid      string
-		allowKeys bool
+		uuid string
+		cfg  testConfig
 	}
 	type testOutput struct {
 		responseCode    int
@@ -127,8 +131,8 @@ func TestGetHandler(t *testing.T) {
 		{
 			"Missing UUID. Return http error but don't interrupt server's execution",
 			testInput{
-				uuid:      "",
-				allowKeys: false,
+				uuid: "",
+				cfg:  testConfig{allowKeys: false},
 			},
 			testOutput{
 				responseCode: http.StatusBadRequest,
@@ -148,8 +152,8 @@ func TestGetHandler(t *testing.T) {
 		{
 			"Prebid Cache wasn't configured to allow custom keys therefore, it doesn't allow for keys different than 36 char long. Respond with http error and don't interrupt server's execution",
 			testInput{
-				uuid:      "non-36-char-key-maps-to-json",
-				allowKeys: false,
+				uuid: "non-36-char-key-maps-to-json",
+				cfg:  testConfig{allowKeys: false},
 			},
 			testOutput{
 				responseCode: http.StatusNotFound,
@@ -169,8 +173,8 @@ func TestGetHandler(t *testing.T) {
 		{
 			"Configuration that allows custom keys. These are not required to be 36 char long. Since the uuid maps to a value, return it along a 200 status code",
 			testInput{
-				uuid:      "non-36-char-key-maps-to-json",
-				allowKeys: true,
+				uuid: "non-36-char-key-maps-to-json",
+				cfg:  testConfig{allowKeys: true},
 			},
 			testOutput{
 				responseCode: http.StatusOK,
@@ -260,7 +264,7 @@ func TestGetHandler(t *testing.T) {
 				&mockMetrics,
 			},
 		}
-		router.GET("/cache", NewGetHandler(backend, m, test.in.allowKeys))
+		router.GET("/cache", NewGetHandler(backend, m, test.in.cfg.allowKeys, test.in.cfg.refererSamplingRate))
 
 		// Run test
 		getResults := httptest.NewRecorder()

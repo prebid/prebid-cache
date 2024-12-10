@@ -50,7 +50,7 @@ func TestPutJsonTests(t *testing.T) {
 		}
 
 		router := httprouter.New()
-		router.POST("/cache", NewPutHandler(backend, m, tc.HostConfig.MaxNumValues, tc.HostConfig.AllowSettingKeys))
+		router.POST("/cache", NewPutHandler(backend, m, tc.HostConfig.MaxNumValues, tc.HostConfig.AllowSettingKeys, tc.HostConfig.RefererLogRate))
 		request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(tc.PutRequest)))
 		if !assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err) {
 			hook.Reset()
@@ -122,6 +122,7 @@ type hostConfig struct {
 	MaxNumValues     int         `json:"max_num_values"`
 	MaxTTLSeconds    int         `json:"max_ttl_seconds"`
 	FakeBackend      fakeBackend `json:"fake_backend"`
+	RefererLogRate   float32
 }
 
 type fakeBackend struct {
@@ -551,8 +552,8 @@ func TestSuccessfulPut(t *testing.T) {
 				},
 			}
 
-			router.POST("/cache", NewPutHandler(backend, m, 10, true))
-			router.GET("/cache", NewGetHandler(backend, m, true))
+			router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+			router.GET("/cache", NewGetHandler(backend, m, true, 0.0))
 
 			// Feed the tests input put request to the endpoint's handle
 			putResponse := doPut(t, router, tc.inPutBody)
@@ -641,7 +642,7 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 			},
 		}
 
-		router.POST("/cache", NewPutHandler(backend, m, 10, true))
+		router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
 
 		// Run test
 		putResponse := doPut(t, router, tc.inPutBody)
@@ -677,7 +678,7 @@ func TestNonSupportedType(t *testing.T) {
 			&mockMetrics,
 		},
 	}
-	router.POST("/cache", NewPutHandler(backend, m, 10, true))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
 
 	putResponse := doPut(t, router, requestBody)
 
@@ -713,7 +714,7 @@ func TestPutNegativeTTL(t *testing.T) {
 		},
 	}
 
-	testRouter.POST("/cache", NewPutHandler(testBackend, m, 10, true))
+	testRouter.POST("/cache", NewPutHandler(testBackend, m, 10, true, 0.0))
 
 	recorder := httptest.NewRecorder()
 
@@ -815,7 +816,7 @@ func TestCustomKey(t *testing.T) {
 			}
 
 			router := httprouter.New()
-			putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, tgroup.allowSettingKeys)
+			putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, tgroup.allowSettingKeys, 0.0)
 			router.POST("/cache", putEndpointHandler)
 
 			recorder := httptest.NewRecorder()
@@ -852,7 +853,7 @@ func TestRequestReadError(t *testing.T) {
 			&mockMetrics,
 		},
 	}
-	putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, false)
+	putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, false, 0.0)
 
 	router := httprouter.New()
 	router.POST("/cache", putEndpointHandler)
@@ -897,7 +898,7 @@ func TestTooManyPutElements(t *testing.T) {
 			&mockMetrics,
 		},
 	}
-	router.POST("/cache", NewPutHandler(backend, m, len(putElements)-1, true))
+	router.POST("/cache", NewPutHandler(backend, m, len(putElements)-1, true, 0.0))
 
 	putResponse := doPut(t, router, reqBody)
 
@@ -952,8 +953,8 @@ func TestMultiPutRequest(t *testing.T) {
 		},
 	}
 
-	router.POST("/cache", NewPutHandler(backend, m, 10, true))
-	router.GET("/cache", NewGetHandler(backend, m, true))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+	router.GET("/cache", NewGetHandler(backend, m, true, 0.0))
 
 	rr := httptest.NewRecorder()
 
@@ -1003,7 +1004,7 @@ func TestBadPayloadSizePutError(t *testing.T) {
 			&mockMetrics,
 		},
 	}
-	router.POST("/cache", NewPutHandler(backend, m, 10, true))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
 
 	putResponse := doPut(t, router, reqBody)
 
@@ -1040,7 +1041,7 @@ func TestInternalPutClientError(t *testing.T) {
 	// Use mock client that will return an error
 	backendWithMetrics := decorators.LogMetrics(newErrorReturningBackend(), m)
 
-	router.POST("/cache", NewPutHandler(backendWithMetrics, m, 10, true))
+	router.POST("/cache", NewPutHandler(backendWithMetrics, m, 10, true, 0.0))
 
 	// Run test
 	putResponse := doPut(t, router, reqBody)
@@ -1114,7 +1115,7 @@ func TestEmptyPutRequests(t *testing.T) {
 			},
 		}
 		router := httprouter.New()
-		router.POST("/cache", NewPutHandler(backend, m, 10, true))
+		router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
 		rr := httptest.NewRecorder()
 
 		// Create request everytime
@@ -1157,7 +1158,7 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 			&mockMetrics,
 		},
 	}
-	router.POST("/cache", NewPutHandler(backend, m, 10, true))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
 
 	putResponse := doPut(t, router, reqBody)
 
@@ -1453,8 +1454,8 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 		},
 	}
 
-	router.POST("/cache", NewPutHandler(backend, m, 10, true))
-	router.GET("/cache", NewGetHandler(backend, m, true))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+	router.GET("/cache", NewGetHandler(backend, m, true, 0.0))
 
 	rr := httptest.NewRecorder()
 

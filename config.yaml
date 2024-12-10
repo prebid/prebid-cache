@@ -10,6 +10,8 @@ request_limits:
   max_size_bytes: 10240 # 10K
   max_num_values: 10
   max_ttl_seconds: 3600
+request_logging:
+  referer_sampling_rate: 1.0
 backend:
   type: "memory" # Switch to be "aerospike", "cassandra", "memcache", "ignite" or "redis" for production.
 # aerospike:

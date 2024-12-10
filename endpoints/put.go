@@ -29,7 +29,7 @@ type PutHandler struct {
 type putHandlerConfig struct {
 	maxNumValues      int
 	allowKeys         bool
-	refererLogginRate float64
+	refererLogginRate float32
 }
 
 type syncPools struct {
@@ -38,7 +38,7 @@ type syncPools struct {
 }
 
 // NewPutHandler returns the handle function for the "/cache" endpoint when it receives a POST request
-func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool, refererLogSamplingRate float32) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	putHandler := &PutHandler{}
 
 	// Assign storage client to put endpoint
@@ -189,7 +189,7 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 
 	if utils.RandomPick(e.cfg.refererLogginRate) == true {
 		if refererHeaderValue := r.Header.Get(utils.REFERER_HEADER_KEY); refererHeaderValue != "" {
-			log.Info(refererHeaderValue)
+			log.Info("Incoming request Referer header: " + refererHeaderValue)
 		}
 	}
 

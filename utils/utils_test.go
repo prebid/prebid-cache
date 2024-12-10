@@ -9,7 +9,7 @@ import (
 func TestRandomPick(t *testing.T) {
 	testCases := []struct {
 		desc              string
-		inPickProbability float64
+		inPickProbability float32
 		expected          bool
 	}{
 		{
@@ -22,11 +22,6 @@ func TestRandomPick(t *testing.T) {
 			inPickProbability: 1.00,
 			expected:          true,
 		},
-		//{
-		//	desc:          "100% logging rate, expect true",
-		//	inLoggingRate: 0.5389,
-		//	expected:      true,
-		//},
 	}
 	for _, tc := range testCases {
 		assert.Equal(t, tc.expected, RandomPick(tc.inPickProbability), tc.desc)
