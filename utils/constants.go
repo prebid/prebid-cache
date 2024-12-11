@@ -2,9 +2,8 @@ package utils
 
 // These strings are prefixed onto data put in the backend, to designate its type.
 const (
-	XML_PREFIX         = "xml"
-	JSON_PREFIX        = "json"
-	REFERER_HEADER_KEY = "Referer"
+	XML_PREFIX  = "xml"
+	JSON_PREFIX = "json"
 )
 
 // The following numeric constants serve as configuration defaults

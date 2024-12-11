@@ -187,8 +187,8 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	e.metrics.RecordPutTotal()
 
 	if utils.RandomPick(e.cfg.refererLogRate) == true {
-		if refererHeaderValue := r.Header.Get(utils.REFERER_HEADER_KEY); refererHeaderValue != "" {
-			logrus.Info("Incoming request Referer header: " + refererHeaderValue)
+		if referer := r.Referer(); referer != "" {
+			logrus.Info("PUT request Referer header: " + referer)
 		}
 	}
 

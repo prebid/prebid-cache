@@ -13,6 +13,7 @@ import (
 	testLogrus "github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDefaults(t *testing.T) {
@@ -924,12 +925,12 @@ func TestRequestLogging(t *testing.T) {
 	}
 
 	testCases := []struct {
-		desc                string
+		name                string
 		inRequestLoggingCfg *RequestLogging
 		expectedLogInfo     []logComponents
 	}{
 		{
-			desc: "negative sampling rate, expect fatal log",
+			name: "invalid_nagative", // must be greater or equal to zero. Expect fatal log
 			inRequestLoggingCfg: &RequestLogging{
 				RefererSamplingRate: -0.1,
 			},
@@ -938,7 +939,7 @@ func TestRequestLogging(t *testing.T) {
 			},
 		},
 		{
-			desc: "Sampling rate greater than 1.0, expect fatal log",
+			name: "invalid_high", // must be less than or equal to 1. expect fatal log.
 			inRequestLoggingCfg: &RequestLogging{
 				RefererSamplingRate: 1.1,
 			},
@@ -947,7 +948,7 @@ func TestRequestLogging(t *testing.T) {
 			},
 		},
 		{
-			desc: "Sampling rate of 1.0 is between the acceptable threshold. Expect info log",
+			name: "valid_one", // sampling rate of 1.0 is between the acceptable threshold. Expect info log"
 			inRequestLoggingCfg: &RequestLogging{
 				RefererSamplingRate: 1.0,
 			},
@@ -956,7 +957,7 @@ func TestRequestLogging(t *testing.T) {
 			},
 		},
 		{
-			desc: "Sampling rate of 0.0 is between the acceptable threshold. Expect info log",
+			name: "valid_zero", // sampling rate of 0.0 is between the acceptable threshold. Expect info log.
 			inRequestLoggingCfg: &RequestLogging{
 				RefererSamplingRate: 0.0,
 			},
@@ -965,12 +966,12 @@ func TestRequestLogging(t *testing.T) {
 			},
 		},
 		{
-			desc: "Sampling rate of 0.6814 is between the acceptable threshold. Expect info log",
+			name: "valid",
 			inRequestLoggingCfg: &RequestLogging{
-				RefererSamplingRate: 0.6814,
+				RefererSamplingRate: 0.1111,
 			},
 			expectedLogInfo: []logComponents{
-				{msg: `config.request_logging.referer_sampling_rate: 0.68`, lvl: logrus.InfoLevel},
+				{msg: `config.request_logging.referer_sampling_rate: 0.11`, lvl: logrus.InfoLevel},
 			},
 		},
 	}
@@ -980,20 +981,21 @@ func TestRequestLogging(t *testing.T) {
 	logrus.StandardLogger().ExitFunc = func(int) {}
 
 	for _, tc := range testCases {
-		//Run
-		tc.inRequestLoggingCfg.validateAndLog()
+		t.Run(tc.name, func(t *testing.T) {
+			tc.inRequestLoggingCfg.validateAndLog()
 
-		//Assert
-		if assert.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.desc+":different number of entries") {
+			// assertions
+			require.Len(t, hook.Entries, len(tc.expectedLogInfo), tc.name+":log_entries")
 			for i := 0; i < len(tc.expectedLogInfo); i++ {
-				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message, tc.desc+":message")
-				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.desc+":log level")
+				assert.Equal(t, tc.expectedLogInfo[i].msg, hook.Entries[i].Message, tc.name+":message")
+				assert.Equal(t, tc.expectedLogInfo[i].lvl, hook.Entries[i].Level, tc.name+":log_level")
 			}
-		}
 
-		//Reset log after every test and assert successful reset
-		hook.Reset()
-		assert.Nil(t, hook.LastEntry())
+			//Reset log after every test and assert successful reset
+			hook.Reset()
+			assert.Nil(t, hook.LastEntry())
+
+		})
 	}
 }
 
