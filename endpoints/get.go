@@ -23,11 +23,11 @@ type GetHandler struct {
 
 type getHandlerConfig struct {
 	allowCustomKeys bool
-	refererLogRate  float32
+	refererLogRate  float64
 }
 
 // NewGetHandler returns the handle function for the "/cache" endpoint when it receives a GET request
-func NewGetHandler(storage backends.Backend, metrics *metrics.Metrics, allowCustomKeys bool, refererSamplingRate float32) func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func NewGetHandler(storage backends.Backend, metrics *metrics.Metrics, allowCustomKeys bool, refererSamplingRate float64) func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	getHandler := &GetHandler{
 		// Assign storage client to get endpoint
 		backend: storage,

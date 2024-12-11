@@ -42,10 +42,10 @@ func TestGetJsonTests(t *testing.T) {
 		}
 		rr := httptest.NewRecorder()
 
-		// RUN TEST
+		// Run test
 		router.ServeHTTP(rr, request)
 
-		// ASSERTIONS
+		// Assertions
 		assert.Equal(t, tc.ExpectedOutput.Code, rr.Code, testFile)
 
 		// Assert this is a valid test that expects either an error or a GetResponse
@@ -110,7 +110,7 @@ func TestGetHandler(t *testing.T) {
 	}
 	type testConfig struct {
 		allowKeys           bool
-		refererSamplingRate float32
+		refererSamplingRate float64
 	}
 	type testInput struct {
 		uuid string

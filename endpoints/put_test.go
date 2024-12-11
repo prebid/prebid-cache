@@ -122,7 +122,7 @@ type hostConfig struct {
 	MaxNumValues     int         `json:"max_num_values"`
 	MaxTTLSeconds    int         `json:"max_ttl_seconds"`
 	FakeBackend      fakeBackend `json:"fake_backend"`
-	RefererLogRate   float32
+	RefererLogRate   float64     `json:"referer_sampling_rate"`
 }
 
 type fakeBackend struct {

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -935,7 +934,7 @@ func TestRequestLogging(t *testing.T) {
 				RefererSamplingRate: -0.1,
 			},
 			expectedLogInfo: []logComponents{
-				{msg: `invalid config.request_logging.referer_sampling_rate: value must be positive and not greater than 1.0. Got -0.10`, lvl: logrus.FatalLevel},
+				{msg: `invalid config.request_logging.referer_sampling_rate: value must be positive and not greater than 1.0. Got -0.1`, lvl: logrus.FatalLevel},
 			},
 		},
 		{
@@ -944,7 +943,7 @@ func TestRequestLogging(t *testing.T) {
 				RefererSamplingRate: 1.1,
 			},
 			expectedLogInfo: []logComponents{
-				{msg: `invalid config.request_logging.referer_sampling_rate: value must be positive and not greater than 1.0. Got 1.10`, lvl: logrus.FatalLevel},
+				{msg: `invalid config.request_logging.referer_sampling_rate: value must be positive and not greater than 1.0. Got 1.1`, lvl: logrus.FatalLevel},
 			},
 		},
 		{
@@ -953,7 +952,7 @@ func TestRequestLogging(t *testing.T) {
 				RefererSamplingRate: 1.0,
 			},
 			expectedLogInfo: []logComponents{
-				{msg: `config.request_logging.referer_sampling_rate: 1.00`, lvl: logrus.InfoLevel},
+				{msg: `config.request_logging.referer_sampling_rate: 1`, lvl: logrus.InfoLevel},
 			},
 		},
 		{
@@ -962,7 +961,7 @@ func TestRequestLogging(t *testing.T) {
 				RefererSamplingRate: 0.0,
 			},
 			expectedLogInfo: []logComponents{
-				{msg: `config.request_logging.referer_sampling_rate: 0.00`, lvl: logrus.InfoLevel},
+				{msg: `config.request_logging.referer_sampling_rate: 0`, lvl: logrus.InfoLevel},
 			},
 		},
 		{
@@ -971,7 +970,7 @@ func TestRequestLogging(t *testing.T) {
 				RefererSamplingRate: 0.1111,
 			},
 			expectedLogInfo: []logComponents{
-				{msg: `config.request_logging.referer_sampling_rate: 0.11`, lvl: logrus.InfoLevel},
+				{msg: `config.request_logging.referer_sampling_rate: 0.1111`, lvl: logrus.InfoLevel},
 			},
 		},
 	}
@@ -1165,20 +1164,20 @@ func TestConfigurationValidateAndLog(t *testing.T) {
 	expectedConfig := getExpectedDefaultConfig()
 
 	expectedLogInfo := []logComponents{
-		{msg: fmt.Sprintf("config.port: %d", expectedConfig.Port), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.admin_port: %d", expectedConfig.AdminPort), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.log.level: %s", expectedConfig.Log.Level), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.rate_limiter.enabled: %t", expectedConfig.RateLimiting.Enabled), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.rate_limiter.num_requests: %d", expectedConfig.RateLimiting.MaxRequestsPerSecond), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.request_limits.allow_setting_keys: %v", expectedConfig.RequestLimits.AllowSettingKeys), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.request_limits.max_ttl_seconds: %d", expectedConfig.RequestLimits.MaxTTLSeconds), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.request_limits.max_size_bytes: %d", expectedConfig.RequestLimits.MaxSize), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.request_limits.max_num_values: %d", expectedConfig.RequestLimits.MaxNumValues), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.request_limits.max_header_size_bytes: %d", expectedConfig.RequestLimits.MaxHeaderSize), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.request_logging.referer_sampling_rate: %.2f", expectedConfig.RequestLogging.RefererSamplingRate), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.backend.type: %s", expectedConfig.Backend.Type), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("config.compression.type: %s", expectedConfig.Compression.Type), lvl: logrus.InfoLevel},
-		{msg: fmt.Sprintf("Prebid Cache will run without metrics"), lvl: logrus.InfoLevel},
+		{msg: "config.port: 2424", lvl: logrus.InfoLevel},
+		{msg: "config.admin_port: 2525", lvl: logrus.InfoLevel},
+		{msg: "config.log.level: info", lvl: logrus.InfoLevel},
+		{msg: "config.rate_limiter.enabled: true", lvl: logrus.InfoLevel},
+		{msg: "config.rate_limiter.num_requests: 100", lvl: logrus.InfoLevel},
+		{msg: "config.request_limits.allow_setting_keys: false", lvl: logrus.InfoLevel},
+		{msg: "config.request_limits.max_ttl_seconds: 3600", lvl: logrus.InfoLevel},
+		{msg: "config.request_limits.max_size_bytes: 10240", lvl: logrus.InfoLevel},
+		{msg: "config.request_limits.max_num_values: 10", lvl: logrus.InfoLevel},
+		{msg: "config.request_limits.max_header_size_bytes: 1048576", lvl: logrus.InfoLevel},
+		{msg: "config.request_logging.referer_sampling_rate: 0", lvl: logrus.InfoLevel},
+		{msg: "config.backend.type: memory", lvl: logrus.InfoLevel},
+		{msg: "config.compression.type: snappy", lvl: logrus.InfoLevel},
+		{msg: "Prebid Cache will run without metrics", lvl: logrus.InfoLevel},
 	}
 
 	// Run test
@@ -1187,7 +1186,7 @@ func TestConfigurationValidateAndLog(t *testing.T) {
 	// Assertions
 	if assert.Len(t, hook.Entries, len(expectedLogInfo)) {
 		for i := 0; i < len(expectedLogInfo); i++ {
-			assert.True(t, strings.HasPrefix(hook.Entries[i].Message, expectedLogInfo[i].msg), "Wrong message")
+			assert.Equal(t, expectedLogInfo[i].msg, hook.Entries[i].Message, "Wrong message")
 			assert.Equal(t, expectedLogInfo[i].lvl, hook.Entries[i].Level, "Wrong log level")
 		}
 	}

@@ -9,7 +9,7 @@ import (
 func TestRandomPick(t *testing.T) {
 	testCases := []struct {
 		desc              string
-		inPickProbability float32
+		inPickProbability float64
 		expected          bool
 	}{
 		{

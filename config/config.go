@@ -2,6 +2,7 @@ package config
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -184,14 +185,14 @@ type RequestLogging struct {
 	// RefererSamplingRate represents the probability of Prebid Cache loging the incoming request referer header
 	// chance = 1.0 => always log,
 	// chance = 0.0 => never log
-	RefererSamplingRate float32 `mapstructure:"referer_sampling_rate"`
+	RefererSamplingRate float64 `mapstructure:"referer_sampling_rate"`
 }
 
 func (cfg *RequestLogging) validateAndLog() {
 	if cfg.RefererSamplingRate >= 0.0 && cfg.RefererSamplingRate <= 1.0 {
-		log.Infof("config.request_logging.referer_sampling_rate: %.2f", cfg.RefererSamplingRate)
+		log.Infof("config.request_logging.referer_sampling_rate: %s", strconv.FormatFloat(cfg.RefererSamplingRate, 'f', -1, 64))
 	} else {
-		log.Fatalf("invalid config.request_logging.referer_sampling_rate: value must be positive and not greater than 1.0. Got %.2f", cfg.RefererSamplingRate)
+		log.Fatalf("invalid config.request_logging.referer_sampling_rate: value must be positive and not greater than 1.0. Got %s", strconv.FormatFloat(cfg.RefererSamplingRate, 'f', -1, 64))
 	}
 }
 

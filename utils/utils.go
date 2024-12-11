@@ -12,12 +12,12 @@ func GenerateRandomID() (string, error) {
 	return u2.String(), err
 }
 
-func RandomPick(pickProbability float32) bool {
+func RandomPick(pickProbability float64) bool {
 	if pickProbability == 0.0 {
 		return false
 	}
 	if pickProbability == 1.0 {
 		return true
 	}
-	return rand.Float32() < pickProbability
+	return rand.Float64() < pickProbability
 }
