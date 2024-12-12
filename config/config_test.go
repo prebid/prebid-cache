@@ -929,7 +929,7 @@ func TestRequestLogging(t *testing.T) {
 		expectedLogInfo     []logComponents
 	}{
 		{
-			name: "invalid_nagative", // must be greater or equal to zero. Expect fatal log
+			name: "invalid_negative", // must be greater or equal to zero. Expect fatal log
 			inRequestLoggingCfg: &RequestLogging{
 				RefererSamplingRate: -0.1,
 			},

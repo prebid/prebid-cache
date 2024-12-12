@@ -47,10 +47,10 @@ func NewGetHandler(storage backends.Backend, metrics *metrics.Metrics, allowCust
 func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	e.metrics.RecordGetTotal()
 
-	if utils.RandomPick(e.cfg.refererLogRate) == true {
-		if referer := r.Referer(); referer != "" {
-			log.Info("GET request Referer header: " + referer)
-		}
+	// If incoming request comes with a referer header, there's a e.cfg.refererLogRate percent chance
+	// getting it logged
+	if referer := r.Referer(); referer != "" && utils.RandomPick(e.cfg.refererLogRate) {
+		log.Info("GET request Referer header: " + referer)
 	}
 
 	start := time.Now()

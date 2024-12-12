@@ -8,22 +8,24 @@ import (
 
 func TestRandomPick(t *testing.T) {
 	testCases := []struct {
-		desc              string
+		name              string
 		inPickProbability float64
 		expected          bool
 	}{
 		{
-			desc:              "Zero logging rate. Expect false",
+			name:              "zero", // Zero probablity of true, expect false
 			inPickProbability: 0.00,
 			expected:          false,
 		},
 		{
-			desc:              "100% logging rate, expect true",
+			name:              "one", // 100% probability of true, expect true
 			inPickProbability: 1.00,
 			expected:          true,
 		},
 	}
 	for _, tc := range testCases {
-		assert.Equal(t, tc.expected, RandomPick(tc.inPickProbability), tc.desc)
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, RandomPick(tc.inPickProbability), tc.name)
+		})
 	}
 }
