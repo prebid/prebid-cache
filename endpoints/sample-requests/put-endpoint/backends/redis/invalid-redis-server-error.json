@@ -7,14 +7,14 @@
     }
   },
   "put_request": {
-      "body": {
-          "puts": [
-              {
-                  "type": "xml",
-                  "value": "xml<description>another_XML</description>"
-              }
-          ]
-      }
+    "body": {
+      "puts": [
+        {
+          "type": "xml",
+          "value": "xml<description>another_XML</description>"
+        }
+      ]
+    }
   },
   "expected_log_entries": [
     {

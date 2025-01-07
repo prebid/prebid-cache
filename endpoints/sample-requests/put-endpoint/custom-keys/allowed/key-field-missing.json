@@ -4,14 +4,14 @@
     "allow_setting_keys": true
   },
   "put_request": {
-      "body": {
-          "puts": [
-              {
-                  "type": "xml",
-                  "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
-              }
-          ]
-      }
+    "body": {
+      "puts": [
+        {
+          "type": "xml",
+          "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+        }
+      ]
+    }
   },
   "expected_metrics": [
     "RecordPutTotal",
@@ -25,7 +25,9 @@
     "code": 200,
     "put_response": {
       "responses": [
-        {"uuid": "random"}
+        {
+          "uuid": "random"
+        }
       ]
     }
   }

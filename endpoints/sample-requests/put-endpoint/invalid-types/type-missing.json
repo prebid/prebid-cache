@@ -1,13 +1,13 @@
 {
   "description": "Request is missing the 'type' field. Respond with error",
   "put_request": {
-      "body": {
-          "puts": [
-              {
-                  "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
-              }
-          ]
-      }
+    "body": {
+      "puts": [
+        {
+          "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+        }
+      ]
+    }
   },
   "expected_log_entries": [
     {

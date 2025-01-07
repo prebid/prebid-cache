@@ -4,20 +4,20 @@
     "max_num_values": 2
   },
   "put_request": {
-      "body": {
-          "puts": [
-              {
-                  "type": "xml",
-                  "ttlseconds": 60,
-                  "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
-              },
-              {
-                  "type": "json",
-                  "ttlseconds": 60,
-                  "value": "{\"an_int_field\": 1}"
-              }
-          ]
-      }
+    "body": {
+      "puts": [
+        {
+          "type": "xml",
+          "ttlseconds": 60,
+          "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+        },
+        {
+          "type": "json",
+          "ttlseconds": 60,
+          "value": "{\"an_int_field\": 1}"
+        }
+      ]
+    }
   },
   "expected_metrics": [
     "RecordPutTotal",
@@ -32,8 +32,12 @@
     "code": 200,
     "put_response": {
       "responses": [
-        {"uuid": "random"},
-        {"uuid": "random"}
+        {
+          "uuid": "random"
+        },
+        {
+          "uuid": "random"
+        }
       ]
     }
   }

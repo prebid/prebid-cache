@@ -12,15 +12,15 @@
     }
   },
   "put_request": {
-      "body": {
-          "puts": [
-              {
-                  "type": "xml",
-                  "value": "<tag>updated_XML</tag>",
-                  "key": "the-custom-thirty-six-character-uuid"
-              }
-          ]
-      }
+    "body": {
+      "puts": [
+        {
+          "type": "xml",
+          "value": "<tag>updated_XML</tag>",
+          "key": "the-custom-thirty-six-character-uuid"
+        }
+      ]
+    }
   },
   "expected_metrics": [
     "RecordPutTotal",
