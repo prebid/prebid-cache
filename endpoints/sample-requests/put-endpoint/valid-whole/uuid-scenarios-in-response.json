@@ -17,25 +17,27 @@
     "allow_setting_keys": true
   },
   "put_request": {
-    "puts": [
-      {
-        "type": "json",
-        "ttlseconds": 60,
-        "value": "{\"description\": \"value will be stored under random UUID\"}"
-      },
-      {
-        "key": "the-custom-thirty-six-character-uuid",
-        "type": "json",
-        "ttlseconds": 60,
-        "value": "{\"description\": \"value will be stored under custom UUID\"}"
-      },
-      {
-        "key": "uuid-stored-value-we-want-overwriten",
-        "value": "<description>XML meant to overwrite data already stored under this key</description>",
-        "type": "xml",
-        "ttlseconds": 60
+      "body": {
+          "puts": [
+              {
+                  "type": "json",
+                  "ttlseconds": 60,
+                  "value": "{\"description\": \"value will be stored under random UUID\"}"
+              },
+              {
+                  "key": "the-custom-thirty-six-character-uuid",
+                  "type": "json",
+                  "ttlseconds": 60,
+                  "value": "{\"description\": \"value will be stored under custom UUID\"}"
+              },
+              {
+                  "key": "uuid-stored-value-we-want-overwriten",
+                  "value": "<description>XML meant to overwrite data already stored under this key</description>",
+                  "type": "xml",
+                  "ttlseconds": 60
+              }
+          ]
       }
-    ]
   },
   "expected_metrics": [
     "RecordPutTotal",

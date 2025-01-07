@@ -25,7 +25,7 @@ func TestRandomPick(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.expected, RandomPick(tc.inPickProbability), tc.name)
+			assert.Equal(t, tc.expected, RandomPick(tc.inPickProbability))
 		})
 	}
 }

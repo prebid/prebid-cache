@@ -4,13 +4,15 @@
     "max_ttl_seconds": 5
   },
   "put_request": {
-    "puts": [
-      {
-        "type": "xml",
-        "ttlseconds": 6,
-        "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+      "body": {
+          "puts": [
+              {
+                  "type": "xml",
+                  "ttlseconds": 6,
+                  "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+              }
+          ]
       }
-    ]
   },
   "expected_metrics": [
     "RecordPutTotal",

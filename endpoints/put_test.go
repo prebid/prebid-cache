@@ -51,7 +51,7 @@ func TestPutJsonTests(t *testing.T) {
 
 		router := httprouter.New()
 		router.POST("/cache", NewPutHandler(backend, m, tc.HostConfig.MaxNumValues, tc.HostConfig.AllowSettingKeys, tc.HostConfig.RefererLogRate))
-		request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(tc.PutRequest)))
+		request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(tc.PutRequest.Body)))
 		if !assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err) {
 			hook.Reset()
 			continue
@@ -96,12 +96,17 @@ func TestPutJsonTests(t *testing.T) {
 }
 
 type testData struct {
-	HostConfig         hostConfig      `json:"config"`
-	PutRequest         json.RawMessage `json:"put_request"`
-	ExpectedOutput     expectedOut     `json:"expected_output"`
-	ExpectedLogEntries []logEntry      `json:"expected_log_entries"`
-	ExpectedMetrics    []string        `json:"expected_metrics"`
-	Query              string          `json:"get_request_query"`
+	HostConfig         hostConfig     `json:"config"`
+	PutRequest         testPutRequest `json:"put_request"`
+	ExpectedOutput     expectedOut    `json:"expected_output"`
+	ExpectedLogEntries []logEntry     `json:"expected_log_entries"`
+	ExpectedMetrics    []string       `json:"expected_metrics"`
+	Query              string         `json:"get_request_query"`
+}
+
+type testPutRequest struct {
+	Body    json.RawMessage     `json:"body"`
+	Headers map[string][]string `json:"headers"`
 }
 
 type expectedOut struct {

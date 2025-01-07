@@ -13,13 +13,15 @@
     }
   },
   "put_request": {
-    "puts": [
-      {
-        "key": "the-custom-thirty-six-character-uuid",
-        "type": "xml",
-        "value": "<tag>NEW_XML</tag>"
+      "body": {
+          "puts": [
+              {
+                  "key": "the-custom-thirty-six-character-uuid",
+                  "type": "xml",
+                  "value": "<tag>NEW_XML</tag>"
+              }
+          ]
       }
-    ]
   },
   "expected_metrics": [
     "RecordPutTotal",

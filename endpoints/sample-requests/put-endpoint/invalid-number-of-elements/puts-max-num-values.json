@@ -4,10 +4,12 @@
       "max_num_values": 1
   },
   "put_request": {
-    "puts": [
-      {"type":"xml","ttlseconds":5,"value":"<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"},
-      {"type":"json","ttlseconds":5,"value":"{\"field\":100}"}
-    ]
+      "body": {
+          "puts": [
+              {"type":"xml","ttlseconds":5,"value":"<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"},
+              {"type":"json","ttlseconds":5,"value":"{\"field\":100}"}
+          ]
+      }
   },
   "expected_metrics": [
     "RecordPutTotal",

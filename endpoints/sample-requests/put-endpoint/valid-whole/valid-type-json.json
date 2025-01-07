@@ -1,12 +1,14 @@
 {
   "description": "Store JSON type value, which Prebid Cache allows. Store under a random UUID",
   "put_request": {
-    "puts": [
-      {
-        "type": "json",
-        "value": "{\"field\":100}"
+      "body": {
+          "puts": [
+              {
+                  "type": "json",
+                  "value": "{\"field\":100}"
+              }
+          ]
       }
-    ]
   },
   "expected_metrics": [
     "RecordPutTotal",

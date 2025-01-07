@@ -113,8 +113,9 @@ func TestGetHandler(t *testing.T) {
 		refererSamplingRate float64
 	}
 	type testInput struct {
-		uuid string
-		cfg  testConfig
+		uuid       string
+		cfg        testConfig
+		reqHeaders map[string]string
 	}
 	type testOutput struct {
 		responseCode    int
@@ -132,7 +133,6 @@ func TestGetHandler(t *testing.T) {
 			"Missing UUID. Return http error but don't interrupt server's execution",
 			testInput{
 				uuid: "",
-				cfg:  testConfig{allowKeys: false},
 			},
 			testOutput{
 				responseCode: http.StatusBadRequest,
@@ -153,7 +153,6 @@ func TestGetHandler(t *testing.T) {
 			"Prebid Cache wasn't configured to allow custom keys therefore, it doesn't allow for keys different than 36 char long. Respond with http error and don't interrupt server's execution",
 			testInput{
 				uuid: "non-36-char-key-maps-to-json",
-				cfg:  testConfig{allowKeys: false},
 			},
 			testOutput{
 				responseCode: http.StatusNotFound,
@@ -235,6 +234,48 @@ func TestGetHandler(t *testing.T) {
 				},
 			},
 		},
+		{
+			"Sampling rate is set to 100% but request comes with no referer header. No logs expected.",
+			testInput{
+				uuid:       "36-char-key-maps-to-actual-xml-value",
+				cfg:        testConfig{refererSamplingRate: 1.0},
+				reqHeaders: map[string]string{"OtherHeader": "headervalue"},
+			},
+			testOutput{
+				responseCode: http.StatusOK,
+				responseBody: "<tag>xml data here</tag>",
+				logEntries:   []logEntry{},
+				expectedMetrics: []string{
+					"RecordGetTotal",
+					"RecordGetDuration",
+				},
+			},
+		},
+		{
+			"Sampling rate is set to 100%. Expect request referer header to be logged.",
+			testInput{
+				uuid: "36-char-key-maps-to-actual-xml-value",
+				cfg:  testConfig{refererSamplingRate: 1.0},
+				reqHeaders: map[string]string{
+					"Referer":     "anyreferer",
+					"OtherHeader": "headervalue",
+				},
+			},
+			testOutput{
+				responseCode: http.StatusOK,
+				responseBody: "<tag>xml data here</tag>",
+				logEntries: []logEntry{
+					{
+						msg: "GET request Referer header: anyreferer",
+						lvl: logrus.InfoLevel,
+					},
+				},
+				expectedMetrics: []string{
+					"RecordGetTotal",
+					"RecordGetDuration",
+				},
+			},
+		},
 	}
 
 	// Lower Log Treshold so we can see DebugLevel entries in our mock logrus log
@@ -271,6 +312,13 @@ func TestGetHandler(t *testing.T) {
 
 		body := new(bytes.Buffer)
 		getReq, err := http.NewRequest("GET", "/cache"+"?uuid="+test.in.uuid, body)
+
+		if len(test.in.reqHeaders) > 0 {
+			for k, v := range test.in.reqHeaders {
+				getReq.Header.Set(k, v)
+			}
+		}
+
 		if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
 			hook.Reset()
 			continue
