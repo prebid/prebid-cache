@@ -3,7 +3,7 @@
   "config": {
     "max_size_bytes": 1
   },
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

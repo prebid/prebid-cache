@@ -12,7 +12,7 @@
       ]
     }
   },
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

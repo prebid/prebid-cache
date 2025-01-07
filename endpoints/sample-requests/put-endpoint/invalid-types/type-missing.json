@@ -1,6 +1,6 @@
 {
   "description": "Request is missing the 'type' field. Respond with error",
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

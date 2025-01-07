@@ -1,6 +1,6 @@
 {
   "description": "Prebid Cache allows the storage of XML type values. Store under a random UUID because the 'key' field missing and custom keys are not allowed anyways",
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

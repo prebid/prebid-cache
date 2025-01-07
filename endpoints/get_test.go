@@ -34,12 +34,21 @@ func TestGetJsonTests(t *testing.T) {
 
 		router := httprouter.New()
 		router.GET("/cache", NewGetHandler(backend, m, tc.HostConfig.AllowSettingKeys, tc.HostConfig.RefererLogRate))
-		request, err := http.NewRequest("GET", "/cache?"+tc.Query, nil)
+		request, err := http.NewRequest("GET", "/cache?"+tc.Request.Query, nil)
 		if !assert.NoError(t, err, "Failed to create a GET request: %v", err) {
 			hook.Reset()
 			assert.Nil(t, hook.LastEntry())
 			continue
 		}
+
+		if len(tc.Request.Headers) > 0 {
+			for header, values := range tc.Request.Headers {
+				for _, v := range values {
+					request.Header.Set(header, v)
+				}
+			}
+		}
+
 		rr := httptest.NewRecorder()
 
 		// Run test

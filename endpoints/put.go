@@ -189,7 +189,7 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	// If incoming request comes with a referer header, there's a e.cfg.refererLogRate percent chance
 	// getting it logged
 	if referer := r.Referer(); referer != "" && utils.RandomPick(e.cfg.refererLogRate) {
-		logrus.Info("PUT request Referer header: " + referer)
+		logrus.Info("POST request Referer header: " + referer)
 	}
 
 	start := time.Now()

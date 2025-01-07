@@ -1,6 +1,6 @@
 {
   "description": "Put request wants to store element under a custom key but custom keys are not allowed in Prebid Cache's config. Store under a random UUID",
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

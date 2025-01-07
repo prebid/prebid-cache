@@ -1,6 +1,6 @@
 {
   "description": "Prebid Cache returns an error if a request doesn't come with a 'value' field.",
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

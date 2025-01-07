@@ -6,7 +6,7 @@
       "throw_error_message": "Redis server side error"
     }
   },
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

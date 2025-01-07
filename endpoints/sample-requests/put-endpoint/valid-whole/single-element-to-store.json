@@ -1,6 +1,6 @@
 {
   "description": "Put request wants to store a single element of valid type no larger than the maximum size allowed. Store under a random UUID",
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

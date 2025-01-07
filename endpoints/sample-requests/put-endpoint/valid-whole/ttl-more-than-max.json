@@ -3,7 +3,7 @@
   "config": {
     "max_ttl_seconds": 5
   },
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

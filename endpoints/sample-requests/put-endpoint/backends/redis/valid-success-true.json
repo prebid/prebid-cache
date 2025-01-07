@@ -7,7 +7,7 @@
       "throw_error_message": "redis: nil"
     }
   },
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

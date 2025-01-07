@@ -3,7 +3,7 @@
   "config": {
     "max_num_values": 1
   },
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

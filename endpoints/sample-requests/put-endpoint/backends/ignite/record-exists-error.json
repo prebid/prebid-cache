@@ -6,7 +6,7 @@
       "server_response": "{\"successStatus\":0,\"error\":\"\",\"response\":false}"
     }
   },
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {

@@ -15,7 +15,7 @@
     },
     "allow_setting_keys": true
   },
-  "put_request": {
+  "request": {
     "body": {
       "puts": [
         {
