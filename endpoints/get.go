@@ -16,20 +16,28 @@ import (
 
 // GetHandler serves "GET /cache" requests.
 type GetHandler struct {
-	backend         backends.Backend
-	metrics         *metrics.Metrics
+	backend backends.Backend
+	metrics *metrics.Metrics
+	cfg     getHandlerConfig
+}
+
+type getHandlerConfig struct {
 	allowCustomKeys bool
+	refererLogRate  float64
 }
 
 // NewGetHandler returns the handle function for the "/cache" endpoint when it receives a GET request
-func NewGetHandler(storage backends.Backend, metrics *metrics.Metrics, allowCustomKeys bool) func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func NewGetHandler(storage backends.Backend, metrics *metrics.Metrics, allowCustomKeys bool, refererSamplingRate float64) func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	getHandler := &GetHandler{
 		// Assign storage client to get endpoint
 		backend: storage,
 		// pass metrics engine
 		metrics: metrics,
-		// Pass configuration value
-		allowCustomKeys: allowCustomKeys,
+		// Pass configuration values
+		cfg: getHandlerConfig{
+			allowCustomKeys: allowCustomKeys,
+			refererLogRate:  refererSamplingRate,
+		},
 	}
 
 	// Return handle function
@@ -38,9 +46,16 @@ func NewGetHandler(storage backends.Backend, metrics *metrics.Metrics, allowCust
 
 func (e *GetHandler) handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	e.metrics.RecordGetTotal()
+
+	// If incoming request comes with a referer header, there's a e.cfg.refererLogRate percent chance
+	// getting it logged
+	if referer := r.Referer(); referer != "" && utils.RandomPick(e.cfg.refererLogRate) {
+		log.Info("GET request Referer header: " + referer)
+	}
+
 	start := time.Now()
 
-	uuid, parseErr := parseUUID(r, e.allowCustomKeys)
+	uuid, parseErr := parseUUID(r, e.cfg.allowCustomKeys)
 	if parseErr != nil {
 		// parseUUID either returns http.StatusBadRequest or http.StatusNotFound. Both should be
 		// accounted using RecordGetBadRequest()

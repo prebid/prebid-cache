@@ -1,5 +1,8 @@
 {
-  "description": "Store JSON type value, which Prebid Cache allows. Store under a random UUID",
+  "description": "Prebid Cache configured to log the referer header of 100% of incoming requests. Referer successfully logged.",
+  "config": {
+    "referer_sampling_rate": 1.0
+  },
   "request": {
     "body": {
       "puts": [
@@ -8,8 +11,17 @@
           "value": "{\"field\":100}"
         }
       ]
+    },
+    "headers": {
+      "Referer": [ "anyreferer" ]
     }
   },
+  "expected_log_entries": [
+    {
+      "message": "POST request Referer header: anyreferer",
+      "level": 4
+    }
+  ],
   "expected_metrics": [
     "RecordPutTotal",
     "RecordPutBackendJson",

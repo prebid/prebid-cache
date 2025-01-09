@@ -1,12 +1,14 @@
 {
   "description": "Prebid Cache only allows to store JSON or XML types and the type 'unknown' is not supported. Respond with error",
-  "put_request": {
-    "puts": [
-      {
-        "type": "unknown",
-        "value": "some-value"
-      }
-    ]
+  "request": {
+    "body": {
+      "puts": [
+        {
+          "type": "unknown",
+          "value": "some-value"
+        }
+      ]
+    }
   },
   "expected_log_entries": [
     {

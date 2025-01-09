@@ -1,13 +1,23 @@
 {
   "description": "Put request wants to store more elements than allowed in the 'max_num_values' configuration. Don't store and return error",
   "config": {
-      "max_num_values": 1
+    "max_num_values": 1
   },
-  "put_request": {
-    "puts": [
-      {"type":"xml","ttlseconds":5,"value":"<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"},
-      {"type":"json","ttlseconds":5,"value":"{\"field\":100}"}
-    ]
+  "request": {
+    "body": {
+      "puts": [
+        {
+          "type": "xml",
+          "ttlseconds": 5,
+          "value": "<?xml version=\"1.0\">__video_info__<\\/VAST>\r\n"
+        },
+        {
+          "type": "json",
+          "ttlseconds": 5,
+          "value": "{\"field\":100}"
+        }
+      ]
+    }
   },
   "expected_metrics": [
     "RecordPutTotal",

@@ -3,14 +3,16 @@
   "config": {
     "allow_setting_keys": true
   },
-  "put_request": {
-    "puts": [
-      {
-        "type": "xml",
-        "value": "<tag>other_XML_content</tag>",
-        "key": "the-custom-thirty-six-character-uuid"
-      }
-    ]
+  "request": {
+    "body": {
+      "puts": [
+        {
+          "type": "xml",
+          "value": "<tag>other_XML_content</tag>",
+          "key": "the-custom-thirty-six-character-uuid"
+        }
+      ]
+    }
   },
   "expected_metrics": [
     "RecordPutTotal",

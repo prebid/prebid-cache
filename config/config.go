@@ -2,6 +2,7 @@ package config
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -97,6 +98,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("request_limits.max_num_values", utils.REQUEST_MAX_NUM_VALUES)
 	v.SetDefault("request_limits.max_ttl_seconds", utils.REQUEST_MAX_TTL_SECONDS)
 	v.SetDefault("request_limits.max_header_size_bytes", http.DefaultMaxHeaderBytes)
+	v.SetDefault("request_logging.referer_sampling_rate", 0.0)
 	v.SetDefault("routes.allow_public_write", true)
 }
 
@@ -114,17 +116,19 @@ func setEnvVarsLookup(v *viper.Viper) {
 }
 
 type Configuration struct {
-	Port           int           `mapstructure:"port"`
-	AdminPort      int           `mapstructure:"admin_port"`
-	IndexResponse  string        `mapstructure:"index_response"`
-	Log            Log           `mapstructure:"log"`
-	RateLimiting   RateLimiting  `mapstructure:"rate_limiter"`
-	RequestLimits  RequestLimits `mapstructure:"request_limits"`
-	StatusResponse string        `mapstructure:"status_response"`
-	Backend        Backend       `mapstructure:"backend"`
-	Compression    Compression   `mapstructure:"compression"`
-	Metrics        Metrics       `mapstructure:"metrics"`
-	Routes         Routes        `mapstructure:"routes"`
+	Port           int            `mapstructure:"port"`
+	AdminPort      int            `mapstructure:"admin_port"`
+	IndexResponse  string         `mapstructure:"index_response"`
+	Log            Log            `mapstructure:"log"`
+	RateLimiting   RateLimiting   `mapstructure:"rate_limiter"`
+	RequestLimits  RequestLimits  `mapstructure:"request_limits"`
+	RequestLogging RequestLogging `mapstructure:"request_logging"`
+
+	StatusResponse string      `mapstructure:"status_response"`
+	Backend        Backend     `mapstructure:"backend"`
+	Compression    Compression `mapstructure:"compression"`
+	Metrics        Metrics     `mapstructure:"metrics"`
+	Routes         Routes      `mapstructure:"routes"`
 }
 
 // ValidateAndLog validates the config, terminating the program on any errors.
@@ -136,6 +140,7 @@ func (cfg *Configuration) ValidateAndLog() {
 	cfg.Log.validateAndLog()
 	cfg.RateLimiting.validateAndLog()
 	cfg.RequestLimits.validateAndLog()
+	cfg.RequestLogging.validateAndLog()
 
 	if err := cfg.Backend.validateAndLog(); err != nil {
 		log.Fatalf("%s", err.Error())
@@ -174,6 +179,21 @@ type RateLimiting struct {
 func (cfg *RateLimiting) validateAndLog() {
 	log.Infof("config.rate_limiter.enabled: %t", cfg.Enabled)
 	log.Infof("config.rate_limiter.num_requests: %d", cfg.MaxRequestsPerSecond)
+}
+
+type RequestLogging struct {
+	// RefererSamplingRate represents the probability of Prebid Cache loging the incoming request referer header
+	// chance = 1.0 => always log,
+	// chance = 0.0 => never log
+	RefererSamplingRate float64 `mapstructure:"referer_sampling_rate"`
+}
+
+func (cfg *RequestLogging) validateAndLog() {
+	if cfg.RefererSamplingRate >= 0.0 && cfg.RefererSamplingRate <= 1.0 {
+		log.Infof("config.request_logging.referer_sampling_rate: %s", strconv.FormatFloat(cfg.RefererSamplingRate, 'f', -1, 64))
+	} else {
+		log.Fatalf("invalid config.request_logging.referer_sampling_rate: value must be positive and not greater than 1.0. Got %s", strconv.FormatFloat(cfg.RefererSamplingRate, 'f', -1, 64))
+	}
 }
 
 type RequestLimits struct {
