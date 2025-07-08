@@ -2,6 +2,7 @@ package routing
 
 import (
 	"net/http"
+	"net/http/pprof"
 	"time"
 
 	"github.com/didip/tollbooth/v6"
@@ -19,6 +20,7 @@ func NewAdminHandler(cfg config.Configuration, dataStore backends.Backend, appMe
 	router := httprouter.New()
 	addReadRoutes(cfg, dataStore, appMetrics, router)
 	addWriteRoutes(cfg, dataStore, appMetrics, router)
+	addPProfRoutes(router)
 	return router
 }
 
@@ -43,6 +45,24 @@ func addReadRoutes(cfg config.Configuration, dataStore backends.Backend, appMetr
 
 func addWriteRoutes(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics, router *httprouter.Router) {
 	router.POST("/cache", endpoints.NewPutHandler(dataStore, appMetrics, cfg.RequestLimits.MaxNumValues, cfg.RequestLimits.AllowSettingKeys, cfg.RequestLogging.RefererSamplingRate))
+}
+
+func addPProfRoutes(router *httprouter.Router) {
+	router.GET("/debug/pprof/*profile", func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+		switch params.ByName("profile") {
+		case "/profile":
+			pprof.Profile(w, r)
+		case "/cmdline":
+			pprof.Cmdline(w, r)
+		case "/symbol":
+			pprof.Symbol(w, r)
+		case "/trace":
+			pprof.Trace(w, r)
+		default:
+			pprof.Index(w, r)
+		}
+	})
+
 }
 
 func handleCors(handler http.Handler) http.Handler {
