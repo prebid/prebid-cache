@@ -71,6 +71,8 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("backend.redis.expiration", utils.REDIS_DEFAULT_EXPIRATION_MINUTES)
 	v.SetDefault("backend.redis.tls.enabled", false)
 	v.SetDefault("backend.redis.tls.insecure_skip_verify", false)
+	v.SetDefault("backend.redis.cluster.enabled", false)
+	v.SetDefault("backend.redis.cluster.hosts", []string{})
 	v.SetDefault("backend.ignite.scheme", "")
 	v.SetDefault("backend.ignite.host", "")
 	v.SetDefault("backend.ignite.port", 0)

@@ -34,6 +34,9 @@ backend:
 #   tls:
 #     enabled: false
 #     insecure_skip_verify: false
+#   cluster:
+#     enabled: false
+#     hosts: ["redis-node1:6379", "redis-node2:6379", "redis-node3:6379"]
 # ignite:
 #   scheme: "http"
 #   host: "127.0.0.1"

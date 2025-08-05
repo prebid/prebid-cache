@@ -151,12 +151,18 @@ func (cfg *Memcache) validateAndLog() error {
 }
 
 type Redis struct {
-	Host              string   `mapstructure:"host"`
-	Port              int      `mapstructure:"port"`
-	Password          string   `mapstructure:"password"`
-	Db                int      `mapstructure:"db"`
-	ExpirationMinutes int      `mapstructure:"expiration"`
-	TLS               RedisTLS `mapstructure:"tls"`
+	Host              string       `mapstructure:"host"`
+	Port              int          `mapstructure:"port"`
+	Password          string       `mapstructure:"password"`
+	Db                int          `mapstructure:"db"`
+	ExpirationMinutes int          `mapstructure:"expiration"`
+	TLS               RedisTLS     `mapstructure:"tls"`
+	Cluster           RedisCluster `mapstructure:"cluster"`
+}
+
+type RedisCluster struct {
+	Enabled bool     `mapstructure:"enabled"`
+	Hosts   []string `mapstructure:"hosts"`
 }
 
 type RedisTLS struct {
@@ -165,9 +171,24 @@ type RedisTLS struct {
 }
 
 func (cfg *Redis) validateAndLog() error {
-	log.Infof("config.backend.redis.host: %s", cfg.Host)
-	log.Infof("config.backend.redis.port: %d", cfg.Port)
-	log.Infof("config.backend.redis.db: %d", cfg.Db)
+	if cfg.Cluster.Enabled {
+		// Cluster mode validation and logging
+		if len(cfg.Cluster.Hosts) == 0 {
+			return errors.New("Redis cluster is enabled but no hosts are provided")
+		}
+		log.Infof("config.backend.redis.cluster.enabled: %t", cfg.Cluster.Enabled)
+		log.Infof("config.backend.redis.cluster.hosts: %v", cfg.Cluster.Hosts)
+		if cfg.Db != 0 {
+			log.Warnf("config.backend.redis.db: %d. Note that database selection is not supported in Redis cluster mode and will be ignored", cfg.Db)
+		}
+	} else {
+		// Single-node mode validation and logging
+		log.Infof("config.backend.redis.host: %s", cfg.Host)
+		log.Infof("config.backend.redis.port: %d", cfg.Port)
+		log.Infof("config.backend.redis.db: %d", cfg.Db)
+	}
+
+	// Common configuration logging
 	if cfg.ExpirationMinutes > 0 {
 		log.Infof("config.backend.redis.expiration: %d. Note that this configuration option is being deprecated in favor of config.request_limits.max_ttl_seconds", cfg.ExpirationMinutes)
 	}
