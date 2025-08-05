@@ -1302,7 +1302,7 @@ func getExpectedDefaultConfig() Configuration {
 				ExpirationMinutes: utils.REDIS_DEFAULT_EXPIRATION_MINUTES,
 				Cluster: RedisCluster{
 					Enabled: false,
-					Hosts:   nil,
+					Hosts:   []string{},
 				},
 			},
 			Ignite: Ignite{
