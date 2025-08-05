@@ -28,7 +28,7 @@ backend:
     keyspace: "prebid"
     default_ttl_seconds: 60
   memcache:
-    hosts: ["10.0.0.1:11211","127.0.0.1"]
+    hosts: ["10.0.0.1:11211", "127.0.0.1"]
   redis:
     host: "127.0.0.1"
     port: 6379
@@ -38,6 +38,9 @@ backend:
     tls:
       enabled: false
       insecure_skip_verify: false
+    cluster:
+      enabled: false
+      hosts: ["redis-node1:6379", "redis-node2:6379", "redis-node3:6379"]
   ignite:
     scheme: "http"
     host: "127.0.0.1"
