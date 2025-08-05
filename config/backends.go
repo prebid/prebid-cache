@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -151,13 +152,37 @@ func (cfg *Memcache) validateAndLog() error {
 }
 
 type Redis struct {
-	Host              string       `mapstructure:"host"`
-	Port              int          `mapstructure:"port"`
-	Password          string       `mapstructure:"password"`
-	Db                int          `mapstructure:"db"`
-	ExpirationMinutes int          `mapstructure:"expiration"`
-	TLS               RedisTLS     `mapstructure:"tls"`
-	Cluster           RedisCluster `mapstructure:"cluster"`
+	Host              string         `mapstructure:"host"`
+	Port              int            `mapstructure:"port"`
+	Password          string         `mapstructure:"password"`
+	Db                int            `mapstructure:"db"`
+	ExpirationMinutes int            `mapstructure:"expiration"`
+	TLS               RedisTLS       `mapstructure:"tls"`
+	Cluster           RedisCluster   `mapstructure:"cluster"`
+	Pool              *RedisPool     `mapstructure:"pool"`
+	Timeouts          *RedisTimeouts `mapstructure:"timeouts"`
+	Retry             *RedisRetry    `mapstructure:"retry"`
+}
+
+type RedisPool struct {
+	Size            int           `mapstructure:"size"`
+	Timeout         time.Duration `mapstructure:"timeout"`
+	MinIdleConns    int           `mapstructure:"min_idle_conns"`
+	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
+	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time"`
+	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+}
+
+type RedisTimeouts struct {
+	DialTimeout  time.Duration `mapstructure:"dial_timeout"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+}
+
+type RedisRetry struct {
+	MaxRetries      int           `mapstructure:"max_retries"`
+	MinRetryBackoff time.Duration `mapstructure:"min_retry_backoff"`
+	MaxRetryBackoff time.Duration `mapstructure:"max_retry_backoff"`
 }
 
 type RedisCluster struct {
@@ -194,6 +219,76 @@ func (cfg *Redis) validateAndLog() error {
 	}
 	log.Infof("config.backend.redis.tls.enabled: %t", cfg.TLS.Enabled)
 	log.Infof("config.backend.redis.tls.insecure_skip_verify: %t", cfg.TLS.InsecureSkipVerify)
+
+	// Validate and log pool configuration
+	if cfg.Pool != nil {
+		if cfg.Pool.Size < 0 {
+			return errors.New("Redis pool size cannot be negative")
+		}
+		if cfg.Pool.MinIdleConns < 0 {
+			return errors.New("Redis pool min_idle_conns cannot be negative")
+		}
+		if cfg.Pool.MaxIdleConns < 0 {
+			return errors.New("Redis pool max_idle_conns cannot be negative")
+		}
+		if cfg.Pool.MinIdleConns > 0 && cfg.Pool.MaxIdleConns > 0 && cfg.Pool.MinIdleConns > cfg.Pool.MaxIdleConns {
+			return errors.New("Redis pool min_idle_conns cannot be greater than max_idle_conns")
+		}
+		if cfg.Pool.Timeout < 0 {
+			return errors.New("Redis pool timeout cannot be negative")
+		}
+		if cfg.Pool.ConnMaxIdleTime < 0 {
+			return errors.New("Redis pool conn_max_idle_time cannot be negative")
+		}
+		if cfg.Pool.ConnMaxLifetime < 0 {
+			return errors.New("Redis pool conn_max_lifetime cannot be negative")
+		}
+
+		log.Infof("config.backend.redis.pool.size: %d", cfg.Pool.Size)
+		log.Infof("config.backend.redis.pool.timeout: %v", cfg.Pool.Timeout)
+		log.Infof("config.backend.redis.pool.min_idle_conns: %d", cfg.Pool.MinIdleConns)
+		log.Infof("config.backend.redis.pool.max_idle_conns: %d", cfg.Pool.MaxIdleConns)
+		log.Infof("config.backend.redis.pool.conn_max_idle_time: %v", cfg.Pool.ConnMaxIdleTime)
+		log.Infof("config.backend.redis.pool.conn_max_lifetime: %v", cfg.Pool.ConnMaxLifetime)
+	}
+
+	// Validate and log timeout configuration
+	if cfg.Timeouts != nil {
+		if cfg.Timeouts.DialTimeout < 0 {
+			return errors.New("Redis dial_timeout cannot be negative")
+		}
+		if cfg.Timeouts.ReadTimeout < 0 {
+			return errors.New("Redis read_timeout cannot be negative")
+		}
+		if cfg.Timeouts.WriteTimeout < 0 {
+			return errors.New("Redis write_timeout cannot be negative")
+		}
+
+		log.Infof("config.backend.redis.timeouts.dial_timeout: %v", cfg.Timeouts.DialTimeout)
+		log.Infof("config.backend.redis.timeouts.read_timeout: %v", cfg.Timeouts.ReadTimeout)
+		log.Infof("config.backend.redis.timeouts.write_timeout: %v", cfg.Timeouts.WriteTimeout)
+	}
+
+	// Validate and log retry configuration
+	if cfg.Retry != nil {
+		if cfg.Retry.MaxRetries < 0 {
+			return errors.New("Redis max_retries cannot be negative")
+		}
+		if cfg.Retry.MinRetryBackoff < 0 {
+			return errors.New("Redis min_retry_backoff cannot be negative")
+		}
+		if cfg.Retry.MaxRetryBackoff < 0 {
+			return errors.New("Redis max_retry_backoff cannot be negative")
+		}
+		if cfg.Retry.MinRetryBackoff > 0 && cfg.Retry.MaxRetryBackoff > 0 && cfg.Retry.MinRetryBackoff > cfg.Retry.MaxRetryBackoff {
+			return errors.New("Redis min_retry_backoff cannot be greater than max_retry_backoff")
+		}
+
+		log.Infof("config.backend.redis.retry.max_retries: %d", cfg.Retry.MaxRetries)
+		log.Infof("config.backend.redis.retry.min_retry_backoff: %v", cfg.Retry.MinRetryBackoff)
+		log.Infof("config.backend.redis.retry.max_retry_backoff: %v", cfg.Retry.MaxRetryBackoff)
+	}
+
 	return nil
 }
 

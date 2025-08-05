@@ -13,7 +13,41 @@ request_limits:
 request_logging:
   referer_sampling_rate: 0.0
 backend:
-  type: "memory" # Switch to be "aerospike", "cassandra", "memcache", "ignite" or "redis" for production.
+  type: memory
+
+  # Redis backend configuration (when type: redis)
+  redis:
+    host: localhost
+    port: 6379
+    password: ""
+    db: 0
+
+    # Optional: Redis performance tuning (uncomment to use)
+    # pool:
+    #   size: 100                    # Connection pool size (0 = default: 10 * GOMAXPROCS)
+    #   timeout: 5s                  # Max time to wait for connection from pool
+    #   min_idle_conns: 10           # Minimum idle connections to maintain
+    #   max_idle_conns: 20           # Maximum idle connections
+    #   conn_max_idle_time: 30m      # Close connections after remaining idle
+    #   conn_max_lifetime: 60m       # Close connections after this lifetime
+
+    # timeouts:
+    #   dial_timeout: 5s             # Timeout for establishing connections
+    #   read_timeout: 3s             # Timeout for socket reads
+    #   write_timeout: 3s            # Timeout for socket writes
+
+    # retry:
+    #   max_retries: 3               # Maximum number of retries
+    #   min_retry_backoff: 8ms       # Minimum backoff between retries
+    #   max_retry_backoff: 512ms     # Maximum backoff between retries
+
+    tls:
+      enabled: false
+      insecure_skip_verify: false
+
+    cluster:
+      enabled: false
+      hosts: []
 # aerospike:
 #   hosts: [ "aerospike.prebid.com" ]
 #   port: 3000
@@ -24,7 +58,7 @@ backend:
 # memcache:
 #   config_host: "" # Configuration endpoint for auto discovery. Replaced at docker build.
 #   poll_interval_seconds: 30 # Node change polling interval when auto discovery is used
-#   hosts: "10.0.0.1:11211" # List of nodes when not using auto discovery. Can also use an array for multiple hosts. 
+#   hosts: "10.0.0.1:11211" # List of nodes when not using auto discovery. Can also use an array for multiple hosts.
 # redis:
 #   host: "127.0.0.1"
 #   port: 6379
@@ -50,7 +84,7 @@ backend:
 compression:
   type: "snappy" # Can also be "none"
 metrics:
-  type: "none"   # Can also be "influx"
+  type: "none" # Can also be "influx"
   influx:
     host: "http://influx.prebid.com"
     database: "some-database"

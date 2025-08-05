@@ -71,6 +71,9 @@ func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
 			// Note: DB selection is not supported in cluster mode
 		}
 
+		// Apply performance configuration for cluster
+		applyClusterPerformanceOptions(clusterOptions, cfg)
+
 		if cfg.TLS.Enabled {
 			clusterOptions.TLSConfig = &tls.Config{
 				InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
@@ -98,6 +101,9 @@ func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
 			DB:       cfg.Db,
 		}
 
+		// Apply performance configuration for single-node
+		applySingleNodePerformanceOptions(options, cfg)
+
 		if cfg.TLS.Enabled {
 			options.TLSConfig = &tls.Config{
 				InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
@@ -120,6 +126,108 @@ func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
 	return &RedisBackend{
 		cfg:    cfg,
 		client: redisClient,
+	}
+}
+
+// applySingleNodePerformanceOptions applies performance tuning options to single-node Redis client
+func applySingleNodePerformanceOptions(options *redis.Options, cfg config.Redis) {
+	// Apply pool configuration
+	if cfg.Pool != nil {
+		if cfg.Pool.Size > 0 {
+			options.PoolSize = cfg.Pool.Size
+		}
+		if cfg.Pool.Timeout > 0 {
+			options.PoolTimeout = cfg.Pool.Timeout
+		}
+		if cfg.Pool.MinIdleConns > 0 {
+			options.MinIdleConns = cfg.Pool.MinIdleConns
+		}
+		if cfg.Pool.MaxIdleConns > 0 {
+			options.MaxIdleConns = cfg.Pool.MaxIdleConns
+		}
+		if cfg.Pool.ConnMaxIdleTime > 0 {
+			options.ConnMaxIdleTime = cfg.Pool.ConnMaxIdleTime
+		}
+		if cfg.Pool.ConnMaxLifetime > 0 {
+			options.ConnMaxLifetime = cfg.Pool.ConnMaxLifetime
+		}
+	}
+
+	// Apply timeout configuration
+	if cfg.Timeouts != nil {
+		if cfg.Timeouts.DialTimeout > 0 {
+			options.DialTimeout = cfg.Timeouts.DialTimeout
+		}
+		if cfg.Timeouts.ReadTimeout > 0 {
+			options.ReadTimeout = cfg.Timeouts.ReadTimeout
+		}
+		if cfg.Timeouts.WriteTimeout > 0 {
+			options.WriteTimeout = cfg.Timeouts.WriteTimeout
+		}
+	}
+
+	// Apply retry configuration
+	if cfg.Retry != nil {
+		if cfg.Retry.MaxRetries >= 0 {
+			options.MaxRetries = cfg.Retry.MaxRetries
+		}
+		if cfg.Retry.MinRetryBackoff > 0 {
+			options.MinRetryBackoff = cfg.Retry.MinRetryBackoff
+		}
+		if cfg.Retry.MaxRetryBackoff > 0 {
+			options.MaxRetryBackoff = cfg.Retry.MaxRetryBackoff
+		}
+	}
+}
+
+// applyClusterPerformanceOptions applies performance tuning options to cluster Redis client
+func applyClusterPerformanceOptions(options *redis.ClusterOptions, cfg config.Redis) {
+	// Apply pool configuration
+	if cfg.Pool != nil {
+		if cfg.Pool.Size > 0 {
+			options.PoolSize = cfg.Pool.Size
+		}
+		if cfg.Pool.Timeout > 0 {
+			options.PoolTimeout = cfg.Pool.Timeout
+		}
+		if cfg.Pool.MinIdleConns > 0 {
+			options.MinIdleConns = cfg.Pool.MinIdleConns
+		}
+		if cfg.Pool.MaxIdleConns > 0 {
+			options.MaxIdleConns = cfg.Pool.MaxIdleConns
+		}
+		if cfg.Pool.ConnMaxIdleTime > 0 {
+			options.ConnMaxIdleTime = cfg.Pool.ConnMaxIdleTime
+		}
+		if cfg.Pool.ConnMaxLifetime > 0 {
+			options.ConnMaxLifetime = cfg.Pool.ConnMaxLifetime
+		}
+	}
+
+	// Apply timeout configuration
+	if cfg.Timeouts != nil {
+		if cfg.Timeouts.DialTimeout > 0 {
+			options.DialTimeout = cfg.Timeouts.DialTimeout
+		}
+		if cfg.Timeouts.ReadTimeout > 0 {
+			options.ReadTimeout = cfg.Timeouts.ReadTimeout
+		}
+		if cfg.Timeouts.WriteTimeout > 0 {
+			options.WriteTimeout = cfg.Timeouts.WriteTimeout
+		}
+	}
+
+	// Apply retry configuration
+	if cfg.Retry != nil {
+		if cfg.Retry.MaxRetries >= 0 {
+			options.MaxRetries = cfg.Retry.MaxRetries
+		}
+		if cfg.Retry.MinRetryBackoff > 0 {
+			options.MinRetryBackoff = cfg.Retry.MinRetryBackoff
+		}
+		if cfg.Retry.MaxRetryBackoff > 0 {
+			options.MaxRetryBackoff = cfg.Retry.MaxRetryBackoff
+		}
 	}
 }
 
