@@ -1300,6 +1300,10 @@ func getExpectedDefaultConfig() Configuration {
 			},
 			Redis: Redis{
 				ExpirationMinutes: utils.REDIS_DEFAULT_EXPIRATION_MINUTES,
+				Cluster: RedisCluster{
+					Enabled: false,
+					Hosts:   nil,
+				},
 			},
 			Ignite: Ignite{
 				Headers: map[string]string{},
@@ -1377,6 +1381,10 @@ func getExpectedFullConfigForTestFile() Configuration {
 				TLS: RedisTLS{
 					Enabled:            false,
 					InsecureSkipVerify: false,
+				},
+				Cluster: RedisCluster{
+					Enabled: false,
+					Hosts:   []string{"redis-node1:6379", "redis-node2:6379", "redis-node3:6379"},
 				},
 			},
 			Ignite: Ignite{
