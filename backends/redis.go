@@ -3,6 +3,7 @@ package backends
 import (
 	"context"
 	"crypto/tls"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -129,106 +130,92 @@ func NewRedisBackend(cfg config.Redis, ctx context.Context) *RedisBackend {
 	}
 }
 
-// applySingleNodePerformanceOptions applies performance tuning options to single-node Redis client
-func applySingleNodePerformanceOptions(options *redis.Options, cfg config.Redis) {
+// applyPerformanceOptions applies performance tuning options to both single-node and cluster Redis clients
+// This function uses reflection to set common fields on both redis.Options and redis.ClusterOptions
+func applyPerformanceOptions(options interface{}, cfg config.Redis) {
+	optionsValue := reflect.ValueOf(options).Elem()
+
 	// Apply pool configuration
 	if cfg.Pool != nil {
 		if cfg.Pool.Size > 0 {
-			options.PoolSize = cfg.Pool.Size
+			if field := optionsValue.FieldByName("PoolSize"); field.IsValid() && field.CanSet() {
+				field.SetInt(int64(cfg.Pool.Size))
+			}
 		}
 		if cfg.Pool.Timeout > 0 {
-			options.PoolTimeout = cfg.Pool.Timeout
+			if field := optionsValue.FieldByName("PoolTimeout"); field.IsValid() && field.CanSet() {
+				field.Set(reflect.ValueOf(cfg.Pool.Timeout))
+			}
 		}
 		if cfg.Pool.MinIdleConns > 0 {
-			options.MinIdleConns = cfg.Pool.MinIdleConns
+			if field := optionsValue.FieldByName("MinIdleConns"); field.IsValid() && field.CanSet() {
+				field.SetInt(int64(cfg.Pool.MinIdleConns))
+			}
 		}
 		if cfg.Pool.MaxIdleConns > 0 {
-			options.MaxIdleConns = cfg.Pool.MaxIdleConns
+			if field := optionsValue.FieldByName("MaxIdleConns"); field.IsValid() && field.CanSet() {
+				field.SetInt(int64(cfg.Pool.MaxIdleConns))
+			}
 		}
 		if cfg.Pool.ConnMaxIdleTime > 0 {
-			options.ConnMaxIdleTime = cfg.Pool.ConnMaxIdleTime
+			if field := optionsValue.FieldByName("ConnMaxIdleTime"); field.IsValid() && field.CanSet() {
+				field.Set(reflect.ValueOf(cfg.Pool.ConnMaxIdleTime))
+			}
 		}
 		if cfg.Pool.ConnMaxLifetime > 0 {
-			options.ConnMaxLifetime = cfg.Pool.ConnMaxLifetime
+			if field := optionsValue.FieldByName("ConnMaxLifetime"); field.IsValid() && field.CanSet() {
+				field.Set(reflect.ValueOf(cfg.Pool.ConnMaxLifetime))
+			}
 		}
 	}
 
 	// Apply timeout configuration
 	if cfg.Timeouts != nil {
 		if cfg.Timeouts.DialTimeout > 0 {
-			options.DialTimeout = cfg.Timeouts.DialTimeout
+			if field := optionsValue.FieldByName("DialTimeout"); field.IsValid() && field.CanSet() {
+				field.Set(reflect.ValueOf(cfg.Timeouts.DialTimeout))
+			}
 		}
 		if cfg.Timeouts.ReadTimeout > 0 {
-			options.ReadTimeout = cfg.Timeouts.ReadTimeout
+			if field := optionsValue.FieldByName("ReadTimeout"); field.IsValid() && field.CanSet() {
+				field.Set(reflect.ValueOf(cfg.Timeouts.ReadTimeout))
+			}
 		}
 		if cfg.Timeouts.WriteTimeout > 0 {
-			options.WriteTimeout = cfg.Timeouts.WriteTimeout
+			if field := optionsValue.FieldByName("WriteTimeout"); field.IsValid() && field.CanSet() {
+				field.Set(reflect.ValueOf(cfg.Timeouts.WriteTimeout))
+			}
 		}
 	}
 
 	// Apply retry configuration
 	if cfg.Retry != nil {
 		if cfg.Retry.MaxRetries >= 0 {
-			options.MaxRetries = cfg.Retry.MaxRetries
+			if field := optionsValue.FieldByName("MaxRetries"); field.IsValid() && field.CanSet() {
+				field.SetInt(int64(cfg.Retry.MaxRetries))
+			}
 		}
 		if cfg.Retry.MinRetryBackoff > 0 {
-			options.MinRetryBackoff = cfg.Retry.MinRetryBackoff
+			if field := optionsValue.FieldByName("MinRetryBackoff"); field.IsValid() && field.CanSet() {
+				field.Set(reflect.ValueOf(cfg.Retry.MinRetryBackoff))
+			}
 		}
 		if cfg.Retry.MaxRetryBackoff > 0 {
-			options.MaxRetryBackoff = cfg.Retry.MaxRetryBackoff
+			if field := optionsValue.FieldByName("MaxRetryBackoff"); field.IsValid() && field.CanSet() {
+				field.Set(reflect.ValueOf(cfg.Retry.MaxRetryBackoff))
+			}
 		}
 	}
 }
 
+// applySingleNodePerformanceOptions applies performance tuning options to single-node Redis client
+func applySingleNodePerformanceOptions(options *redis.Options, cfg config.Redis) {
+	applyPerformanceOptions(options, cfg)
+}
+
 // applyClusterPerformanceOptions applies performance tuning options to cluster Redis client
 func applyClusterPerformanceOptions(options *redis.ClusterOptions, cfg config.Redis) {
-	// Apply pool configuration
-	if cfg.Pool != nil {
-		if cfg.Pool.Size > 0 {
-			options.PoolSize = cfg.Pool.Size
-		}
-		if cfg.Pool.Timeout > 0 {
-			options.PoolTimeout = cfg.Pool.Timeout
-		}
-		if cfg.Pool.MinIdleConns > 0 {
-			options.MinIdleConns = cfg.Pool.MinIdleConns
-		}
-		if cfg.Pool.MaxIdleConns > 0 {
-			options.MaxIdleConns = cfg.Pool.MaxIdleConns
-		}
-		if cfg.Pool.ConnMaxIdleTime > 0 {
-			options.ConnMaxIdleTime = cfg.Pool.ConnMaxIdleTime
-		}
-		if cfg.Pool.ConnMaxLifetime > 0 {
-			options.ConnMaxLifetime = cfg.Pool.ConnMaxLifetime
-		}
-	}
-
-	// Apply timeout configuration
-	if cfg.Timeouts != nil {
-		if cfg.Timeouts.DialTimeout > 0 {
-			options.DialTimeout = cfg.Timeouts.DialTimeout
-		}
-		if cfg.Timeouts.ReadTimeout > 0 {
-			options.ReadTimeout = cfg.Timeouts.ReadTimeout
-		}
-		if cfg.Timeouts.WriteTimeout > 0 {
-			options.WriteTimeout = cfg.Timeouts.WriteTimeout
-		}
-	}
-
-	// Apply retry configuration
-	if cfg.Retry != nil {
-		if cfg.Retry.MaxRetries >= 0 {
-			options.MaxRetries = cfg.Retry.MaxRetries
-		}
-		if cfg.Retry.MinRetryBackoff > 0 {
-			options.MinRetryBackoff = cfg.Retry.MinRetryBackoff
-		}
-		if cfg.Retry.MaxRetryBackoff > 0 {
-			options.MaxRetryBackoff = cfg.Retry.MaxRetryBackoff
-		}
-	}
+	applyPerformanceOptions(options, cfg)
 }
 
 // Get calls the Redis client to return the value associated with the provided `key`
