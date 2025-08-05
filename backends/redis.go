@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/prebid/prebid-cache/config"
 	"github.com/prebid/prebid-cache/utils"
 	log "github.com/sirupsen/logrus"
