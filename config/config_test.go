@@ -1304,6 +1304,24 @@ func getExpectedDefaultConfig() Configuration {
 					Enabled: false,
 					Hosts:   []string{},
 				},
+				Pool: &RedisPool{
+					Size:            0,
+					Timeout:         time.Duration(0),
+					MinIdleConns:    0,
+					MaxIdleConns:    0,
+					ConnMaxIdleTime: time.Duration(0),
+					ConnMaxLifetime: time.Duration(0),
+				},
+				Timeouts: &RedisTimeouts{
+					DialTimeout:  time.Duration(0),
+					ReadTimeout:  time.Duration(0),
+					WriteTimeout: time.Duration(0),
+				},
+				Retry: &RedisRetry{
+					MaxRetries:      0,
+					MinRetryBackoff: time.Duration(0),
+					MaxRetryBackoff: time.Duration(0),
+				},
 			},
 			Ignite: Ignite{
 				Headers: map[string]string{},
@@ -1385,6 +1403,24 @@ func getExpectedFullConfigForTestFile() Configuration {
 				Cluster: RedisCluster{
 					Enabled: false,
 					Hosts:   []string{"redis-node1:6379", "redis-node2:6379", "redis-node3:6379"},
+				},
+				Pool: &RedisPool{
+					Size:            0,
+					Timeout:         time.Duration(0),
+					MinIdleConns:    0,
+					MaxIdleConns:    0,
+					ConnMaxIdleTime: time.Duration(0),
+					ConnMaxLifetime: time.Duration(0),
+				},
+				Timeouts: &RedisTimeouts{
+					DialTimeout:  time.Duration(0),
+					ReadTimeout:  time.Duration(0),
+					WriteTimeout: time.Duration(0),
+				},
+				Retry: &RedisRetry{
+					MaxRetries:      0,
+					MinRetryBackoff: time.Duration(0),
+					MaxRetryBackoff: time.Duration(0),
 				},
 			},
 			Ignite: Ignite{
