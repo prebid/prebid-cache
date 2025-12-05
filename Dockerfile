@@ -1,38 +1,31 @@
-FROM ubuntu:22.04 AS build
-RUN apt-get update && \
-    apt-get -y upgrade && \
-    apt-get install -y --no-install-recommends wget ca-certificates
-ENV GO_INSTALLER=go1.19.5.linux-amd64.tar.gz
-WORKDIR /tmp
-RUN wget https://dl.google.com/go/$GO_INSTALLER && \
-    tar -C /usr/local -xzf $GO_INSTALLER
+FROM alpine:3.23 AS build
+ARG TARGETARCH
+ARG TARGETVARIANT
+RUN apk update && \
+    apk add --no-cache go git bash ca-certificates && \
+    go version && \
+    rm -rf /var/cache/apk/*
+
+ENV GOPROXY="https://proxy.golang.org"
+ENV CGO_ENABLED=0
+
 RUN mkdir -p /app/prebid-cache/
 WORKDIR /app/prebid-cache/
-ENV GOROOT=/usr/local/go
-ENV PATH=$GOROOT/bin:$PATH
-ENV GOPROXY="https://proxy.golang.org"
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-ENV CGO_ENABLED 0
 COPY ./ ./
 RUN go mod vendor
 RUN go mod tidy
 ARG TEST="true"
 RUN if [ "$TEST" != "false" ]; then ./validate.sh ; fi
 RUN go build -mod=vendor -ldflags "-X github.com/prebid/prebid-cache/version.Ver=`git describe --tags` -X github.com/prebid/prebid-cache/version.Rev=`git rev-parse HEAD`" .
-
-FROM ubuntu:22.04 AS release
+FROM alpine:3.23 AS release
 LABEL maintainer="hans.hjort@xandr.com" 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apk add --no-cache ca-certificates
 WORKDIR /usr/local/bin/
 COPY --from=build /app/prebid-cache/prebid-cache .
 RUN chmod a+xr prebid-cache
 COPY --from=build /app/prebid-cache/config.yaml .
 RUN chmod a+r config.yaml
-RUN addgroup --system --gid 2001 prebidgroup && adduser --system --uid 1001 --ingroup prebidgroup prebid
+RUN addgroup -g 2001 -S prebidgroup && adduser -u 1001 -S -G prebidgroup prebid
 USER prebid
 EXPOSE 2424
 EXPOSE 2525
