@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+README.md
+LICENSE
+
+# CI/CD
+.github
+
+# Test files and sample data
+*_test.go
+test_utils.go
+sample-requests
+configtest
+
+# Build artifacts
+prebid-cache
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go vendor directory (created in container)
+vendor/
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+
+# Docker
+Dockerfile*
+.dockerignore
