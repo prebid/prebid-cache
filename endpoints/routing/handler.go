@@ -37,12 +37,12 @@ func NewPublicHandler(cfg config.Configuration, dataStore backends.Backend, appM
 func addReadRoutes(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics, router *httprouter.Router) {
 	router.GET("/", endpoints.NewIndexHandler(cfg.IndexResponse))          // Default route handler
 	router.GET("/status", endpoints.NewStatusEndpoint(cfg.StatusResponse)) // Determines whether the server is ready for more traffic.
-	router.GET("/cache", endpoints.NewGetHandler(dataStore, appMetrics, cfg.RequestLimits.AllowSettingKeys))
+	router.GET("/cache", endpoints.NewGetHandler(dataStore, appMetrics, cfg.RequestLimits.AllowSettingKeys, cfg.RequestLogging.RefererSamplingRate))
 	router.GET("/version", endpoints.NewVersionEndpoint(version.Ver, version.Rev))
 }
 
 func addWriteRoutes(cfg config.Configuration, dataStore backends.Backend, appMetrics *metrics.Metrics, router *httprouter.Router) {
-	router.POST("/cache", endpoints.NewPutHandler(dataStore, appMetrics, cfg.RequestLimits.MaxNumValues, cfg.RequestLimits.AllowSettingKeys))
+	router.POST("/cache", endpoints.NewPutHandler(dataStore, appMetrics, cfg.RequestLimits.MaxNumValues, cfg.RequestLimits.AllowSettingKeys, cfg.RequestLogging.RefererSamplingRate))
 }
 
 func handleCors(handler http.Handler) http.Handler {

@@ -26,8 +26,9 @@ type PutHandler struct {
 }
 
 type putHandlerConfig struct {
-	maxNumValues int
-	allowKeys    bool
+	maxNumValues   int
+	allowKeys      bool
+	refererLogRate float64
 }
 
 type syncPools struct {
@@ -36,7 +37,7 @@ type syncPools struct {
 }
 
 // NewPutHandler returns the handle function for the "/cache" endpoint when it receives a POST request
-func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool, refererLogRate float64) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	putHandler := &PutHandler{}
 
 	// Assign storage client to put endpoint
@@ -47,8 +48,9 @@ func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumVal
 
 	// Pass configuration values
 	putHandler.cfg = putHandlerConfig{
-		maxNumValues: maxNumValues,
-		allowKeys:    allowKeys,
+		maxNumValues:   maxNumValues,
+		allowKeys:      allowKeys,
+		refererLogRate: refererLogRate,
 	}
 
 	// Instantiate thread-safe memory pools
@@ -183,6 +185,12 @@ func logBackendError(err error) {
 // handle is the handler function that gets assigned to the POST method of the `/cache` endpoint
 func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	e.metrics.RecordPutTotal()
+
+	// If incoming request comes with a referer header, there's a e.cfg.refererLogRate percent chance
+	// getting it logged
+	if referer := r.Referer(); referer != "" && utils.RandomPick(e.cfg.refererLogRate) {
+		logrus.Info("POST request Referer header: " + referer)
+	}
 
 	start := time.Now()
 

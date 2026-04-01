@@ -6,13 +6,15 @@
       "server_response": "{\"successStatus\":0,\"error\":\"\",\"response\":false}"
     }
   },
-  "put_request": {
-    "puts": [
-      {
-        "type": "xml",
-        "value": "xml<description>another_XML</description>"
-      }
-    ]
+  "request": {
+    "body": {
+      "puts": [
+        {
+          "type": "xml",
+          "value": "xml<description>another_XML</description>"
+        }
+      ]
+    }
   },
   "expected_metrics": [
     "RecordPutTotal",

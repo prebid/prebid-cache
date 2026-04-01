@@ -1,5 +1,5 @@
 {
-  "description": "Get request sucessfully returns stored data",
+  "description": "Prebid Cache configured to log the referer header of 100% of incoming requests. Referer successfully logged.",
   "config": {
     "fake_backend": {
       "stored_data": [
@@ -8,11 +8,21 @@
           "value": "xml<description>stored xml value</description>"
         }
       ]
-    }
+    },
+    "referer_sampling_rate": 1.0
   },
   "request": {
-    "query": "uuid=36-char-uid-maps-to-stored-xml-value"
+    "query": "uuid=36-char-uid-maps-to-stored-xml-value",
+    "headers": {
+      "Referer": [ "anyreferer" ]
+    }
   },
+  "expected_log_entries": [
+    {
+      "message": "GET request Referer header: anyreferer",
+      "level": 4
+    }
+  ],
   "expected_metrics": [
     "RecordGetBackendTotal",
     "RecordGetDuration",

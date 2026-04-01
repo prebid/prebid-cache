@@ -2,7 +2,6 @@
   "description": "Put request wants to store multiple elements but no more than the maximum allowed by the 'max_num_values' config. Store them under a random UUIDs",
   "config": {
     "max_num_values": 3,
-    "max_num_values": 3,
     "max_size_bytes": 100,
     "fake_backend": {
       "stored_data": [
@@ -16,26 +15,28 @@
     },
     "allow_setting_keys": true
   },
-  "put_request": {
-    "puts": [
-      {
-        "type": "json",
-        "ttlseconds": 60,
-        "value": "{\"description\": \"value will be stored under random UUID\"}"
-      },
-      {
-        "key": "the-custom-thirty-six-character-uuid",
-        "type": "json",
-        "ttlseconds": 60,
-        "value": "{\"description\": \"value will be stored under custom UUID\"}"
-      },
-      {
-        "key": "uuid-stored-value-we-want-overwriten",
-        "value": "<description>XML meant to overwrite data already stored under this key</description>",
-        "type": "xml",
-        "ttlseconds": 60
-      }
-    ]
+  "request": {
+    "body": {
+      "puts": [
+        {
+          "type": "json",
+          "ttlseconds": 60,
+          "value": "{\"description\": \"value will be stored under random UUID\"}"
+        },
+        {
+          "key": "the-custom-thirty-six-character-uuid",
+          "type": "json",
+          "ttlseconds": 60,
+          "value": "{\"description\": \"value will be stored under custom UUID\"}"
+        },
+        {
+          "key": "uuid-stored-value-we-want-overwriten",
+          "value": "<description>XML meant to overwrite data already stored under this key</description>",
+          "type": "xml",
+          "ttlseconds": 60
+        }
+      ]
+    }
   },
   "expected_metrics": [
     "RecordPutTotal",
@@ -52,9 +53,15 @@
     "code": 200,
     "put_response": {
       "responses": [
-        {"uuid": "random"},
-        {"uuid": "the-custom-thirty-six-character-uuid"},
-        {"uuid": ""}
+        {
+          "uuid": "random"
+        },
+        {
+          "uuid": "the-custom-thirty-six-character-uuid"
+        },
+        {
+          "uuid": ""
+        }
       ]
     }
   }

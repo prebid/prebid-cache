@@ -10,7 +10,9 @@
       ]
     }
   },
-  "get_request_query": "uuid=",
+  "request": {
+    "query": "uuid="
+  },
   "expected_log_entries": [
     {
       "message": "GET /cache: Missing required parameter uuid",
