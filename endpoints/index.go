@@ -11,6 +11,6 @@ import (
 func NewIndexHandler(message string) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, message)
+		fmt.Fprint(w, message)
 	}
 }
