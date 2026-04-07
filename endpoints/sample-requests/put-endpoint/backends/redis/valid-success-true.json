@@ -7,13 +7,15 @@
       "throw_error_message": "redis: nil"
     }
   },
-  "put_request": {
-    "puts": [
-      {
-        "type": "xml",
-        "value": "<?xml version=\"1.0\">info<\\/VAST>\r\n"
-      }
-    ]
+  "request": {
+    "body": {
+      "puts": [
+        {
+          "type": "xml",
+          "value": "<?xml version=\"1.0\">info<\\/VAST>\r\n"
+        }
+      ]
+    }
   },
   "expected_metrics": [
     "RecordPutTotal",
@@ -27,7 +29,9 @@
     "code": 200,
     "put_response": {
       "responses": [
-        {"uuid": "random"}
+        {
+          "uuid": "random"
+        }
       ]
     }
   }

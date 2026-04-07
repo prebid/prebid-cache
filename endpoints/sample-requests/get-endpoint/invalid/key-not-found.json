@@ -10,7 +10,9 @@
       ]
     }
   },
-  "get_request_query": "uuid=36-char-uuid-is-not-found-in-backend",
+  "request": {
+    "query": "uuid=36-char-uuid-is-not-found-in-backend"
+  },
   "expected_metrics": [
     "RecordGetTotal",
     "RecordGetBackendError",
