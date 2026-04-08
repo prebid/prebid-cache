@@ -85,14 +85,14 @@ func (c *igniteSender) DoRequest(ctx context.Context, url *url.URL, headers http
 func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 	if len(cfg.Scheme) == 0 || len(cfg.Host) == 0 || cfg.Port == 0 || len(cfg.Cache.Name) == 0 {
 		errMsg := "Error creating Ignite backend: configuration is missing ignite.schema, ignite.host, ignite.port or ignite.cache.name"
-		log.Fatalf(errMsg)
+		log.Fatal(errMsg)
 		panic(errMsg)
 	}
 
 	url, err := url.Parse(fmt.Sprintf("%s://%s:%d/ignite?cacheName=%s", cfg.Scheme, cfg.Host, cfg.Port, cfg.Cache.Name))
 	if err != nil {
 		errMsg := fmt.Sprintf("Error creating Ignite backend: error parsing Ignite host URL %s", err.Error())
-		log.Fatalf(errMsg)
+		log.Fatal(errMsg)
 		panic(errMsg)
 	}
 
@@ -122,7 +122,7 @@ func NewIgniteBackend(cfg config.Ignite) *IgniteBackend {
 		igb.cacheName = cfg.Cache.Name
 		if err := createCache(igb); err != nil {
 			errMsg := fmt.Sprintf("Error creating Ignite backend: %s", err.Error())
-			log.Fatalf(errMsg)
+			log.Fatal(errMsg)
 			panic(errMsg)
 		}
 	}
