@@ -7,13 +7,22 @@ rate_limiter:
   num_requests: 100
 request_limits:
   allow_setting_keys: false
-  max_size_bytes: 10240 # 10K
-  max_num_values: 10
-  max_ttl_seconds: 3600
+  max_size_bytes: 100000 # 10K
+  max_num_values: 10000
+  max_ttl_seconds: 80200
 request_logging:
   referer_sampling_rate: 0.0
 backend:
-  type: "memory" # Switch to be "aerospike", "cassandra", "memcache", "ignite" or "redis" for production.
+  type: "redis" # Switch to be "aerospike", "cassandra", "memcache", "ignite" or "redis" for production.
+  redis:
+    host: "pbc-redis-master.redis.svc.cluster.local"
+    port: 6379
+    password: ""
+    db: 1
+    expiration: 10   # in Minutes
+    tls:
+      enabled: false
+      insecure_skip_verify: false
 # aerospike:
 #   hosts: [ "aerospike.prebid.com" ]
 #   port: 3000
@@ -24,16 +33,7 @@ backend:
 # memcache:
 #   config_host: "" # Configuration endpoint for auto discovery. Replaced at docker build.
 #   poll_interval_seconds: 30 # Node change polling interval when auto discovery is used
-#   hosts: "10.0.0.1:11211" # List of nodes when not using auto discovery. Can also use an array for multiple hosts. 
-# redis:
-#   host: "127.0.0.1"
-#   port: 6379
-#   password: ""
-#   db: 1
-#   expiration: 10   # in Minutes
-#   tls:
-#     enabled: false
-#     insecure_skip_verify: false
+#   hosts: "10.0.0.1:11211" # List of nodes when not using auto discovery. Can also use an array for multiple hosts.
 # ignite:
 #   scheme: "http"
 #   host: "127.0.0.1"

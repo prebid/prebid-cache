@@ -22,5 +22,5 @@ build: test
 
 # Build a docker image which runs the binary
 image: build
-	docker build -t prebid-cache .
+	docker buildx build --platform linux/amd64 -t registry.digitalocean.com/automatad/prebid/prebid-cache:v0.30.0-$(shell date +%Y%m%d%H%M%S) .
 
