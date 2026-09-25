@@ -3,9 +3,12 @@ package endpoints
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,9 +29,10 @@ type PutHandler struct {
 }
 
 type putHandlerConfig struct {
-	maxNumValues   int
-	allowKeys      bool
-	refererLogRate float64
+	maxNumValues     int
+	allowKeys        bool
+	refererLogRate   float64
+	maxBodySizeBytes int
 }
 
 type syncPools struct {
@@ -37,7 +41,7 @@ type syncPools struct {
 }
 
 // NewPutHandler returns the handle function for the "/cache" endpoint when it receives a POST request
-func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool, refererLogRate float64) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumValues int, allowKeys bool, refererLogRate float64, maxBodySizeBytes int) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	putHandler := &PutHandler{}
 
 	// Assign storage client to put endpoint
@@ -48,9 +52,10 @@ func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumVal
 
 	// Pass configuration values
 	putHandler.cfg = putHandlerConfig{
-		maxNumValues:   maxNumValues,
-		allowKeys:      allowKeys,
-		refererLogRate: refererLogRate,
+		maxNumValues:     maxNumValues,
+		allowKeys:        allowKeys,
+		refererLogRate:   refererLogRate,
+		maxBodySizeBytes: maxBodySizeBytes,
 	}
 
 	// Instantiate thread-safe memory pools
@@ -74,13 +79,22 @@ func NewPutHandler(storage backends.Backend, metrics *metrics.Metrics, maxNumVal
 // the incoming request could not be unmarshalled or if the request comes with more
 // elements to put than the maximum allowed in Prebid Cache's configuration, the
 // corresponding error is returned
-func (e *PutHandler) parseRequest(r *http.Request) (*putRequest, error) {
+func (e *PutHandler) parseRequest(w http.ResponseWriter, r *http.Request) (*putRequest, error) {
 	if r == nil {
 		return nil, utils.NewPBCError(utils.PUT_BAD_REQUEST)
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	var reader io.Reader = r.Body
+	if e.cfg.maxBodySizeBytes > 0 {
+		reader = http.MaxBytesReader(w, r.Body, int64(e.cfg.maxBodySizeBytes))
+	}
+
+	body, err := ioutil.ReadAll(reader)
 	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) || strings.Contains(err.Error(), "request body too large") {
+			return nil, utils.NewPBCError(utils.HTTP_BODY_TOO_LARGE, fmt.Sprintf("Request body exceeded maximum size of %d bytes", e.cfg.maxBodySizeBytes))
+		}
 		return nil, utils.NewPBCError(utils.PUT_BAD_REQUEST)
 	}
 	defer r.Body.Close()
@@ -194,7 +208,7 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 
 	start := time.Now()
 
-	bytes, err := e.processPutRequest(r)
+	bytes, err := e.processPutRequest(w, r)
 	if err != nil {
 		// At least one of the elements in the incoming request could not be stored
 		// write the http error and log corresponding metrics
@@ -228,9 +242,9 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 // processPutRequest parses, unmarshals, and validates the incoming request; then calls the back-end Put()
 // implementation on every element of the "puts" array. This function exits after all elements in the
 // "puts" array have been stored in the back-end, or after the first error is found
-func (e *PutHandler) processPutRequest(r *http.Request) ([]byte, error) {
+func (e *PutHandler) processPutRequest(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 	// Parse and validate incoming request
-	putRequest, err := e.parseRequest(r)
+	putRequest, err := e.parseRequest(w, r)
 	if err != nil {
 		return nil, err
 	}

@@ -22,6 +22,7 @@ const (
 	PUT_INTERNAL_SERVER              // PUT http.StatusInternalServerError 500
 	MARSHAL_RESPONSE                 // PUT http.StatusInternalServerError 500
 	PUT_DEADLINE_EXCEEDED            // PUT HttpDependencyTimeout 597
+	HTTP_BODY_TOO_LARGE              // PUT http.StatusRequestEntityTooLarge 413
 )
 
 // HTTPDependencyTimeout is the status code for errors due to a downstream dependency timeout.
@@ -45,6 +46,7 @@ var errToStatusCodes map[int]int = map[int]int{
 	KEY_NOT_FOUND:             http.StatusNotFound,
 	KEY_LENGTH:                http.StatusNotFound,
 	PUT_DEADLINE_EXCEEDED:     HTTPDependencyTimeout,
+	HTTP_BODY_TOO_LARGE:       http.StatusRequestEntityTooLarge,
 }
 
 // Map Prebid Cache's error codes to their corresponding constant error message if they have one.
@@ -59,6 +61,7 @@ var errToMsgs map[int]string = map[int]string{
 	KEY_NOT_FOUND:            "Key not found",
 	KEY_LENGTH:               "invalid uuid length",
 	PUT_DEADLINE_EXCEEDED:    "timeout writing value to the backend.",
+	HTTP_BODY_TOO_LARGE:      "Request body exceeded maximum size.",
 }
 
 // PBCError implements the error interface

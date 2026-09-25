@@ -34,6 +34,13 @@ func NewConfig(filename string) Configuration {
 		}
 	}
 
+	// Support server.max-http-body-size-kb from PBC-Java for cross-compatibility
+	if v.IsSet("server.max-http-body-size-kb") {
+		v.Set("request_limits.max_body_size_bytes", v.GetInt("server.max-http-body-size-kb")*1024)
+	} else if v.IsSet("server.max_http_body_size_kb") {
+		v.Set("request_limits.max_body_size_bytes", v.GetInt("server.max_http_body_size_kb")*1024)
+	}
+
 	cfg := Configuration{}
 	if err := v.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Failed to unmarshal config: %v", err)
@@ -98,6 +105,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("request_limits.max_num_values", utils.REQUEST_MAX_NUM_VALUES)
 	v.SetDefault("request_limits.max_ttl_seconds", utils.REQUEST_MAX_TTL_SECONDS)
 	v.SetDefault("request_limits.max_header_size_bytes", http.DefaultMaxHeaderBytes)
+	v.SetDefault("request_limits.max_body_size_bytes", utils.REQUEST_MAX_BODY_SIZE_BYTES)
 	v.SetDefault("request_logging.referer_sampling_rate", 0.0)
 	v.SetDefault("routes.allow_public_write", true)
 }
@@ -202,6 +210,7 @@ type RequestLimits struct {
 	MaxTTLSeconds    int  `mapstructure:"max_ttl_seconds"`
 	AllowSettingKeys bool `mapstructure:"allow_setting_keys"`
 	MaxHeaderSize    int  `mapstructure:"max_header_size_bytes"`
+	MaxBodySize      int  `mapstructure:"max_body_size_bytes"`
 }
 
 func (cfg *RequestLimits) validateAndLog() {
@@ -229,6 +238,12 @@ func (cfg *RequestLimits) validateAndLog() {
 		log.Infof("config.request_limits.max_header_size_bytes: %d", cfg.MaxHeaderSize)
 	} else {
 		log.Fatalf("invalid config.request_limits.max_header_size_bytes: %d. Value cannot be negative.", cfg.MaxHeaderSize)
+	}
+
+	if cfg.MaxBodySize >= 0 {
+		log.Infof("config.request_limits.max_body_size_bytes: %d", cfg.MaxBodySize)
+	} else {
+		log.Fatalf("invalid config.request_limits.max_body_size_bytes: %d. Value cannot be negative.", cfg.MaxBodySize)
 	}
 }
 
