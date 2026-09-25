@@ -29,6 +29,29 @@ func TestPBCError(t *testing.T) {
 			},
 		},
 		{
+			desc: "HTTP_BODY_TOO_LARGE maps to 413 and constant error message",
+			in: testInput{
+				errType: HTTP_BODY_TOO_LARGE,
+			},
+			expected: PBCError{
+				Type:       HTTP_BODY_TOO_LARGE,
+				StatusCode: http.StatusRequestEntityTooLarge,
+				msg:        "Request body exceeded maximum size.",
+			},
+		},
+		{
+			desc: "HTTP_BODY_TOO_LARGE with custom error message",
+			in: testInput{
+				errType: HTTP_BODY_TOO_LARGE,
+				msgs:    "Request body exceeded maximum size of 256 bytes",
+			},
+			expected: PBCError{
+				Type:       HTTP_BODY_TOO_LARGE,
+				StatusCode: http.StatusRequestEntityTooLarge,
+				msg:        "Request body exceeded maximum size of 256 bytes",
+			},
+		},
+		{
 			desc: "Valid error type doesn't map to a constant error message but no error message was passed to NewPBCError, expect blank error message.",
 			in: testInput{
 				errType: PUT_MAX_NUM_VALUES,

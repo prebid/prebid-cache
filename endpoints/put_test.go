@@ -50,7 +50,7 @@ func TestPutJsonTests(t *testing.T) {
 		}
 
 		router := httprouter.New()
-		router.POST("/cache", NewPutHandler(backend, m, tc.HostConfig.MaxNumValues, tc.HostConfig.AllowSettingKeys, tc.HostConfig.RefererLogRate))
+		router.POST("/cache", NewPutHandler(backend, m, tc.HostConfig.MaxNumValues, tc.HostConfig.AllowSettingKeys, tc.HostConfig.RefererLogRate, tc.HostConfig.MaxBodySizeBytes))
 		request, err := http.NewRequest("POST", "/cache", strings.NewReader(string(tc.Request.Body)))
 		if !assert.NoError(t, err, "Failed to create a POST request. Test file: %s Error: %v", testFile, err) {
 			hook.Reset()
@@ -137,6 +137,7 @@ type hostConfig struct {
 	MaxTTLSeconds    int         `json:"max_ttl_seconds"`
 	FakeBackend      fakeBackend `json:"fake_backend"`
 	RefererLogRate   float64     `json:"referer_sampling_rate"`
+	MaxBodySizeBytes int         `json:"max_body_size_bytes"`
 }
 
 type fakeBackend struct {
@@ -566,7 +567,7 @@ func TestSuccessfulPut(t *testing.T) {
 				},
 			}
 
-			router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+			router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, 0))
 			router.GET("/cache", NewGetHandler(backend, m, true, 0.0))
 
 			// Feed the tests input put request to the endpoint's handle
@@ -656,7 +657,7 @@ func TestMalformedOrInvalidValue(t *testing.T) {
 			},
 		}
 
-		router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+		router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, 0))
 
 		// Run test
 		putResponse := doPut(t, router, tc.inPutBody)
@@ -692,7 +693,7 @@ func TestNonSupportedType(t *testing.T) {
 			&mockMetrics,
 		},
 	}
-	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, 0))
 
 	putResponse := doPut(t, router, requestBody)
 
@@ -728,7 +729,7 @@ func TestPutNegativeTTL(t *testing.T) {
 		},
 	}
 
-	testRouter.POST("/cache", NewPutHandler(testBackend, m, 10, true, 0.0))
+	testRouter.POST("/cache", NewPutHandler(testBackend, m, 10, true, 0.0, 0))
 
 	recorder := httptest.NewRecorder()
 
@@ -830,7 +831,7 @@ func TestCustomKey(t *testing.T) {
 			}
 
 			router := httprouter.New()
-			putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, tgroup.allowSettingKeys, 0.0)
+			putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, tgroup.allowSettingKeys, 0.0, 0)
 			router.POST("/cache", putEndpointHandler)
 
 			recorder := httptest.NewRecorder()
@@ -867,7 +868,7 @@ func TestRequestReadError(t *testing.T) {
 			&mockMetrics,
 		},
 	}
-	putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, false, 0.0)
+	putEndpointHandler := NewPutHandler(mockBackendWithValues, m, 10, false, 0.0, 0)
 
 	router := httprouter.New()
 	router.POST("/cache", putEndpointHandler)
@@ -912,7 +913,7 @@ func TestTooManyPutElements(t *testing.T) {
 			&mockMetrics,
 		},
 	}
-	router.POST("/cache", NewPutHandler(backend, m, len(putElements)-1, true, 0.0))
+	router.POST("/cache", NewPutHandler(backend, m, len(putElements)-1, true, 0.0, 0))
 
 	putResponse := doPut(t, router, reqBody)
 
@@ -967,7 +968,7 @@ func TestMultiPutRequest(t *testing.T) {
 		},
 	}
 
-	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, 0))
 	router.GET("/cache", NewGetHandler(backend, m, true, 0.0))
 
 	rr := httptest.NewRecorder()
@@ -1018,7 +1019,7 @@ func TestBadPayloadSizePutError(t *testing.T) {
 			&mockMetrics,
 		},
 	}
-	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, 0))
 
 	putResponse := doPut(t, router, reqBody)
 
@@ -1055,7 +1056,7 @@ func TestInternalPutClientError(t *testing.T) {
 	// Use mock client that will return an error
 	backendWithMetrics := decorators.LogMetrics(newErrorReturningBackend(), m)
 
-	router.POST("/cache", NewPutHandler(backendWithMetrics, m, 10, true, 0.0))
+	router.POST("/cache", NewPutHandler(backendWithMetrics, m, 10, true, 0.0, 0))
 
 	// Run test
 	putResponse := doPut(t, router, reqBody)
@@ -1129,7 +1130,7 @@ func TestEmptyPutRequests(t *testing.T) {
 			},
 		}
 		router := httprouter.New()
-		router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+		router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, 0))
 		rr := httptest.NewRecorder()
 
 		// Create request everytime
@@ -1172,7 +1173,7 @@ func TestPutClientDeadlineExceeded(t *testing.T) {
 			&mockMetrics,
 		},
 	}
-	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, 0))
 
 	putResponse := doPut(t, router, reqBody)
 
@@ -1249,11 +1250,65 @@ func TestParseRequest(t *testing.T) {
 			cfg: putHandlerConfig{maxNumValues: 1},
 		}
 		// run
-		put, err := putHandler.parseRequest(tc.getInputRequest())
+		put, err := putHandler.parseRequest(httptest.NewRecorder(), tc.getInputRequest())
 		// assertions
 		assert.Equal(t, tc.expected.put, put, tc.desc)
 		assert.Equal(t, tc.expected.err, err, tc.desc)
 	}
+}
+
+func TestPutHandler_MaxBodySizeBytes(t *testing.T) {
+	requestBody := `{"puts":[{"type":"json","value":{"field":"sample value here"}}]}`
+
+	t.Run("Body within limit returns 200 OK", func(t *testing.T) {
+		backend := backends.NewMemoryBackend()
+		mockMetrics := metricstest.CreateMockMetrics()
+		m := &metrics.Metrics{MetricEngines: []metrics.CacheMetrics{&mockMetrics}}
+		router := httprouter.New()
+		router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, 1024))
+
+		rr := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/cache", strings.NewReader(requestBody))
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+		expectedMetrics := []string{"RecordPutTotal", "RecordPutDuration"}
+		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	})
+
+	t.Run("Body exceeds limit returns 413 Payload Too Large", func(t *testing.T) {
+		backend := backends.NewMemoryBackend()
+		mockMetrics := metricstest.CreateMockMetrics()
+		m := &metrics.Metrics{MetricEngines: []metrics.CacheMetrics{&mockMetrics}}
+		router := httprouter.New()
+		maxBodySize := 20
+		router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, maxBodySize))
+
+		rr := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/cache", strings.NewReader(requestBody))
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, rr.Code)
+		assert.Equal(t, fmt.Sprintf("Request body exceeded maximum size of %d bytes\n", maxBodySize), rr.Body.String())
+		expectedMetrics := []string{"RecordPutTotal", "RecordPutBadRequest"}
+		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	})
+
+	t.Run("Unlimited when maxBodySizeBytes is 0", func(t *testing.T) {
+		backend := backends.NewMemoryBackend()
+		mockMetrics := metricstest.CreateMockMetrics()
+		m := &metrics.Metrics{MetricEngines: []metrics.CacheMetrics{&mockMetrics}}
+		router := httprouter.New()
+		router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, 0))
+
+		rr := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/cache", strings.NewReader(requestBody))
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+		expectedMetrics := []string{"RecordPutTotal", "RecordPutDuration"}
+		metricstest.AssertMetrics(t, expectedMetrics, mockMetrics)
+	})
 }
 
 // TestParsePutObject asserts *PutHandler's parsePutObject(p PutObject) method
@@ -1468,7 +1523,7 @@ func benchmarkPutHandler(b *testing.B, testCase string) {
 		},
 	}
 
-	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0))
+	router.POST("/cache", NewPutHandler(backend, m, 10, true, 0.0, 0))
 	router.GET("/cache", NewGetHandler(backend, m, true, 0.0))
 
 	rr := httptest.NewRecorder()

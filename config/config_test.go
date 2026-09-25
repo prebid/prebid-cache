@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -879,6 +880,19 @@ func TestRequestLimitsValidateAndLog(t *testing.T) {
 			},
 			expectFatal: true,
 		},
+		{
+			description:        "Negative max_body_size_bytes, expect fatal level log and early exit",
+			inRequestLimitsCfg: &RequestLimits{MaxBodySize: -1},
+			expectedLogInfo: []logComponents{
+				{msg: `config.request_limits.allow_setting_keys: false`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_ttl_seconds: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_size_bytes: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_num_values: 0`, lvl: logrus.InfoLevel},
+				{msg: `config.request_limits.max_header_size_bytes: 0`, lvl: logrus.InfoLevel},
+				{msg: `invalid config.request_limits.max_body_size_bytes: -1. Value cannot be negative.`, lvl: logrus.FatalLevel},
+			},
+			expectFatal: true,
+		},
 	}
 
 	//substitute logger exit function so execution doesn't get interrupted
@@ -1174,6 +1188,7 @@ func TestConfigurationValidateAndLog(t *testing.T) {
 		{msg: "config.request_limits.max_size_bytes: 10240", lvl: logrus.InfoLevel},
 		{msg: "config.request_limits.max_num_values: 10", lvl: logrus.InfoLevel},
 		{msg: "config.request_limits.max_header_size_bytes: 1048576", lvl: logrus.InfoLevel},
+		{msg: "config.request_limits.max_body_size_bytes: 262144", lvl: logrus.InfoLevel},
 		{msg: "config.request_logging.referer_sampling_rate: 0", lvl: logrus.InfoLevel},
 		{msg: "config.backend.type: memory", lvl: logrus.InfoLevel},
 		{msg: "config.compression.type: snappy", lvl: logrus.InfoLevel},
@@ -1320,6 +1335,7 @@ func getExpectedDefaultConfig() Configuration {
 			MaxNumValues:  10,
 			MaxTTLSeconds: 3600,
 			MaxHeaderSize: 1048576,
+			MaxBodySize:   262144,
 		},
 		Routes: Routes{
 			AllowPublicWrite: true,
@@ -1346,6 +1362,7 @@ func getExpectedFullConfigForTestFile() Configuration {
 			MaxTTLSeconds:    5000,
 			AllowSettingKeys: true,
 			MaxHeaderSize:    16384, //16KiB
+			MaxBodySize:      262144,
 		},
 		Backend: Backend{
 			Type: BackendMemory,
@@ -1416,4 +1433,26 @@ func getExpectedFullConfigForTestFile() Configuration {
 			AllowPublicWrite: true,
 		},
 	}
+}
+
+func TestServerMaxHttpBodySizeKb(t *testing.T) {
+	v := viper.New()
+	setConfigDefaults(v)
+	v.SetConfigType("yaml")
+	yamlContent := []byte(`
+server:
+  max-http-body-size-kb: 512
+`)
+	err := v.ReadConfig(bytes.NewBuffer(yamlContent))
+	assert.NoError(t, err)
+
+	if v.IsSet("server.max-http-body-size-kb") {
+		v.Set("request_limits.max_body_size_bytes", v.GetInt("server.max-http-body-size-kb")*1024)
+	}
+
+	cfg := Configuration{}
+	err = v.Unmarshal(&cfg)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 512*1024, cfg.RequestLimits.MaxBodySize)
 }

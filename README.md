@@ -267,6 +267,8 @@ request_limits:
   max_num_values: 10
   max_ttl_seconds: 5000
   allow_setting_keys: true
+  max_header_size_bytes: 16384
+  max_body_size_bytes: 262144
 backend:
   type: "memory"
   aerospike:
