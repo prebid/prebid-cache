@@ -22,5 +22,5 @@ build: test
 
 # Build a docker image which runs the binary
 image: build
-	docker build -t prebid-cache .
+	docker build --build-arg VERSION=$$(git describe --tags) --build-arg REVISION=$$(git rev-parse HEAD) -t prebid-cache .
 

@@ -374,6 +374,16 @@ Using the `docker build` command we specify an image name and the location of th
 ```bash
 docker build -t prebid-cache ~/go/src/github.com/prebid/prebid-cache
 ```
+The `/version` endpoint reports the values passed in the `VERSION` and `REVISION` build args, or `not-set` if they are omitted:
+```bash
+cd ~/go/src/github.com/prebid/prebid-cache
+docker build --build-arg VERSION=$(git describe --tags) --build-arg REVISION=$(git rev-parse HEAD) -t prebid-cache .
+```
+The default image is based on Ubuntu. An Alpine-based image can be built with `Dockerfile.alpine`:
+```bash
+cd ~/go/src/github.com/prebid/prebid-cache
+docker build -f Dockerfile.alpine -t prebid-cache .
+```
 We can run Prebid Cache using the newly created image:
 ```bash
 docker run -p 8000:8000 -t prebid-cache

@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+LICENSE
+
+# CI/CD
+.github
+
+# Build artifacts
+prebid-cache
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go vendor directory
+vendor/
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+
+# Docker
+Dockerfile*
+.dockerignore

@@ -1,39 +1,28 @@
-FROM ubuntu:22.04 AS build
-RUN apt-get update && \
-    apt-get -y upgrade && \
-    apt-get install -y --no-install-recommends wget ca-certificates
-ENV GO_INSTALLER=go1.19.5.linux-amd64.tar.gz
-WORKDIR /tmp
-RUN wget https://dl.google.com/go/$GO_INSTALLER && \
-    tar -C /usr/local -xzf $GO_INSTALLER
-RUN mkdir -p /app/prebid-cache/
+ARG GOVERSION=1.25.10
+
+FROM golang:${GOVERSION}-bookworm AS build
 WORKDIR /app/prebid-cache/
-ENV GOROOT=/usr/local/go
-ENV PATH=$GOROOT/bin:$PATH
-ENV GOPROXY="https://proxy.golang.org"
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-ENV CGO_ENABLED 0
+ENV CGO_ENABLED=0
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
 COPY ./ ./
-RUN go mod vendor
-RUN go mod tidy
 ARG TEST="true"
 RUN if [ "$TEST" != "false" ]; then ./validate.sh ; fi
-RUN go build -mod=vendor -ldflags "-X github.com/prebid/prebid-cache/version.Ver=`git describe --tags` -X github.com/prebid/prebid-cache/version.Rev=`git rev-parse HEAD`" .
+ARG VERSION=""
+ARG REVISION=""
+RUN go build -trimpath -ldflags "\
+    -X github.com/prebid/prebid-cache/version.Ver=${VERSION} \
+    -X github.com/prebid/prebid-cache/version.Rev=${REVISION}" .
 
 FROM ubuntu:22.04 AS release
-LABEL maintainer="hans.hjort@xandr.com" 
+LABEL maintainer="hans.hjort@xandr.com"
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-WORKDIR /usr/local/bin/
-COPY --from=build /app/prebid-cache/prebid-cache .
-RUN chmod a+xr prebid-cache
-COPY --from=build /app/prebid-cache/config.yaml .
-RUN chmod a+r config.yaml
 RUN addgroup --system --gid 2001 prebidgroup && adduser --system --uid 1001 --ingroup prebidgroup prebid
+WORKDIR /usr/local/bin/
+COPY --from=build --chmod=555 /app/prebid-cache/prebid-cache .
+COPY --from=build --chmod=444 /app/prebid-cache/config.yaml .
 USER prebid
-EXPOSE 2424
-EXPOSE 2525
+EXPOSE 2424 2525
 ENTRYPOINT ["/usr/local/bin/prebid-cache"]
