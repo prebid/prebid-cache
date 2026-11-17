@@ -20,9 +20,10 @@ jobs:
         if: "!contains(github.event.pull_request.labels.*.name, 'do not port') && github.event.pull_request.merged"
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           echo -e "A PR was merged over on PBC-Go\n\n- [https://github.com/prebid/prebid-cache/pull/${{github.event.number}}](https://github.com/prebid/prebid-cache/pull/${{github.event.number}})\n- timestamp: ${{ github.event.pull_request.merged_at}}" > msg
           export msg=$(cat msg)
-          gh issue create --repo prebid/prebid-cache-java --title "Port PR from PBC-Go: ${{ github.event.pull_request.title }}" \
+          gh issue create --repo prebid/prebid-cache-java --title "Port PR from PBC-Go: $PR_TITLE" \
               --body "$msg" \
               --label auto
