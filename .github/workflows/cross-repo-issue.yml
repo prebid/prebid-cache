@@ -12,10 +12,10 @@ jobs:
     steps:
       - name: Generate token
         id: generate_token
-        uses: tibdex/github-app-token@v1.8.0
+        uses: actions/create-github-app-token@v3
         with:
-          app_id: ${{ secrets.XREPO_APP_ID }}
-          private_key: ${{ secrets.XREPO_PEM }}
+          app-id: ${{ secrets.XREPO_APP_ID }}
+          private-key: ${{ secrets.XREPO_PEM }}
       - name: create issue in other repo
         if: "!contains(github.event.pull_request.labels.*.name, 'do not port') && github.event.pull_request.merged"
         env:
