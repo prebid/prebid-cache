@@ -120,7 +120,8 @@ func (e *GetHandler) handleException(w http.ResponseWriter, uuid string, err err
 		errMsgBuilder := strings.Builder{}
 		errMsgBuilder.WriteString("GET /cache")
 		if len(uuid) > 0 {
-			errMsgBuilder.WriteString(fmt.Sprintf(" uuid=%s", uuid))
+			safeUUID := strings.NewReplacer("\n", "", "\r", "").Replace(uuid)
+			errMsgBuilder.WriteString(fmt.Sprintf(" uuid=%s", safeUUID))
 		}
 		errMsgBuilder.WriteString(fmt.Sprintf(": %s", err.Error()))
 		errMsg := errMsgBuilder.String()
