@@ -2,10 +2,10 @@ FROM ubuntu:22.04 AS build
 RUN apt-get update && \
     apt-get -y upgrade && \
     apt-get install -y --no-install-recommends wget ca-certificates
-ENV GO_INSTALLER=go1.19.5.linux-amd64.tar.gz
+ENV GO_INSTALLER=go1.26.10.linux-amd64.tar.gz
 WORKDIR /tmp
-RUN wget https://dl.google.com/go/go1.23.1.linux-amd64.tar.gz && \
-    tar -xf go1.23.1.linux-amd64.tar.gz && \
+RUN wget https://dl.google.com/go/go1.26.10.linux-amd64.tar.gz && \
+    tar -xf go1.26.10.linux-amd64.tar.gz && \
     mv go /usr/local
 RUN mkdir -p /app/prebid-cache/
 WORKDIR /app/prebid-cache/
