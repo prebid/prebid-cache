@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -189,7 +190,9 @@ func (e *PutHandler) handle(w http.ResponseWriter, r *http.Request, ps httproute
 	// If incoming request comes with a referer header, there's a e.cfg.refererLogRate percent chance
 	// getting it logged
 	if referer := r.Referer(); referer != "" && utils.RandomPick(e.cfg.refererLogRate) {
-		logrus.Info("POST request Referer header: " + referer)
+		safeReferer := strings.ReplaceAll(referer, "\n", "")
+		safeReferer = strings.ReplaceAll(safeReferer, "\r", "")
+		logrus.Info("POST request Referer header: " + safeReferer)
 	}
 
 	start := time.Now()
